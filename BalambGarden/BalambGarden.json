@@ -2,7 +2,7 @@
   "Author": "DriftlessDigits",
   "Name": "Balamb Garden",
   "Punchline": "Your garden, tended. SeeDs, watered.",
-  "Description": "Gardening companion: tracks every plot's water, grow, and wilt timers, shows you where to stand, and offers to water the whole patch when you get there. /garden to open.",
+  "Description": "Gardening companion (early preview): stand by your garden and water a whole patch - or every patch in reach - with one button, at a patient human pace. Keeps a ledger of what's planted where and when you last watered it. /garden to open. Timers and more on the way.",
   "ApplicableVersion": "any",
   "Tags": [
     "Utility",
