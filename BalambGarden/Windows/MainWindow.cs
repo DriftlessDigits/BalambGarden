@@ -163,6 +163,12 @@ public class MainWindow : Window, IDisposable
                     $"[Recon] {s.Name} | {s.Kind} | DataId {s.DataId} | {s.Distance:F2}y | targetable={s.Targetable} | pos={s.Object.Position:F1}");
         }
         ImGui.SameLine();
+        if (ImGui.Button("Housing ID"))
+            ReconProbe.LogHousingLocation();
+        ImGui.SameLine();
+        if (ImGui.Button("Dump beds"))
+            ReconProbe.DumpBedStructs();
+        ImGui.SameLine();
         ImGui.TextDisabled($"{sightings.Count} event objects within 40y");
 
         using var table = ImRaii.Table("sightings", 6,
