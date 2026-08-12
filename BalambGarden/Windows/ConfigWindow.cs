@@ -14,7 +14,7 @@ public class ConfigWindow : Window, IDisposable
         Flags = ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoScrollbar |
                 ImGuiWindowFlags.NoScrollWithMouse;
 
-        Size = new Vector2(320, 140);
+        Size = new Vector2(320, 200);
         SizeCondition = ImGuiCond.Always;
 
         configuration = Plugin.Configuration;
@@ -43,6 +43,20 @@ public class ConfigWindow : Window, IDisposable
         if (ImGui.SliderInt("Pace (ms)", ref pace, 250, 3000))
         {
             configuration.TendPaceMS = pace;
+            configuration.Save();
+        }
+
+        var postTend = configuration.PostTendDelayMS;
+        if (ImGui.SliderInt("Between beds (ms)", ref postTend, 3000, 15000))
+        {
+            configuration.PostTendDelayMS = postTend;
+            configuration.Save();
+        }
+
+        var postTendJitter = configuration.PostTendJitterMS;
+        if (ImGui.SliderInt("Between-beds jitter (+/- ms)", ref postTendJitter, 0, 3000))
+        {
+            configuration.PostTendJitterMS = postTendJitter;
             configuration.Save();
         }
 

@@ -43,12 +43,11 @@ internal sealed unsafe class TendChain : IDisposable
 
     /// <summary>Base +/- uniform jitter, floored (Scrooge ApplyJitter shape).</summary>
     private int ApplyJitter(int baseMS)
-    {
-        if (!Plugin.Configuration.EnableJitter)
-            return baseMS;
+        => ApplyJitter(baseMS, Plugin.Configuration.JitterMS);
 
-        var jitterMS = Plugin.Configuration.JitterMS;
-        if (jitterMS <= 0)
+    private int ApplyJitter(int baseMS, int jitterMS)
+    {
+        if (!Plugin.Configuration.EnableJitter || jitterMS <= 0)
             return baseMS;
 
         var offset = (int)(((_random.NextDouble() * 2.0) - 1.0) * jitterMS);
@@ -89,7 +88,11 @@ internal sealed unsafe class TendChain : IDisposable
         for (var i = 0; i < beds.Count; i++)
         {
             var bed = beds[i];
-            _taskManager.DelayNext(ApplyJitter(Plugin.Configuration.TendPaceMS));
+            // First bed reacts at button tempo; every later bed waits out the previous
+            // watering animation.
+            _taskManager.DelayNext(i == 0
+                ? ApplyJitter(Plugin.Configuration.TendPaceMS)
+                : ApplyJitter(Plugin.Configuration.PostTendDelayMS, Plugin.Configuration.PostTendJitterMS));
             _taskManager.Enqueue(() => Interact(bed), $"interact {i}");
             // A growing crop opens with a status Talk ("X is doing well") BEFORE the
             // menu - the plant name arrives here, then the menu. Click dialogue until
