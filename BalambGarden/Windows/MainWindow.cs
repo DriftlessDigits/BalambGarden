@@ -169,6 +169,8 @@ public class MainWindow : Window, IDisposable
             : $"{(int)span.TotalDays}d ago";
     }
 
+    private bool reconBedsOnly = true;
+
     private void DrawRecon(uint territoryId, string territoryName)
     {
         ImGui.Spacing();
@@ -176,7 +178,11 @@ public class MainWindow : Window, IDisposable
             return;
 
         var sightings = GardenScanner.NearbyEventObjects();
+        ImGui.Checkbox("Beds only", ref reconBedsOnly);
+        if (reconBedsOnly)
+            sightings = sightings.Where(s => s.DataId == GardenScanner.GardenBedDataId).ToList();
 
+        ImGui.SameLine();
         if (ImGui.Button("Log snapshot"))
         {
             Plugin.Log.Information($"[Recon] zone ({territoryId}) {territoryName}, {sightings.Count} event objects in 40y:");
@@ -189,7 +195,7 @@ public class MainWindow : Window, IDisposable
 
         using var table = ImRaii.Table("sightings", 6,
             ImGuiTableFlags.RowBg | ImGuiTableFlags.Borders | ImGuiTableFlags.ScrollY,
-            new Vector2(0, 200));
+            new Vector2(0, 0));
         if (!table.Success)
             return;
 
