@@ -37,6 +37,82 @@ internal static unsafe class ReconProbe
         }
     }
 
+    /// <summary>
+    /// Probe v2: walks the housing territory's own records - the furniture vector
+    /// (item ids + positions) and the HousingObjectManager DataMap whose entries
+    /// hold 8 value-sets each (8 = beds per patch; plant id + state suspects).
+    /// </summary>
+    internal static void DumpHousingRecords()
+    {
+        try
+        {
+            var housing = HousingManager.Instance();
+            if (housing == null || housing->CurrentTerritory == null)
+            {
+                Plugin.Log.Information("[Probe] no housing territory");
+                return;
+            }
+
+            var outdoor = housing->OutdoorTerritory;
+            var indoor = housing->IndoorTerritory;
+            HousingFurnitureManager* furniture =
+                outdoor != null ? &outdoor->FurnitureManager
+                : indoor != null ? &indoor->FurnitureManager
+                : null;
+            if (furniture == null)
+            {
+                Plugin.Log.Information("[Probe] no furniture manager (workshop territory?)");
+                return;
+            }
+
+            var me = ECommons.GameHelpers.Player.Object;
+            var myPos = me?.Position ?? default;
+
+            Plugin.Log.Information(
+                $"[Probe] furniture vector: {furniture->FurnitureVector.Count} entries, "
+                + $"object array count: {furniture->ObjectManager.ObjectArray.ObjectCount}");
+
+            var logged = 0;
+            foreach (var pointer in furniture->FurnitureVector)
+            {
+                var item = pointer.Value;
+                if (item == null || item->Id == 0)
+                    continue;
+                var distance = System.Numerics.Vector3.Distance(myPos, item->Position);
+                if (distance > 45f)
+                    continue;
+
+                Plugin.Log.Information(
+                    $"[Probe] furniture idx={item->Index} id={item->Id} stain={item->Stain} "
+                    + $"pos={item->Position:F1} dist={distance:F1}y");
+                logged++;
+            }
+            Plugin.Log.Information($"[Probe] furniture within 45y: {logged}");
+
+            var mapCount = 0;
+            foreach (var pair in furniture->ObjectManager.DataMap)
+            {
+                var data = pair.Item2;
+                var raw = new StringBuilder();
+                var p = (byte*)&data;
+                for (var i = 0; i < sizeof(HousingObjectManager.HousingObjectData); i++)
+                    raw.Append($"{p[i]:X2} ");
+                Plugin.Log.Information($"[Probe] datamap key={pair.Item1} bytes: {raw}");
+                mapCount++;
+                if (mapCount >= 80)
+                {
+                    Plugin.Log.Information("[Probe] datamap cap 80 reached");
+                    break;
+                }
+            }
+            Plugin.Log.Information($"[Probe] datamap entries logged: {mapCount}");
+        }
+        catch (Exception ex)
+        {
+            Plugin.Log.Warning($"[Probe] housing records dump failed: {ex}");
+        }
+    }
+
     /// <summary>Hex-dumps the first bytes of each nearby bed's native GameObject.</summary>
     internal static void DumpBedStructs()
     {

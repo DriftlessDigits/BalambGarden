@@ -169,6 +169,9 @@ public class MainWindow : Window, IDisposable
         if (ImGui.Button("Dump beds"))
             ReconProbe.DumpBedStructs();
         ImGui.SameLine();
+        if (ImGui.Button("Dump housing"))
+            ReconProbe.DumpHousingRecords();
+        ImGui.SameLine();
         ImGui.TextDisabled($"{sightings.Count} event objects within 40y");
 
         using var table = ImRaii.Table("sightings", 6,
