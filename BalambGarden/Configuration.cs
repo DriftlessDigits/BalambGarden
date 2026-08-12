@@ -28,8 +28,8 @@ public class Configuration : IPluginConfiguration
     public bool IsConfigWindowMovable { get; set; } = true;
 
     // Pacing: the chain acts at human tempo, not frame tempo. Every action waits
-    // TendPaceMS +/- JitterMS (uniform) since the previous one.
-    public bool EnableJitter { get; set; } = true;
+    // TendPaceMS +/- JitterMS (uniform) since the previous one. No global jitter
+    // kill-switch (Scrooge ruling: pacing must not couple to a plugin-wide toggle).
     public int TendPaceMS { get; set; } = 750;
     public int JitterMS { get; set; } = 400;
 

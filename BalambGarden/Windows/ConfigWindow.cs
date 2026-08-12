@@ -60,21 +60,11 @@ public class ConfigWindow : Window, IDisposable
             configuration.Save();
         }
 
-        var enableJitter = configuration.EnableJitter;
-        if (ImGui.Checkbox("Jitter", ref enableJitter))
+        var jitter = configuration.JitterMS;
+        if (ImGui.SliderInt("Jitter (+/- ms)", ref jitter, 0, 1500))
         {
-            configuration.EnableJitter = enableJitter;
+            configuration.JitterMS = jitter;
             configuration.Save();
-        }
-
-        if (configuration.EnableJitter)
-        {
-            var jitter = configuration.JitterMS;
-            if (ImGui.SliderInt("Jitter (+/- ms)", ref jitter, 0, 1500))
-            {
-                configuration.JitterMS = jitter;
-                configuration.Save();
-            }
         }
     }
 }

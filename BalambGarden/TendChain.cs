@@ -50,9 +50,12 @@ internal sealed unsafe class TendChain : IDisposable
     private int ApplyJitter(int baseMS)
         => ApplyJitter(baseMS, Plugin.Configuration.JitterMS);
 
+    // No global jitter kill-switch on purpose (Scrooge ruling: pacing is
+    // non-negotiable and must not couple to a toggle flipped for unrelated
+    // reasons). Zeroing a jitter slider is a deliberate per-knob act; that stays.
     private int ApplyJitter(int baseMS, int jitterMS)
     {
-        if (!Plugin.Configuration.EnableJitter || jitterMS <= 0)
+        if (jitterMS <= 0)
             return baseMS;
 
         var offset = (int)(((_random.NextDouble() * 2.0) - 1.0) * jitterMS);
@@ -140,6 +143,13 @@ internal sealed unsafe class TendChain : IDisposable
     {
         if (_taskManager.IsBusy || beds.Count == 0)
             return;
+
+        // The manager's timeout must never race a task's own duration (Scrooge 07-22:
+        // both at 10s, the manager won by milliseconds and silently wiped the queue).
+        // The longest task is the between-beds delay, which is user-tunable - derive
+        // the ceiling from the knobs, comfortably above.
+        _taskManager.TimeLimitMS = Math.Max(
+            15000, Plugin.Configuration.PostTendDelayMS + Plugin.Configuration.PostTendJitterMS + 5000);
 
         Report.Clear();
         RunStartUtc = DateTime.UtcNow;
