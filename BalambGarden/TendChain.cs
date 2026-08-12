@@ -35,6 +35,11 @@ internal sealed unsafe class TendChain : IDisposable
     // in ~130ms, including double-clicking one Talk box in 16ms).
     private DateTime _nextActionAt = DateTime.MinValue;
 
+    // Census state for the bed currently being tended: the status Talk names the
+    // plant, the menu names the bed, the object's position names the patch.
+    private string _currentPlant = "";
+    private System.Numerics.Vector3 _currentBedPos;
+
     private bool PaceReady()
         => DateTime.UtcNow >= _nextActionAt;
 
@@ -62,6 +67,26 @@ internal sealed unsafe class TendChain : IDisposable
     /// <summary>Per-bed outcomes of the last run, in tend order.</summary>
     internal List<string> Report { get; } = [];
 
+    // Run telemetry for the progress panel (the Scrooge run-log treatment):
+    // start stamp + totals feed elapsed, n-of-m, and a done-rate ETA.
+    internal DateTime RunStartUtc { get; private set; }
+    internal int TotalBeds { get; private set; }
+
+    internal TimeSpan Elapsed
+        => Busy ? DateTime.UtcNow - RunStartUtc : TimeSpan.Zero;
+
+    internal TimeSpan? Eta
+    {
+        get
+        {
+            if (!Busy || Report.Count == 0 || TotalBeds == 0)
+                return null;
+
+            var perBed = (DateTime.UtcNow - RunStartUtc) / Report.Count;
+            return perBed * (TotalBeds - Report.Count);
+        }
+    }
+
     public void Dispose()
         => _taskManager.Abort();
 
@@ -77,13 +102,18 @@ internal sealed unsafe class TendChain : IDisposable
     internal void TendPatch(PatchSighting patch)
         => Tend(patch.Beds.Select(b => b.Object).ToList());
 
+    internal void TendAll(IEnumerable<PatchSighting> patches)
+        => Tend(patches.SelectMany(p => p.Beds).Select(b => b.Object).ToList());
+
     private void Tend(List<IGameObject> beds)
     {
         if (_taskManager.IsBusy || beds.Count == 0)
             return;
 
         Report.Clear();
-        LastOutcome = beds.Count == 1 ? "tending bed..." : $"watering patch ({beds.Count} beds)...";
+        RunStartUtc = DateTime.UtcNow;
+        TotalBeds = beds.Count;
+        LastOutcome = beds.Count == 1 ? "tending bed..." : $"watering {beds.Count} beds...";
 
         for (var i = 0; i < beds.Count; i++)
         {
@@ -105,10 +135,11 @@ internal sealed unsafe class TendChain : IDisposable
         var total = beds.Count;
         _taskManager.Enqueue(() =>
         {
-            var tended = Report.Count(r => r.EndsWith(": tended", StringComparison.Ordinal));
+            var tended = Report.Count(r => r.EndsWith("- tended", StringComparison.Ordinal));
             LastOutcome = $"done: {tended}/{total} tended";
             foreach (var line in Report)
                 Plugin.Log.Information($"[TendChain] report: {line}");
+            Plugin.Configuration.Save();
             return true;
         }, "report");
     }
@@ -134,6 +165,9 @@ internal sealed unsafe class TendChain : IDisposable
         if (native == null)
             return false;
 
+        _currentPlant = "";
+        _currentBedPos = bed.Position;
+
         targets->Target = native;
         targets->InteractWithObject(native, false);
         return true;
@@ -151,11 +185,25 @@ internal sealed unsafe class TendChain : IDisposable
             && GenericHelpers.IsAddonReady(talk))
         {
             DumpStrings(talk, "Talk");
+            CapturePlantName(talk);
             new AddonMaster.Talk((nint)talk).Click();
             Acted();
         }
 
         return false;
+    }
+
+    /// <summary>The status Talk's first line is the plant name ("Curiel Root\n...").</summary>
+    private void CapturePlantName(AtkUnitBase* addon)
+    {
+        var text = ReadStringValue(addon, 0);
+        if (text.Length == 0)
+            return;
+
+        var newline = text.IndexOf('\n');
+        var plant = (newline > 0 ? text[..newline] : text).Trim();
+        if (plant.Length > 0)
+            _currentPlant = plant;
     }
 
     /// <summary>Clicks through whatever dialogue follows the action; done when quiet.</summary>
@@ -196,10 +244,11 @@ internal sealed unsafe class TendChain : IDisposable
         {
             if (entry.Text.Contains("Tend", StringComparison.OrdinalIgnoreCase))
             {
-                Plugin.Log.Information($"[TendChain] selecting '{entry.Text}' for {header}");
+                Plugin.Log.Information($"[TendChain] selecting '{entry.Text}' for {header} ({_currentPlant})");
                 entry.Select();
                 Acted();
-                Report.Add($"{header}: tended");
+                RecordTend(header);
+                Report.Add($"{header}: {(_currentPlant.Length > 0 ? _currentPlant : "?")} - tended");
                 return true;
             }
         }
@@ -226,20 +275,55 @@ internal sealed unsafe class TendChain : IDisposable
 
     private static string ReadBedHeader(AtkUnitBase* addon)
     {
+        var text = ReadStringValue(addon, 2);
+        return text.Length > 0 ? text : "(unknown bed)";
+    }
+
+    /// <summary>Reads one string-typed AtkValue defensively; empty string when absent.</summary>
+    private static string ReadStringValue(AtkUnitBase* addon, int index)
+    {
         try
         {
-            if (addon->AtkValuesCount > 2
-                && addon->AtkValues[2].Type is AtkValueType.String or AtkValueType.ConstString
+            if (addon->AtkValuesCount > index
+                && addon->AtkValues[index].Type is AtkValueType.String or AtkValueType.ConstString
                     or AtkValueType.WideString or AtkValueType.ManagedString
-                && addon->AtkValues[2].String.Value != null)
-                return MemoryHelper.ReadSeStringNullTerminated((nint)addon->AtkValues[2].String.Value).GetText();
+                && addon->AtkValues[index].String.Value != null)
+                return MemoryHelper.ReadSeStringNullTerminated((nint)addon->AtkValues[index].String.Value).GetText();
         }
         catch
         {
-            // fall through to the placeholder
+            // unreadable value = absent value
         }
 
-        return "(unknown bed)";
+        return "";
+    }
+
+    /// <summary>Upserts this bed's ledger record: same territory + patch centre + bed label.</summary>
+    private void RecordTend(string bedLabel)
+    {
+        var territory = Plugin.ClientState.TerritoryType;
+        var ledger = Plugin.Configuration.Ledger;
+        var record = ledger.FirstOrDefault(r =>
+            r.Territory == territory
+            && r.Bed == bedLabel
+            && Math.Abs(r.PatchX - _currentBedPos.X) < 0.5f
+            && Math.Abs(r.PatchZ - _currentBedPos.Z) < 0.5f);
+
+        if (record == null)
+        {
+            record = new BedRecord
+            {
+                Territory = territory,
+                PatchX = _currentBedPos.X,
+                PatchZ = _currentBedPos.Z,
+                Bed = bedLabel,
+            };
+            ledger.Add(record);
+        }
+
+        if (_currentPlant.Length > 0)
+            record.Plant = _currentPlant;
+        record.LastTendedUtc = DateTime.UtcNow;
     }
 
     /// <summary>

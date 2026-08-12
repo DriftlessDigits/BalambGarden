@@ -1,7 +1,24 @@
 using Dalamud.Configuration;
 using System;
+using System.Collections.Generic;
 
 namespace BalambGarden;
+
+/// <summary>
+/// One bed's census record: what the chain last saw there and when it watered it.
+/// Keyed by territory + patch centre + bed label (same bed label repeats across
+/// plots; the patch centre disambiguates).
+/// </summary>
+[Serializable]
+public class BedRecord
+{
+    public uint Territory { get; set; }
+    public float PatchX { get; set; }
+    public float PatchZ { get; set; }
+    public string Bed { get; set; } = "";
+    public string Plant { get; set; } = "";
+    public DateTime LastTendedUtc { get; set; }
+}
 
 [Serializable]
 public class Configuration : IPluginConfiguration
@@ -21,6 +38,9 @@ public class Configuration : IPluginConfiguration
     // 2026-08-11: 8s +/- 1s).
     public int PostTendDelayMS { get; set; } = 8000;
     public int PostTendJitterMS { get; set; } = 1000;
+
+    // The garden ledger: every tended bed's latest census record.
+    public List<BedRecord> Ledger { get; set; } = [];
 
     // The below exists just to make saving less cumbersome
     public void Save()
