@@ -20,7 +20,7 @@ public sealed class Plugin : IDalamudPlugin
 
     private const string CommandName = "/garden";
 
-    public Configuration Configuration { get; init; }
+    public static Configuration Configuration { get; private set; } = null!;
 
     internal TendChain TendChain { get; init; }
 

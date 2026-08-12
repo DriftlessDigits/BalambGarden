@@ -26,6 +26,33 @@ internal sealed unsafe class TendChain : IDisposable
         AbortOnTimeout = true,
     };
 
+    private readonly Random _random = new();
+
+    // Pacing gate: no two chain actions inside one jittered gap. Without it the
+    // chain runs at frame tempo (the first live tend did the whole conversation
+    // in ~130ms, including double-clicking one Talk box in 16ms).
+    private DateTime _nextActionAt = DateTime.MinValue;
+
+    private bool PaceReady()
+        => DateTime.UtcNow >= _nextActionAt;
+
+    private void Acted()
+        => _nextActionAt = DateTime.UtcNow.AddMilliseconds(ApplyJitter(Plugin.Configuration.TendPaceMS));
+
+    /// <summary>Base +/- uniform jitter, floored (Scrooge ApplyJitter shape).</summary>
+    private int ApplyJitter(int baseMS)
+    {
+        if (!Plugin.Configuration.EnableJitter)
+            return baseMS;
+
+        var jitterMS = Plugin.Configuration.JitterMS;
+        if (jitterMS <= 0)
+            return baseMS;
+
+        var offset = (int)(((_random.NextDouble() * 2.0) - 1.0) * jitterMS);
+        return Math.Max(250, baseMS + offset);
+    }
+
     internal bool Busy
         => _taskManager.IsBusy;
 
@@ -46,12 +73,12 @@ internal sealed unsafe class TendChain : IDisposable
             return;
 
         LastOutcome = "tending bed...";
+        _taskManager.DelayNext(ApplyJitter(Plugin.Configuration.TendPaceMS));
         _taskManager.Enqueue(() => Interact(bed), "interact");
         // A growing crop opens with a status Talk ("X is doing well") BEFORE the menu -
         // the plant name arrives here, then the menu. Click dialogue until the menu shows.
         _taskManager.Enqueue(AdvanceToMenu, "advance to menu");
         _taskManager.Enqueue(SelectTend, "select tend");
-        _taskManager.DelayNext(500);
         _taskManager.Enqueue(FinishDialogue, "finish dialogue");
         _taskManager.Enqueue(() => { LastOutcome = "tended"; return true; }, "done");
     }
@@ -79,11 +106,13 @@ internal sealed unsafe class TendChain : IDisposable
             && GenericHelpers.IsAddonReady(menu))
             return true;
 
-        if (GenericHelpers.TryGetAddonByName<AtkUnitBase>("Talk", out var talk)
+        if (PaceReady()
+            && GenericHelpers.TryGetAddonByName<AtkUnitBase>("Talk", out var talk)
             && GenericHelpers.IsAddonReady(talk))
         {
             DumpStrings(talk, "Talk");
             new AddonMaster.Talk((nint)talk).Click();
+            Acted();
         }
 
         return false;
@@ -95,8 +124,13 @@ internal sealed unsafe class TendChain : IDisposable
         if (GenericHelpers.TryGetAddonByName<AtkUnitBase>("Talk", out var talk)
             && GenericHelpers.IsAddonReady(talk))
         {
-            DumpStrings(talk, "Talk");
-            new AddonMaster.Talk((nint)talk).Click();
+            if (PaceReady())
+            {
+                DumpStrings(talk, "Talk");
+                new AddonMaster.Talk((nint)talk).Click();
+                Acted();
+            }
+
             return false;
         }
 
@@ -105,6 +139,9 @@ internal sealed unsafe class TendChain : IDisposable
 
     private bool? SelectTend()
     {
+        if (!PaceReady())
+            return false;
+
         if (!GenericHelpers.TryGetAddonByName<AtkUnitBase>("SelectString", out var addon)
             || !GenericHelpers.IsAddonReady(addon))
             return false;

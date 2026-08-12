@@ -9,18 +9,15 @@ public class ConfigWindow : Window, IDisposable
 {
     private readonly Configuration configuration;
 
-    // We give this window a constant ID using ###.
-    // This allows for labels to be dynamic, like "{FPS Counter}fps###XYZ counter window",
-    // and the window ID will always be "###XYZ counter window" for ImGui
-    public ConfigWindow(Plugin plugin) : base("A Wonderful Configuration Window###With a constant ID")
+    public ConfigWindow(Plugin plugin) : base("Balamb Garden Settings###BalambGardenConfig")
     {
         Flags = ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoScrollbar |
                 ImGuiWindowFlags.NoScrollWithMouse;
 
-        Size = new Vector2(232, 90);
+        Size = new Vector2(320, 140);
         SizeCondition = ImGuiCond.Always;
 
-        configuration = plugin.Configuration;
+        configuration = Plugin.Configuration;
     }
 
     public void Dispose() { }
@@ -40,20 +37,30 @@ public class ConfigWindow : Window, IDisposable
 
     public override void Draw()
     {
-        // Can't ref a property, so use a local copy
-        var configValue = configuration.SomePropertyToBeSavedAndWithADefault;
-        if (ImGui.Checkbox("Random Config Bool", ref configValue))
+        ImGui.Text("Tend pacing");
+
+        var pace = configuration.TendPaceMS;
+        if (ImGui.SliderInt("Pace (ms)", ref pace, 250, 3000))
         {
-            configuration.SomePropertyToBeSavedAndWithADefault = configValue;
-            // Can save immediately on change if you don't want to provide a "Save and Close" button
+            configuration.TendPaceMS = pace;
             configuration.Save();
         }
 
-        var movable = configuration.IsConfigWindowMovable;
-        if (ImGui.Checkbox("Movable Config Window", ref movable))
+        var enableJitter = configuration.EnableJitter;
+        if (ImGui.Checkbox("Jitter", ref enableJitter))
         {
-            configuration.IsConfigWindowMovable = movable;
+            configuration.EnableJitter = enableJitter;
             configuration.Save();
+        }
+
+        if (configuration.EnableJitter)
+        {
+            var jitter = configuration.JitterMS;
+            if (ImGui.SliderInt("Jitter (+/- ms)", ref jitter, 0, 1500))
+            {
+                configuration.JitterMS = jitter;
+                configuration.Save();
+            }
         }
     }
 }
