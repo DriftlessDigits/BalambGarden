@@ -51,7 +51,6 @@ public class MainWindow : Window, IDisposable
         ImGui.Text($"Zone: ({territoryId}) {territoryName}");
 
         DrawPatches();
-        DrawRunPanel();
         DrawLedger(territoryId);
         DrawRecon(territoryId, territoryName);
     }
@@ -70,7 +69,10 @@ public class MainWindow : Window, IDisposable
         using (ImRaii.Disabled(plugin.TendChain.Busy || inReach.Count == 0))
         {
             if (ImGui.Button($"Tend All ({totalBeds} beds, {inReach.Count} patches)"))
+            {
                 plugin.TendChain.TendAll(inReach);
+                plugin.RunLogWindow.IsOpen = true;
+            }
         }
 
         foreach (var patch in patches)
@@ -79,7 +81,10 @@ public class MainWindow : Window, IDisposable
             using (ImRaii.Disabled(plugin.TendChain.Busy || !patch.InReach))
             {
                 if (ImGui.Button($"Water Patch ({patch.Beds.Count} beds)"))
+                {
                     plugin.TendChain.TendPatch(patch);
+                    plugin.RunLogWindow.IsOpen = true;
+                }
             }
 
             ImGui.SameLine();
@@ -87,40 +92,6 @@ public class MainWindow : Window, IDisposable
                 patch.InReach ? Green : Red,
                 $"{patch.Distance:F1}y {(patch.InReach ? "- in reach" : "- walk closer")}");
         }
-    }
-
-    private void DrawRunPanel()
-    {
-        var chain = plugin.TendChain;
-        if (!chain.Busy && chain.Report.Count == 0)
-            return;
-
-        ImGui.Spacing();
-        ImGui.Separator();
-
-        if (chain.Busy)
-        {
-            var line = $"Watering... {chain.Report.Count}/{chain.TotalBeds} | elapsed {chain.Elapsed:mm\\:ss}";
-            if (chain.Eta is { } eta)
-                line += $" | ETA {eta:mm\\:ss}";
-            ImGui.Text(line);
-            ImGui.SameLine();
-            if (ImGui.Button("Abort"))
-                chain.Abort();
-        }
-        else
-        {
-            ImGui.Text($"Last run: {chain.LastOutcome}");
-        }
-
-        using var child = ImRaii.Child("runlog", new Vector2(0, 110), true);
-        if (!child.Success)
-            return;
-
-        foreach (var line in chain.Report)
-            ImGui.TextDisabled(line);
-        if (chain.Busy)
-            ImGui.SetScrollHereY(1f);
     }
 
     private static void DrawLedger(uint territoryId)
@@ -226,7 +197,10 @@ public class MainWindow : Window, IDisposable
             using (ImRaii.Disabled(plugin.TendChain.Busy || !s.InReach))
             {
                 if (ImGui.Button("Tend"))
+                {
                     plugin.TendChain.TendOne(s.Object);
+                    plugin.RunLogWindow.IsOpen = true;
+                }
             }
         }
     }

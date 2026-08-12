@@ -27,6 +27,7 @@ public sealed class Plugin : IDalamudPlugin
     public readonly WindowSystem WindowSystem = new("BalambGarden");
     private ConfigWindow ConfigWindow { get; init; }
     private MainWindow MainWindow { get; init; }
+    internal RunLogWindow RunLogWindow { get; init; }
 
     public Plugin()
     {
@@ -38,9 +39,11 @@ public sealed class Plugin : IDalamudPlugin
 
         ConfigWindow = new ConfigWindow(this);
         MainWindow = new MainWindow(this);
+        RunLogWindow = new RunLogWindow(this);
 
         WindowSystem.AddWindow(ConfigWindow);
         WindowSystem.AddWindow(MainWindow);
+        WindowSystem.AddWindow(RunLogWindow);
 
         CommandManager.AddHandler(CommandName, new CommandInfo(OnCommand)
         {
