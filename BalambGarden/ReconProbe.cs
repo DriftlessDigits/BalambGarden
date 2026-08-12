@@ -122,7 +122,13 @@ internal static unsafe class ReconProbe
         var dumped = 0;
         foreach (var sighting in GardenScanner.NearbyEventObjects())
         {
-            if (sighting.DataId != GardenScanner.GardenBedDataId)
+            // Outdoor beds by DataId; indoors, any close housing object (pots have
+            // per-model DataIds, so proximity is the honest filter).
+            var isBed = sighting.DataId == GardenScanner.GardenBedDataId;
+            var isCloseHousingObject =
+                sighting.Kind == Dalamud.Game.ClientState.Objects.Enums.ObjectKind.HousingEventObject
+                && sighting.Distance <= 10f;
+            if (!isBed && !isCloseHousingObject)
                 continue;
             if (dumped >= maxObjects)
             {
