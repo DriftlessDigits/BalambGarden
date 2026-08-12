@@ -45,12 +45,15 @@ internal sealed unsafe class TendChain : IDisposable
         if (_taskManager.IsBusy)
             return;
 
-        var name = bed.Name.TextValue;
-        LastOutcome = $"tending '{name}'...";
+        LastOutcome = "tending bed...";
         _taskManager.Enqueue(() => Interact(bed), "interact");
+        // A growing crop opens with a status Talk ("X is doing well") BEFORE the menu -
+        // the plant name arrives here, then the menu. Click dialogue until the menu shows.
+        _taskManager.Enqueue(AdvanceToMenu, "advance to menu");
         _taskManager.Enqueue(SelectTend, "select tend");
-        _taskManager.Enqueue(ClickThroughTalk, "talk");
-        _taskManager.Enqueue(() => { LastOutcome = $"tended '{name}'"; return true; }, "done");
+        _taskManager.DelayNext(500);
+        _taskManager.Enqueue(FinishDialogue, "finish dialogue");
+        _taskManager.Enqueue(() => { LastOutcome = "tended"; return true; }, "done");
     }
 
     /// <summary>Target-then-interact, the game's own flow (Scrooge GameSafe pattern).</summary>
@@ -66,6 +69,37 @@ internal sealed unsafe class TendChain : IDisposable
 
         targets->Target = native;
         targets->InteractWithObject(native, false);
+        return true;
+    }
+
+    /// <summary>Clicks through any status dialogue until the bed's menu is up.</summary>
+    private bool? AdvanceToMenu()
+    {
+        if (GenericHelpers.TryGetAddonByName<AtkUnitBase>("SelectString", out var menu)
+            && GenericHelpers.IsAddonReady(menu))
+            return true;
+
+        if (GenericHelpers.TryGetAddonByName<AtkUnitBase>("Talk", out var talk)
+            && GenericHelpers.IsAddonReady(talk))
+        {
+            DumpStrings(talk, "Talk");
+            new AddonMaster.Talk((nint)talk).Click();
+        }
+
+        return false;
+    }
+
+    /// <summary>Clicks through whatever dialogue follows the action; done when quiet.</summary>
+    private bool? FinishDialogue()
+    {
+        if (GenericHelpers.TryGetAddonByName<AtkUnitBase>("Talk", out var talk)
+            && GenericHelpers.IsAddonReady(talk))
+        {
+            DumpStrings(talk, "Talk");
+            new AddonMaster.Talk((nint)talk).Click();
+            return false;
+        }
+
         return true;
     }
 
@@ -92,17 +126,6 @@ internal sealed unsafe class TendChain : IDisposable
         // and stop; the menu stays for the player to act on.
         LastOutcome = "no 'Tend' option in menu (empty bed, ripe, or no rights?) - left menu open";
         _taskManager.Abort();
-        return true;
-    }
-
-    private bool? ClickThroughTalk()
-    {
-        if (!GenericHelpers.TryGetAddonByName<AtkUnitBase>("Talk", out var addon)
-            || !GenericHelpers.IsAddonReady(addon))
-            return false;
-
-        DumpStrings(addon, "Talk");
-        new AddonMaster.Talk((nint)addon).Click();
         return true;
     }
 
