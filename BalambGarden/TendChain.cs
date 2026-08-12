@@ -68,22 +68,53 @@ internal sealed unsafe class TendChain : IDisposable
     internal List<string> Report { get; } = [];
 
     // Run telemetry for the progress panel (the Scrooge run-log treatment):
-    // start stamp + totals feed elapsed, n-of-m, and a done-rate ETA.
+    // start stamp + totals feed elapsed, n-of-m, and a countdown ETA.
     internal DateTime RunStartUtc { get; private set; }
     internal int TotalBeds { get; private set; }
+
+    // The ETA's countdown anchor: only bed completions recalibrate the pace.
+    private DateTime _lastBedAt;
 
     internal TimeSpan Elapsed
         => Busy ? DateTime.UtcNow - RunStartUtc : TimeSpan.Zero;
 
+    /// <summary>
+    /// Countdown ETA, Scrooge RunLifecycle ruling: pace frozen at bed-completion
+    /// boundaries (elapsed-at-last-bed / done), never the live clock - a per-frame
+    /// pace bills the wait on the CURRENT bed to every future bed, so the ETA climbs
+    /// between completions and snaps down when one lands (the sawtooth). Between
+    /// beds the display ticks DOWN by wall clock, floored at zero. Before the first
+    /// bed completes, seeds from the configured pacing.
+    /// </summary>
     internal TimeSpan? Eta
     {
         get
         {
-            if (!Busy || Report.Count == 0 || TotalBeds == 0)
+            if (!Busy || TotalBeds == 0)
                 return null;
 
-            var perBed = (DateTime.UtcNow - RunStartUtc) / Report.Count;
-            return perBed * (TotalBeds - Report.Count);
+            var done = Report.Count;
+            var remaining = TotalBeds - done;
+            if (remaining <= 0)
+                return null;
+
+            double msPerBed;
+            DateTime anchor;
+            if (done > 0)
+            {
+                msPerBed = (_lastBedAt - RunStartUtc).TotalMilliseconds / done;
+                anchor = _lastBedAt;
+            }
+            else
+            {
+                // Seed: the between-beds gap plus a few dialogue beats.
+                msPerBed = Plugin.Configuration.PostTendDelayMS + (4.0 * Plugin.Configuration.TendPaceMS);
+                anchor = RunStartUtc;
+            }
+
+            var spentOnCurrent = (DateTime.UtcNow - anchor).TotalMilliseconds;
+            var etaMs = Math.Max(0, (msPerBed * remaining) - spentOnCurrent);
+            return TimeSpan.FromMilliseconds(etaMs);
         }
     }
 
@@ -112,6 +143,7 @@ internal sealed unsafe class TendChain : IDisposable
 
         Report.Clear();
         RunStartUtc = DateTime.UtcNow;
+        _lastBedAt = RunStartUtc;
         TotalBeds = beds.Count;
         LastOutcome = beds.Count == 1 ? "tending bed..." : $"watering {beds.Count} beds...";
 
@@ -151,7 +183,7 @@ internal sealed unsafe class TendChain : IDisposable
         // no longer exists (Scrooge's lesson) - skip dead beds instead of touching them.
         if (!bed.IsValid())
         {
-            Report.Add("(bed vanished): skipped");
+            RecordOutcome("(bed vanished): skipped");
             LastOutcome = "aborted: bed list went stale (zone change?)";
             _taskManager.Abort();
             return true;
@@ -248,7 +280,7 @@ internal sealed unsafe class TendChain : IDisposable
                 entry.Select();
                 Acted();
                 RecordTend(header);
-                Report.Add($"{header}: {(_currentPlant.Length > 0 ? _currentPlant : "?")} - tended");
+                RecordOutcome($"{header}: {(_currentPlant.Length > 0 ? _currentPlant : "?")} - tended");
                 return true;
             }
         }
@@ -261,13 +293,13 @@ internal sealed unsafe class TendChain : IDisposable
             {
                 entry.Select();
                 Acted();
-                Report.Add($"{header}: skipped (no tend option - empty, ripe, or no rights?)");
+                RecordOutcome($"{header}: skipped (no tend option - empty, ripe, or no rights?)");
                 return true;
             }
         }
 
         // A menu with neither Tend nor Quit is not a garden bed conversation at all.
-        Report.Add($"{header}: unrecognized menu - stopped");
+        RecordOutcome($"{header}: unrecognized menu - stopped");
         LastOutcome = "aborted: unrecognized menu";
         _taskManager.Abort();
         return true;
@@ -296,6 +328,13 @@ internal sealed unsafe class TendChain : IDisposable
         }
 
         return "";
+    }
+
+    /// <summary>A bed's outcome line: feeds the report AND anchors the ETA countdown.</summary>
+    private void RecordOutcome(string line)
+    {
+        Report.Add(line);
+        _lastBedAt = DateTime.UtcNow;
     }
 
     /// <summary>Upserts this bed's ledger record: same territory + patch centre + bed label.</summary>
