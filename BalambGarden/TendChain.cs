@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using Dalamud.Game.ClientState.Objects.Types;
 using Dalamud.Memory;
 using ECommons;
@@ -58,6 +60,9 @@ internal sealed unsafe class TendChain : IDisposable
 
     internal string LastOutcome { get; private set; } = "idle";
 
+    /// <summary>Per-bed outcomes of the last run, in tend order.</summary>
+    internal List<string> Report { get; } = [];
+
     public void Dispose()
         => _taskManager.Abort();
 
@@ -68,24 +73,56 @@ internal sealed unsafe class TendChain : IDisposable
     }
 
     internal void TendOne(IGameObject bed)
+        => Tend([bed]);
+
+    internal void TendPatch(PatchSighting patch)
+        => Tend(patch.Beds.Select(b => b.Object).ToList());
+
+    private void Tend(List<IGameObject> beds)
     {
-        if (_taskManager.IsBusy)
+        if (_taskManager.IsBusy || beds.Count == 0)
             return;
 
-        LastOutcome = "tending bed...";
-        _taskManager.DelayNext(ApplyJitter(Plugin.Configuration.TendPaceMS));
-        _taskManager.Enqueue(() => Interact(bed), "interact");
-        // A growing crop opens with a status Talk ("X is doing well") BEFORE the menu -
-        // the plant name arrives here, then the menu. Click dialogue until the menu shows.
-        _taskManager.Enqueue(AdvanceToMenu, "advance to menu");
-        _taskManager.Enqueue(SelectTend, "select tend");
-        _taskManager.Enqueue(FinishDialogue, "finish dialogue");
-        _taskManager.Enqueue(() => { LastOutcome = "tended"; return true; }, "done");
+        Report.Clear();
+        LastOutcome = beds.Count == 1 ? "tending bed..." : $"watering patch ({beds.Count} beds)...";
+
+        for (var i = 0; i < beds.Count; i++)
+        {
+            var bed = beds[i];
+            _taskManager.DelayNext(ApplyJitter(Plugin.Configuration.TendPaceMS));
+            _taskManager.Enqueue(() => Interact(bed), $"interact {i}");
+            // A growing crop opens with a status Talk ("X is doing well") BEFORE the
+            // menu - the plant name arrives here, then the menu. Click dialogue until
+            // the menu shows.
+            _taskManager.Enqueue(AdvanceToMenu, $"advance {i}");
+            _taskManager.Enqueue(TendOrQuit, $"tend {i}");
+            _taskManager.Enqueue(FinishDialogue, $"finish {i}");
+        }
+
+        var total = beds.Count;
+        _taskManager.Enqueue(() =>
+        {
+            var tended = Report.Count(r => r.EndsWith(": tended", StringComparison.Ordinal));
+            LastOutcome = $"done: {tended}/{total} tended";
+            foreach (var line in Report)
+                Plugin.Log.Information($"[TendChain] report: {line}");
+            return true;
+        }, "report");
     }
 
     /// <summary>Target-then-interact, the game's own flow (Scrooge GameSafe pattern).</summary>
-    private static bool? Interact(IGameObject bed)
+    private bool? Interact(IGameObject bed)
     {
+        // An object handle from before a zone change is a pointer into a world that
+        // no longer exists (Scrooge's lesson) - skip dead beds instead of touching them.
+        if (!bed.IsValid())
+        {
+            Report.Add("(bed vanished): skipped");
+            LastOutcome = "aborted: bed list went stale (zone change?)";
+            _taskManager.Abort();
+            return true;
+        }
+
         var targets = FFXIVClientStructs.FFXIV.Client.Game.Control.TargetSystem.Instance();
         if (targets == null)
             return false;
@@ -137,7 +174,7 @@ internal sealed unsafe class TendChain : IDisposable
         return true;
     }
 
-    private bool? SelectTend()
+    private bool? TendOrQuit()
     {
         if (!PaceReady())
             return false;
@@ -148,22 +185,58 @@ internal sealed unsafe class TendChain : IDisposable
 
         DumpStrings(addon, "SelectString");
 
+        // AtkValues[2] = the bed identity ("2nd Bed, 1st Patch") - index mapped live 2026-08-11.
+        var header = ReadBedHeader(addon);
+
         var menu = new AddonMaster.SelectString(addon);
         foreach (var entry in menu.Entries)
         {
             if (entry.Text.Contains("Tend", StringComparison.OrdinalIgnoreCase))
             {
-                Plugin.Log.Information($"[TendChain] selecting '{entry.Text}'");
+                Plugin.Log.Information($"[TendChain] selecting '{entry.Text}' for {header}");
                 entry.Select();
+                Acted();
+                Report.Add($"{header}: tended");
                 return true;
             }
         }
 
-        // No tend on offer (empty bed, ripe crop, or no permission): report honestly
-        // and stop; the menu stays for the player to act on.
-        LastOutcome = "no 'Tend' option in menu (empty bed, ripe, or no rights?) - left menu open";
+        // No tend on offer (empty bed, ripe crop, or no permission): quit the menu
+        // honestly and keep going - one odd bed must not strand the rest of the patch.
+        foreach (var entry in menu.Entries)
+        {
+            if (entry.Text.Contains("Quit", StringComparison.OrdinalIgnoreCase))
+            {
+                entry.Select();
+                Acted();
+                Report.Add($"{header}: skipped (no tend option - empty, ripe, or no rights?)");
+                return true;
+            }
+        }
+
+        // A menu with neither Tend nor Quit is not a garden bed conversation at all.
+        Report.Add($"{header}: unrecognized menu - stopped");
+        LastOutcome = "aborted: unrecognized menu";
         _taskManager.Abort();
         return true;
+    }
+
+    private static string ReadBedHeader(AtkUnitBase* addon)
+    {
+        try
+        {
+            if (addon->AtkValuesCount > 2
+                && addon->AtkValues[2].Type is AtkValueType.String or AtkValueType.ConstString
+                    or AtkValueType.WideString or AtkValueType.ManagedString
+                && addon->AtkValues[2].String.Value != null)
+                return MemoryHelper.ReadSeStringNullTerminated((nint)addon->AtkValues[2].String.Value).GetText();
+        }
+        catch
+        {
+            // fall through to the placeholder
+        }
+
+        return "(unknown bed)";
     }
 
     /// <summary>

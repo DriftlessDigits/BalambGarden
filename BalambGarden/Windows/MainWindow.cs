@@ -55,6 +55,32 @@ public class MainWindow : Window, IDisposable
                 plugin.TendChain.Abort();
         }
 
+        var patches = GardenScanner.NearbyPatches();
+        if (patches.Count > 0)
+        {
+            ImGui.Spacing();
+            ImGui.Text("Patches");
+            foreach (var patch in patches)
+            {
+                using var patchId = ImRaii.PushId(patch.Position.GetHashCode());
+                using (ImRaii.Disabled(plugin.TendChain.Busy || !patch.InReach))
+                {
+                    if (ImGui.Button($"Water Patch ({patch.Beds.Count} beds)"))
+                        plugin.TendChain.TendPatch(patch);
+                }
+
+                ImGui.SameLine();
+                ImGui.TextColored(
+                    patch.InReach ? new Vector4(0.4f, 1f, 0.4f, 1f) : new Vector4(1f, 0.4f, 0.4f, 1f),
+                    $"{patch.Distance:F1}y {(patch.InReach ? "- in reach" : "- walk closer")}");
+            }
+
+            foreach (var line in plugin.TendChain.Report)
+                ImGui.TextDisabled(line);
+        }
+
+        ImGui.Spacing();
+
         var sightings = GardenScanner.NearbyEventObjects();
 
         if (ImGui.Button("Log snapshot"))
