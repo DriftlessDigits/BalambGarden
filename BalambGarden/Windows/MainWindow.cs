@@ -134,6 +134,7 @@ public class MainWindow : Window, IDisposable
     private static string Ago(DateTime utc)
     {
         var span = DateTime.UtcNow - utc;
+        // Clock skew clamps to "just now", never a negative age (Scrooge ruling).
         return span.TotalMinutes < 1 ? "just now"
             : span.TotalHours < 1 ? $"{(int)span.TotalMinutes}m ago"
             : span.TotalDays < 1 ? $"{(int)span.TotalHours}h ago"

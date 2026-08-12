@@ -18,10 +18,11 @@ public class RunLogWindow : Window, IDisposable
     public RunLogWindow(Plugin plugin)
         : base("Balamb Garden - Run Log##BalambGardenRunLog")
     {
+        // Scrooge's run-log window class: small floor, bounded ceiling.
         SizeConstraints = new WindowSizeConstraints
         {
-            MinimumSize = new Vector2(340, 220),
-            MaximumSize = new Vector2(float.MaxValue, float.MaxValue),
+            MinimumSize = new Vector2(300, 200),
+            MaximumSize = new Vector2(800, 600),
         };
 
         this.plugin = plugin;
@@ -54,9 +55,12 @@ public class RunLogWindow : Window, IDisposable
         if (!child.Success)
             return;
 
+        // Sticky auto-scroll only when already at the bottom (Scrooge ruling):
+        // scrolling up to read a line must not fight the player.
+        var wasAtBottom = ImGui.GetScrollY() >= ImGui.GetScrollMaxY() - 20f;
         foreach (var line in chain.Report)
             ImGui.TextDisabled(line);
-        if (chain.Busy)
+        if (chain.Busy && wasAtBottom)
             ImGui.SetScrollHereY(1f);
     }
 }

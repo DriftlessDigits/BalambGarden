@@ -144,6 +144,15 @@ internal sealed unsafe class TendChain : IDisposable
         if (_taskManager.IsBusy || beds.Count == 0)
             return;
 
+        // Force-openable UI is not permission (Scrooge 07-22): starting the chain
+        // while already occupied (cutscene, NPC talk, another dialog) misfires the
+        // whole run. Refuse loudly instead.
+        if (GenericHelpers.IsOccupied())
+        {
+            LastOutcome = "can't start: you're busy (in a dialog, cutscene, or event)";
+            return;
+        }
+
         // The manager's timeout must never race a task's own duration (Scrooge 07-22:
         // both at 10s, the manager won by milliseconds and silently wiped the queue).
         // The longest task is the between-beds delay, which is user-tunable - derive
