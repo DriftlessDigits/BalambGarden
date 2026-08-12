@@ -1,4 +1,5 @@
 using Dalamud.Game.Command;
+using ECommons;
 using Dalamud.IoC;
 using Dalamud.Plugin;
 using System.IO;
@@ -28,6 +29,8 @@ public sealed class Plugin : IDalamudPlugin
 
     public Plugin()
     {
+        ECommonsMain.Init(PluginInterface, this);
+
         Configuration = PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
 
         // You might normally want to embed resources and load them from the manifest stream
@@ -73,6 +76,8 @@ public sealed class Plugin : IDalamudPlugin
         MainWindow.Dispose();
 
         CommandManager.RemoveHandler(CommandName);
+
+        ECommonsMain.Dispose();
     }
 
     private void OnCommand(string command, string args)
