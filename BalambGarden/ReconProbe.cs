@@ -98,6 +98,24 @@ internal static unsafe class ReconProbe
                 for (var i = 0; i < sizeof(HousingObjectManager.HousingObjectData); i++)
                     raw.Append($"{p[i]:X2} ");
                 Plugin.Log.Information($"[Probe] datamap key={pair.Item1} bytes: {raw}");
+
+                // Decoded view: Value1 (u16) = species index (Lotlab join, desk-verified
+                // 0x11=Mirror Apple / 0x41=Old World Fig); V2-V4 = stage/water suspects.
+                var occupied = 0;
+                var decoded = new StringBuilder();
+                for (var slot = 0; slot < 8; slot++)
+                {
+                    var vs = data.ValueSets[slot];
+                    if (vs.Value1 == 0 && vs.Value2 == 0 && vs.Value3 == 0 && vs.Value4 == 0)
+                        continue;
+                    occupied++;
+                    decoded.Append(
+                        $"\n[Probe]   slot {slot}: {SpeciesTable.Name(vs.Value1)} "
+                        + $"(0x{vs.Value1:X2}) v2={vs.Value2:X2} v3={vs.Value3:X2} v4={vs.Value4:X2} v5={vs.Value5:X2}");
+                }
+                if (occupied > 0)
+                    Plugin.Log.Information($"[Probe] key={pair.Item1} decoded ({occupied}/8 occupied):{decoded}");
+
                 mapCount++;
                 if (mapCount >= 80)
                 {

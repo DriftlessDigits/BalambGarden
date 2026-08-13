@@ -1,0 +1,537 @@
+{
+  "1": {
+    "seedId": 7715,
+    "itemId": 4785,
+    "name": "Paprika"
+  },
+  "2": {
+    "seedId": 7716,
+    "itemId": 4777,
+    "name": "Wild Onion Set"
+  },
+  "3": {
+    "seedId": 7717,
+    "itemId": 4778,
+    "name": "Coerthan Carrot"
+  },
+  "4": {
+    "seedId": 7718,
+    "itemId": 4782,
+    "name": "La Noscean Lettuce"
+  },
+  "5": {
+    "seedId": 7719,
+    "itemId": 4804,
+    "name": "Olive"
+  },
+  "6": {
+    "seedId": 7720,
+    "itemId": 4787,
+    "name": "Popoto Set"
+  },
+  "7": {
+    "seedId": 7721,
+    "itemId": 4821,
+    "name": "Millioncorn"
+  },
+  "8": {
+    "seedId": 7722,
+    "itemId": 4788,
+    "name": "Wizard Eggplant"
+  },
+  "9": {
+    "seedId": 7723,
+    "itemId": 4789,
+    "name": "Midland Cabbage"
+  },
+  "10": {
+    "seedId": 7724,
+    "itemId": 6148,
+    "name": "Dzemael Tomato"
+  },
+  "11": {
+    "seedId": 7725,
+    "itemId": 4809,
+    "name": "La Noscean Orange"
+  },
+  "12": {
+    "seedId": 7726,
+    "itemId": 4808,
+    "name": "Lowland Grape"
+  },
+  "13": {
+    "seedId": 7727,
+    "itemId": 4810,
+    "name": "Fairie Apple"
+  },
+  "14": {
+    "seedId": 7728,
+    "itemId": 4811,
+    "name": "Sun Lemon"
+  },
+  "15": {
+    "seedId": 7729,
+    "itemId": 4812,
+    "name": "Pixie Plum"
+  },
+  "16": {
+    "seedId": 7730,
+    "itemId": 4814,
+    "name": "Blood Currant"
+  },
+  "17": {
+    "seedId": 7731,
+    "itemId": 6146,
+    "name": "Mirror Apple"
+  },
+  "18": {
+    "seedId": 7732,
+    "itemId": 4815,
+    "name": "Rolanberry"
+  },
+  "19": {
+    "seedId": 7733,
+    "itemId": 6147,
+    "name": "Honey Lemon"
+  },
+  "20": {
+    "seedId": 7734,
+    "itemId": 4816,
+    "name": "Prickly Pineapple"
+  },
+  "21": {
+    "seedId": 7735,
+    "itemId": 4829,
+    "name": "Garlic Cloves"
+  },
+  "22": {
+    "seedId": 7736,
+    "itemId": 5539,
+    "name": "Lavender"
+  },
+  "23": {
+    "seedId": 7737,
+    "itemId": 4830,
+    "name": "Black Pepper"
+  },
+  "24": {
+    "seedId": 7738,
+    "itemId": 4835,
+    "name": "Ala Mhigan Mustard"
+  },
+  "25": {
+    "seedId": 7739,
+    "itemId": 4836,
+    "name": "Pearl Ginger Root"
+  },
+  "26": {
+    "seedId": 7740,
+    "itemId": 5542,
+    "name": "Chamomile"
+  },
+  "27": {
+    "seedId": 7741,
+    "itemId": 5346,
+    "name": "Linseed"
+  },
+  "28": {
+    "seedId": 7742,
+    "itemId": 4837,
+    "name": "Midland Basil"
+  },
+  "29": {
+    "seedId": 7743,
+    "itemId": 5543,
+    "name": "Mandrake"
+  },
+  "30": {
+    "seedId": 7744,
+    "itemId": 4842,
+    "name": "Almond"
+  },
+  "31": {
+    "seedId": 7745,
+    "itemId": 7768,
+    "name": "Halone Gerbera"
+  },
+  "32": {
+    "seedId": 7746,
+    "itemId": 7769,
+    "name": "Azeyma Rose"
+  },
+  "33": {
+    "seedId": 7747,
+    "itemId": 7770,
+    "name": "Nymeia Lily"
+  },
+  "34": {
+    "seedId": 7748,
+    "itemId": 7602,
+    "name": "Star Anise"
+  },
+  "35": {
+    "seedId": 7749,
+    "itemId": 7603,
+    "name": "Dalamud Popoto Set"
+  },
+  "36": {
+    "seedId": 7750,
+    "itemId": 7604,
+    "name": "Royal Kukuru"
+  },
+  "37": {
+    "seedId": 7751,
+    "itemId": 7592,
+    "name": "Apricot"
+  },
+  "38": {
+    "seedId": 7752,
+    "itemId": 7593,
+    "name": "La Noscean Leek"
+  },
+  "39": {
+    "seedId": 7753,
+    "itemId": 7591,
+    "name": "Shroud Tea"
+  },
+  "40": {
+    "seedId": 7754,
+    "itemId": 7773,
+    "name": "Umbrella Fig"
+  },
+  "41": {
+    "seedId": 7755,
+    "itemId": 7774,
+    "name": "Jute"
+  },
+  "42": {
+    "seedId": 7756,
+    "itemId": 7775,
+    "name": "Glazenut"
+  },
+  "43": {
+    "seedId": 7757,
+    "itemId": 7776,
+    "name": "Broombrush"
+  },
+  "44": {
+    "seedId": 8169,
+    "itemId": 7894,
+    "name": "Curiel Root"
+  },
+  "45": {
+    "seedId": 8170,
+    "itemId": 7895,
+    "name": "Sylkis Bud"
+  },
+  "46": {
+    "seedId": 8171,
+    "itemId": 7897,
+    "name": "Mimett Gourd"
+  },
+  "47": {
+    "seedId": 8172,
+    "itemId": 7898,
+    "name": "Tantalplant"
+  },
+  "48": {
+    "seedId": 8173,
+    "itemId": 7900,
+    "name": "Pahsana Fruit"
+  },
+  "49": {
+    "seedId": 8182,
+    "itemId": 8165,
+    "name": "Krakka Root"
+  },
+  "50": {
+    "seedId": 8183,
+    "itemId": 8166,
+    "name": "Thavnairian Onion"
+  },
+  "51": {
+    "seedId": 8184,
+    "itemId": 8192,
+    "name": "Onion Prince"
+  },
+  "52": {
+    "seedId": 8185,
+    "itemId": 8193,
+    "name": "Eggplant Knight"
+  },
+  "53": {
+    "seedId": 8186,
+    "itemId": 8194,
+    "name": "Garlic Jester"
+  },
+  "54": {
+    "seedId": 8187,
+    "itemId": 8195,
+    "name": "Tomato King"
+  },
+  "55": {
+    "seedId": 8188,
+    "itemId": 8196,
+    "name": "Mandragora Queen"
+  },
+  "56": {
+    "seedId": 8167,
+    "itemId": 8023,
+    "name": "Pearl Roselle"
+  },
+  "57": {
+    "seedId": 8572,
+    "itemId": 4868,
+    "name": "Gysahl Greens"
+  },
+  "58": {
+    "seedId": 8174,
+    "itemId": 8157,
+    "name": "Xelphatol Apple"
+  },
+  "59": {
+    "seedId": 8175,
+    "itemId": 8158,
+    "name": "Doman Plum"
+  },
+  "60": {
+    "seedId": 8176,
+    "itemId": 8159,
+    "name": "Mamook Pear"
+  },
+  "61": {
+    "seedId": 8177,
+    "itemId": 8160,
+    "name": "Valfruit"
+  },
+  "62": {
+    "seedId": 8178,
+    "itemId": 8161,
+    "name": "O'Ghomoro Berry"
+  },
+  "63": {
+    "seedId": 8179,
+    "itemId": 8162,
+    "name": "Cieldalaes Pineapple"
+  },
+  "64": {
+    "seedId": 8180,
+    "itemId": 8163,
+    "name": "Han Lemon"
+  },
+  "65": {
+    "seedId": 13765,
+    "itemId": 12896,
+    "name": "Old World Fig"
+  },
+  "66": {
+    "seedId": 13766,
+    "itemId": 12884,
+    "name": "Chive"
+  },
+  "67": {
+    "seedId": 13767,
+    "itemId": 12877,
+    "name": "Pearl Sprout"
+  },
+  "68": {
+    "seedId": 13768,
+    "itemId": 12882,
+    "name": "Coerthan Tea"
+  },
+  "69": {
+    "seedId": 13755,
+    "itemId": 13754,
+    "name": "Blood Pepper"
+  },
+  "70": {
+    "seedId": 14007,
+    "itemId": 14071,
+    "name": null
+  },
+  "71": {
+    "seedId": 15865,
+    "itemId": 2,
+    "name": "Firelight"
+  },
+  "72": {
+    "seedId": 15866,
+    "itemId": 3,
+    "name": "Icelight"
+  },
+  "73": {
+    "seedId": 15867,
+    "itemId": 4,
+    "name": "Windlight"
+  },
+  "74": {
+    "seedId": 15868,
+    "itemId": 5,
+    "name": "Earth Shard"
+  },
+  "75": {
+    "seedId": 15869,
+    "itemId": 6,
+    "name": "Levinlight"
+  },
+  "76": {
+    "seedId": 15870,
+    "itemId": 7,
+    "name": "Waterlight"
+  },
+  "77": {
+    "seedId": 15855,
+    "itemId": 15857,
+    "name": "Althyk Lavender"
+  },
+  "78": {
+    "seedId": 15856,
+    "itemId": 15858,
+    "name": "Voidrake"
+  },
+  "79": {
+    "seedId": 16016,
+    "itemId": 16022,
+    "name": null
+  },
+  "80": {
+    "seedId": 17546,
+    "itemId": 17048,
+    "name": null
+  },
+  "81": {
+    "seedId": 17547,
+    "itemId": 17548,
+    "name": "Cloud Acorn"
+  },
+  "82": {
+    "seedId": 17996,
+    "itemId": 17999,
+    "name": null
+  },
+  "83": {
+    "seedId": 20795,
+    "itemId": 20796,
+    "name": null
+  },
+  "84": {
+    "seedId": 20792,
+    "itemId": 20791,
+    "name": "Cloudsbreath"
+  },
+  "85": {
+    "seedId": 20794,
+    "itemId": 20793,
+    "name": "Royal Fern"
+  },
+  "86": {
+    "seedId": 21875,
+    "itemId": 21876,
+    "name": null
+  },
+  "87": {
+    "seedId": 22589,
+    "itemId": 22590,
+    "name": null
+  },
+  "88": {
+    "seedId": 24165,
+    "itemId": 24166,
+    "name": null
+  },
+  "89": {
+    "seedId": 24541,
+    "itemId": 24542,
+    "name": null
+  },
+  "90": {
+    "seedId": 27320,
+    "itemId": 27321,
+    "name": null
+  },
+  "91": {
+    "seedId": 28175,
+    "itemId": 28176,
+    "name": null
+  },
+  "92": {
+    "seedId": 28947,
+    "itemId": 28953,
+    "name": null
+  },
+  "93": {
+    "seedId": 30365,
+    "itemId": 30371,
+    "name": null
+  },
+  "94": {
+    "seedId": 30364,
+    "itemId": 30873,
+    "name": "Allagan Melon"
+  },
+  "95": {
+    "seedId": 32812,
+    "itemId": 32813,
+    "name": null
+  },
+  "96": {
+    "seedId": 33306,
+    "itemId": 33307,
+    "name": null
+  },
+  "97": {
+    "seedId": 35744,
+    "itemId": 35745,
+    "name": null
+  },
+  "98": {
+    "seedId": 37302,
+    "itemId": 37303,
+    "name": null
+  },
+  "99": {
+    "seedId": 38659,
+    "itemId": 38660,
+    "name": null
+  },
+  "100": {
+    "seedId": 39460,
+    "itemId": 39461,
+    "name": null
+  },
+  "101": {
+    "seedId": 40686,
+    "itemId": 40687,
+    "name": null
+  },
+  "102": {
+    "seedId": 41160,
+    "itemId": 41161,
+    "name": null
+  },
+  "103": {
+    "seedId": 43962,
+    "itemId": 43963,
+    "name": null
+  },
+  "104": {
+    "seedId": 44832,
+    "itemId": 44833,
+    "name": null
+  },
+  "105": {
+    "seedId": 47950,
+    "itemId": 47951,
+    "name": null
+  },
+  "106": {
+    "seedId": 46803,
+    "itemId": 46804,
+    "name": null
+  },
+  "107": {
+    "seedId": 49773,
+    "itemId": 49774,
+    "name": null
+  }
+}
