@@ -125,9 +125,12 @@ internal static unsafe class ReconProbe
             }
             Plugin.Log.Information($"[Probe] datamap entries logged: {mapCount}");
 
-            // Key<->patch binding hypothesis (2026-08-12): map key low byte == patch
-            // GimmickId low byte (FC receipts matched 3/3: keys 1293/1313/1319 ->
-            // 13/33/39 vs founding GimmickId lows 13/39/33). Correlate in-reach beds.
+            // Key<->patch binding (2026-08-12, two-estate verified): GimmickId =
+            // [bed 0-7][patch ordinal][patch-id u16]. Map keys preserve the patch-ids'
+            // PAIRWISE DIFFS per estate (Chelsea +6,+1 -> keys 110/116/117; FC +20,+6
+            // -> 1293/1313/1319) with a per-plot offset. The earlier low-byte-equality
+            // rule was an FC offset coincidence - killed at Chelsea's. Census join:
+            // diff-pattern shortlist, confirm with one tend receipt, cache (keys stable).
             foreach (var sighting in GardenScanner.NearbyEventObjects())
             {
                 if (sighting.DataId != GardenScanner.GardenBedDataId)
