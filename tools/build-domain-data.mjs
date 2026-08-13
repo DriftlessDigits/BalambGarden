@@ -6,7 +6,7 @@
 //   seeds.json          - same repo (seed -> y/yn/n = cross-only / both / gather-only)
 //   othersources.json   - same repo (seed -> gather/vendor source strings)
 //
-// Outputs (data/):
+// Outputs (Data/):
 //   Crops.json           - one record per crop, ID-keyed, with grow/wilt/wither, flags, sources
 //   CrossbreedPairs.json - result seedId -> [[parentSeedIdA, parentSeedIdB], ...]
 //
@@ -21,7 +21,7 @@ import { fileURLToPath } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const src = (f) => join(root, "tools", "source", f);
-const out = (f) => join(root, "data", f);
+const out = (f) => join(root, "Data", f);
 
 // ---- 1. Parse Accountant's CropTimes.cs ------------------------------------
 const cropTimesCs = readFileSync(src("CropTimes.cs"), "utf8");
