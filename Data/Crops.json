@@ -1,0 +1,1130 @@
+[
+  {
+    "name": "Ala Mhigan Mustard",
+    "growHours": 120,
+    "wiltHours": 48,
+    "witherHours": 72,
+    "itemId": 4835,
+    "seedId": 7738,
+    "seedName": "Ala Mhigan Mustard Seeds",
+    "crossOnly": false,
+    "crossable": true,
+    "gatherable": true,
+    "sources": [
+      "Level 25 Node in Drybone, Eastern Thanalan"
+    ]
+  },
+  {
+    "name": "Allagan Melon",
+    "growHours": 168,
+    "wiltHours": 24,
+    "witherHours": 48,
+    "itemId": 30873,
+    "seedId": 30364,
+    "seedName": "Allagan Melon Seeds",
+    "crossOnly": false,
+    "crossable": false,
+    "gatherable": true,
+    "sources": [
+      "Material Supplier in Residential Districts, Tanie in New Gridania"
+    ]
+  },
+  {
+    "name": "Almond",
+    "growHours": 120,
+    "wiltHours": 48,
+    "witherHours": 72,
+    "itemId": 4842,
+    "seedId": 7744,
+    "seedName": "Almond Seeds",
+    "crossOnly": false,
+    "crossable": true,
+    "gatherable": true,
+    "sources": [
+      "Level 40 Node in Raincatcher Gully, Eastern La Noscea"
+    ]
+  },
+  {
+    "name": "Althyk Lavender",
+    "growHours": 22,
+    "wiltHours": 72,
+    "witherHours": 96,
+    "itemId": 15857,
+    "seedId": 15855,
+    "seedName": "Althyk Lavender Seeds",
+    "crossOnly": false,
+    "crossable": false,
+    "gatherable": true,
+    "sources": [
+      "Grand Company (500 Seals, Rank Private Third Class) or Free Company (300 Credits, FC Rank 6)"
+    ]
+  },
+  {
+    "name": "Apricot",
+    "growHours": 144,
+    "wiltHours": 36,
+    "witherHours": 60,
+    "itemId": 7592,
+    "seedId": 7751,
+    "seedName": "Apricot Kernels",
+    "crossOnly": true,
+    "crossable": true,
+    "gatherable": false
+  },
+  {
+    "name": "Azeyma Rose",
+    "growHours": 144,
+    "wiltHours": 36,
+    "witherHours": 60,
+    "itemId": 7769,
+    "seedId": 7746,
+    "seedName": "Azeyma Rose Seeds",
+    "crossOnly": true,
+    "crossable": true,
+    "gatherable": false
+  },
+  {
+    "name": "Black Pepper",
+    "growHours": 120,
+    "wiltHours": 48,
+    "witherHours": 72,
+    "itemId": 4830,
+    "seedId": 7737,
+    "seedName": "Black Pepper Seeds",
+    "crossOnly": false,
+    "crossable": false,
+    "gatherable": true,
+    "sources": [
+      "Level 15 Node in The Clutch, Central Thanalan"
+    ]
+  },
+  {
+    "name": "Blood Currant",
+    "growHours": 120,
+    "wiltHours": 48,
+    "witherHours": 72,
+    "itemId": 4814,
+    "seedId": 7730,
+    "seedName": "Blood Currant Seeds",
+    "crossOnly": false,
+    "crossable": true,
+    "gatherable": true,
+    "sources": [
+      "Level 40 Node in Lower Paths, South Shroud"
+    ]
+  },
+  {
+    "name": "Blood Pepper",
+    "growHours": 168,
+    "wiltHours": 24,
+    "witherHours": 48,
+    "itemId": 13754,
+    "seedId": 13755,
+    "seedName": "Blood Pepper Seeds",
+    "crossOnly": true,
+    "crossable": true,
+    "gatherable": false
+  },
+  {
+    "name": "Broombrush",
+    "growHours": 168,
+    "wiltHours": 24,
+    "witherHours": 48,
+    "itemId": 7776,
+    "seedId": 7757,
+    "seedName": "Broombush Seeds",
+    "crossOnly": true,
+    "crossable": true,
+    "gatherable": false
+  },
+  {
+    "name": "Chamomile",
+    "growHours": 120,
+    "wiltHours": 48,
+    "witherHours": 72,
+    "itemId": 5542,
+    "seedId": 7740,
+    "seedName": "Chamomile Seeds",
+    "crossOnly": false,
+    "crossable": false,
+    "gatherable": true,
+    "sources": [
+      "Level 25 Node in Oakwood, Upper La Noscea"
+    ]
+  },
+  {
+    "name": "Chive",
+    "growHours": 120,
+    "wiltHours": 48,
+    "witherHours": 72,
+    "itemId": 12884,
+    "seedId": 13766,
+    "seedName": "Chive Seeds",
+    "crossOnly": true,
+    "crossable": true,
+    "gatherable": false
+  },
+  {
+    "name": "Cieldalaes Pineapple",
+    "growHours": 48,
+    "wiltHours": 72,
+    "witherHours": 96,
+    "itemId": 8162,
+    "seedId": 8179,
+    "seedName": "Cieldalaes Pineapple Seeds",
+    "crossOnly": false,
+    "crossable": false,
+    "gatherable": true,
+    "sources": [
+      "Hunt Billmaster (15 Allied Seals)"
+    ]
+  },
+  {
+    "name": "Cloud Acorn",
+    "growHours": 24,
+    "wiltHours": 72,
+    "witherHours": 96,
+    "itemId": 17548,
+    "seedId": 17547,
+    "seedName": "Cloud Acorn Sapling",
+    "crossOnly": false,
+    "crossable": false,
+    "gatherable": true,
+    "sources": [
+      "Material Supplier in Residential Districts"
+    ]
+  },
+  {
+    "name": "Cloudsbreath",
+    "growHours": 120,
+    "wiltHours": 48,
+    "witherHours": 72,
+    "itemId": 20791,
+    "seedId": 20792,
+    "seedName": "Cloudsbreath Seeds",
+    "crossOnly": false,
+    "crossable": true,
+    "gatherable": true,
+    "sources": [
+      "Free Company Airships (Sea of Clouds - Sectors 17, 21 and 24)"
+    ]
+  },
+  {
+    "name": "Coerthan Carrot",
+    "growHours": 120,
+    "wiltHours": 48,
+    "witherHours": 72,
+    "itemId": 4778,
+    "seedId": 7717,
+    "seedName": "Coerthan Carrot Seeds",
+    "crossOnly": false,
+    "crossable": true,
+    "gatherable": true,
+    "sources": [
+      "Level 15 Node in Horizon's Edge, Western Thanalan"
+    ]
+  },
+  {
+    "name": "Coerthan Tea",
+    "growHours": 120,
+    "wiltHours": 48,
+    "witherHours": 72,
+    "itemId": 12882,
+    "seedId": 13768,
+    "seedName": "Coerthan Tea Seeds",
+    "crossOnly": false,
+    "crossable": false,
+    "gatherable": true,
+    "sources": [
+      "Level 55 Unspoiled Node in Riversmeet, Coerthas Western Highlands"
+    ]
+  },
+  {
+    "name": "Curiel Root",
+    "growHours": 120,
+    "wiltHours": 48,
+    "witherHours": 72,
+    "itemId": 7894,
+    "seedId": 8169,
+    "seedName": "Curiel Root Seeds",
+    "crossOnly": true,
+    "crossable": true,
+    "gatherable": false
+  },
+  {
+    "name": "Dalamud Popoto Set",
+    "growHours": 144,
+    "wiltHours": 36,
+    "witherHours": 60,
+    "itemId": 7603,
+    "seedId": 7749,
+    "seedName": "Dalamud Popoto Set",
+    "crossOnly": true,
+    "crossable": true,
+    "gatherable": false
+  },
+  {
+    "name": "Doman Plum",
+    "growHours": 48,
+    "wiltHours": 72,
+    "witherHours": 96,
+    "itemId": 8158,
+    "seedId": 8175,
+    "seedName": "Doman Plum Pits",
+    "crossOnly": false,
+    "crossable": false,
+    "gatherable": true,
+    "sources": [
+      "Hunt Billmaster (15 Allied Seals)"
+    ]
+  },
+  {
+    "name": "Dzemael Tomato",
+    "growHours": 120,
+    "wiltHours": 48,
+    "witherHours": 72,
+    "itemId": 6148,
+    "seedId": 7724,
+    "seedName": "Dzemael Tomato Seeds",
+    "crossOnly": false,
+    "crossable": true,
+    "gatherable": true,
+    "sources": [
+      "Level 50 One Star Unspoiled Node in Raincatcher Gully, Eastern La Noscea"
+    ]
+  },
+  {
+    "name": "Earth Shard",
+    "growHours": 18,
+    "wiltHours": 72,
+    "witherHours": 96,
+    "itemId": 5,
+    "seedId": 15868,
+    "seedName": "Earthlight Seeds",
+    "crossOnly": false,
+    "crossable": false,
+    "gatherable": true,
+    "sources": [
+      "Level 15 Node in Moraby Bay, Lower La Noscea"
+    ]
+  },
+  {
+    "name": "Eggplant Knight",
+    "growHours": 168,
+    "wiltHours": 24,
+    "witherHours": 48,
+    "itemId": 8193,
+    "seedId": 8185,
+    "seedName": "Eggplant Knight Seeds",
+    "crossOnly": true,
+    "crossable": true,
+    "gatherable": false
+  },
+  {
+    "name": "Fairie Apple",
+    "growHours": 120,
+    "wiltHours": 48,
+    "witherHours": 72,
+    "itemId": 4810,
+    "seedId": 7727,
+    "seedName": "Faerie Apple Seeds",
+    "crossOnly": false,
+    "crossable": false,
+    "gatherable": true,
+    "sources": [
+      "Level 20 Node in Nine Ivies, East Shroud"
+    ]
+  },
+  {
+    "name": "Firelight",
+    "growHours": 18,
+    "wiltHours": 72,
+    "witherHours": 96,
+    "itemId": 2,
+    "seedId": 15865,
+    "seedName": "Firelight Seeds",
+    "crossOnly": false,
+    "crossable": false,
+    "gatherable": true,
+    "sources": [
+      "Level 15 Node in Summerford, Middle La Noscea"
+    ]
+  },
+  {
+    "name": "Garlic Cloves",
+    "growHours": 120,
+    "wiltHours": 48,
+    "witherHours": 72,
+    "itemId": 7735,
+    "seedId": 7735,
+    "seedName": "Garlic Cloves",
+    "crossOnly": false,
+    "crossable": false,
+    "gatherable": true,
+    "sources": [
+      "Level 15 Node in Nophica's Wells, Western Thanalan"
+    ]
+  },
+  {
+    "name": "Garlic Jester",
+    "growHours": 168,
+    "wiltHours": 24,
+    "witherHours": 48,
+    "itemId": 8194,
+    "seedId": 8186,
+    "seedName": "Garlic Jester Seeds",
+    "crossOnly": true,
+    "crossable": true,
+    "gatherable": false
+  },
+  {
+    "name": "Glazenut",
+    "growHours": 168,
+    "wiltHours": 24,
+    "witherHours": 48,
+    "itemId": 7775,
+    "seedId": 7756,
+    "seedName": "Glazenut Seeds",
+    "crossOnly": true,
+    "crossable": true,
+    "gatherable": false
+  },
+  {
+    "name": "Gysahl Greens",
+    "growHours": 72,
+    "wiltHours": 24,
+    "witherHours": 48,
+    "itemId": 4868,
+    "seedId": 8572,
+    "seedName": "Gysahl Green Seeds",
+    "crossOnly": true,
+    "crossable": true,
+    "gatherable": false
+  },
+  {
+    "name": "Halone Gerbera",
+    "growHours": 144,
+    "wiltHours": 36,
+    "witherHours": 60,
+    "itemId": 7768,
+    "seedId": 7745,
+    "seedName": "Halone Gerbera Seeds",
+    "crossOnly": true,
+    "crossable": true,
+    "gatherable": false
+  },
+  {
+    "name": "Han Lemon",
+    "growHours": 48,
+    "wiltHours": 72,
+    "witherHours": 96,
+    "itemId": 8163,
+    "seedId": 8180,
+    "seedName": "Han Lemon Seeds",
+    "crossOnly": false,
+    "crossable": false,
+    "gatherable": true,
+    "sources": [
+      "Hunt Billmaster (15 Allied Seals)"
+    ]
+  },
+  {
+    "name": "Honey Lemon",
+    "growHours": 120,
+    "wiltHours": 48,
+    "witherHours": 72,
+    "itemId": 6147,
+    "seedId": 7733,
+    "seedName": "Honey Lemon Seeds",
+    "crossOnly": false,
+    "crossable": true,
+    "gatherable": true,
+    "sources": [
+      "Level 50 One Star Unspoiled Node in Bloodshore, Eastern La Noscea"
+    ]
+  },
+  {
+    "name": "Icelight",
+    "growHours": 18,
+    "wiltHours": 72,
+    "witherHours": 96,
+    "itemId": 3,
+    "seedId": 15866,
+    "seedName": "Icelight Seeds",
+    "crossOnly": false,
+    "crossable": false,
+    "gatherable": true,
+    "sources": [
+      "Level 20 Node in Quarterstone, Western La Noscea"
+    ]
+  },
+  {
+    "name": "Jute",
+    "growHours": 168,
+    "wiltHours": 24,
+    "witherHours": 48,
+    "itemId": 7774,
+    "seedId": 7755,
+    "seedName": "Jute Seeds",
+    "crossOnly": true,
+    "crossable": true,
+    "gatherable": false
+  },
+  {
+    "name": "Krakka Root",
+    "growHours": 72,
+    "wiltHours": 24,
+    "witherHours": 48,
+    "itemId": 8165,
+    "seedId": 8182,
+    "seedName": "Krakka Root Seeds",
+    "crossOnly": false,
+    "crossable": false,
+    "gatherable": true,
+    "sources": [
+      "Material Supplier in Residential Districts, Tanie in New Gridania (Can't be bought from Apartment Merchants!)"
+    ]
+  },
+  {
+    "name": "La Noscean Leek",
+    "growHours": 144,
+    "wiltHours": 36,
+    "witherHours": 60,
+    "itemId": 7593,
+    "seedId": 7752,
+    "seedName": "La Noscean Leek Seeds",
+    "crossOnly": true,
+    "crossable": true,
+    "gatherable": false
+  },
+  {
+    "name": "La Noscean Lettuce",
+    "growHours": 120,
+    "wiltHours": 48,
+    "witherHours": 72,
+    "itemId": 4782,
+    "seedId": 7718,
+    "seedName": "La Noscean Lettuce Seeds",
+    "crossOnly": false,
+    "crossable": false,
+    "gatherable": true,
+    "sources": [
+      "Level 15 Node in Summerford, Middle La Noscea"
+    ]
+  },
+  {
+    "name": "La Noscean Orange",
+    "growHours": 120,
+    "wiltHours": 48,
+    "witherHours": 72,
+    "itemId": 4809,
+    "seedId": 7725,
+    "seedName": "La Noscean Orange Seeds",
+    "crossOnly": false,
+    "crossable": false,
+    "gatherable": true,
+    "sources": [
+      "Level 10 Node in Cedarwood, Lower La Noscea"
+    ]
+  },
+  {
+    "name": "Lavender",
+    "growHours": 120,
+    "wiltHours": 48,
+    "witherHours": 72,
+    "itemId": 5539,
+    "seedId": 7736,
+    "seedName": "Lavender Seeds",
+    "crossOnly": false,
+    "crossable": false,
+    "gatherable": true,
+    "sources": [
+      "Level 15 Node in Bentbranch, Central Shroud"
+    ]
+  },
+  {
+    "name": "Levinlight",
+    "growHours": 18,
+    "wiltHours": 72,
+    "witherHours": 96,
+    "itemId": 6,
+    "seedId": 15869,
+    "seedName": "Levinlight Seeds",
+    "crossOnly": false,
+    "crossable": false,
+    "gatherable": true,
+    "sources": [
+      "Level 15 Node in The Clutch, Central Thanalan"
+    ]
+  },
+  {
+    "name": "Linseed",
+    "growHours": 120,
+    "wiltHours": 48,
+    "witherHours": 72,
+    "itemId": 5346,
+    "seedId": 7741,
+    "seedName": "Linseed",
+    "crossOnly": false,
+    "crossable": true,
+    "gatherable": true,
+    "sources": [
+      "Level 35 Node in Lower Paths, South Shroud"
+    ]
+  },
+  {
+    "name": "Lowland Grape",
+    "growHours": 120,
+    "wiltHours": 48,
+    "witherHours": 72,
+    "itemId": 4808,
+    "seedId": 7726,
+    "seedName": "Lowland Grape Seeds",
+    "crossOnly": false,
+    "crossable": false,
+    "gatherable": true,
+    "sources": [
+      "Level 15 Node in Moraby Bay, Lower La Noscea"
+    ]
+  },
+  {
+    "name": "Mamook Pear",
+    "growHours": 48,
+    "wiltHours": 72,
+    "witherHours": 96,
+    "itemId": 8159,
+    "seedId": 8176,
+    "seedName": "Mamook Pear Seeds",
+    "crossOnly": false,
+    "crossable": false,
+    "gatherable": true,
+    "sources": [
+      "Hunt Billmaster (15 Allied Seals)"
+    ]
+  },
+  {
+    "name": "Mandragora Queen",
+    "growHours": 168,
+    "wiltHours": 24,
+    "witherHours": 48,
+    "itemId": 8196,
+    "seedId": 8188,
+    "seedName": "Mandragora Queen Seeds",
+    "crossOnly": true,
+    "crossable": true,
+    "gatherable": false
+  },
+  {
+    "name": "Mandrake",
+    "growHours": 120,
+    "wiltHours": 48,
+    "witherHours": 72,
+    "itemId": 5543,
+    "seedId": 7743,
+    "seedName": "Mandrake Seeds",
+    "crossOnly": false,
+    "crossable": true,
+    "gatherable": true,
+    "sources": [
+      "Level 35 Node in Bloodshore, Eastern La Noscea"
+    ]
+  },
+  {
+    "name": "Midland Basil",
+    "growHours": 120,
+    "wiltHours": 48,
+    "witherHours": 72,
+    "itemId": 4837,
+    "seedId": 7742,
+    "seedName": "Midland Basil Seeds",
+    "crossOnly": false,
+    "crossable": true,
+    "gatherable": true,
+    "sources": [
+      "Level 35 Node in Bloodshore, Eastern La Noscea"
+    ]
+  },
+  {
+    "name": "Midland Cabbage",
+    "growHours": 120,
+    "wiltHours": 48,
+    "witherHours": 72,
+    "itemId": 4789,
+    "seedId": 7723,
+    "seedName": "Midland Cabbage Seeds",
+    "crossOnly": false,
+    "crossable": true,
+    "gatherable": true,
+    "sources": [
+      "Level 30 Node in Alder Springs, North Shroud"
+    ]
+  },
+  {
+    "name": "Millioncorn",
+    "growHours": 120,
+    "wiltHours": 48,
+    "witherHours": 72,
+    "itemId": 4821,
+    "seedId": 7721,
+    "seedName": "Millioncorn Seeds",
+    "crossOnly": false,
+    "crossable": false,
+    "gatherable": true,
+    "sources": [
+      "Level 25 Node in Drybone, Eastern Thanalan"
+    ]
+  },
+  {
+    "name": "Mimett Gourd",
+    "growHours": 120,
+    "wiltHours": 48,
+    "witherHours": 72,
+    "itemId": 7897,
+    "seedId": 8171,
+    "seedName": "Mimett Gourd Seeds",
+    "crossOnly": true,
+    "crossable": true,
+    "gatherable": false
+  },
+  {
+    "name": "Mirror Apple",
+    "growHours": 120,
+    "wiltHours": 48,
+    "witherHours": 72,
+    "itemId": 6146,
+    "seedId": 7731,
+    "seedName": "Mirror Apple Seeds",
+    "crossOnly": false,
+    "crossable": true,
+    "gatherable": true,
+    "sources": [
+      "Level 45 Node in Whitebrim, Coerthas Central Highlands"
+    ]
+  },
+  {
+    "name": "Nymeia Lily",
+    "growHours": 144,
+    "wiltHours": 36,
+    "witherHours": 60,
+    "itemId": 7770,
+    "seedId": 7747,
+    "seedName": "Nymeia Lily Seeds",
+    "crossOnly": true,
+    "crossable": true,
+    "gatherable": false
+  },
+  {
+    "name": "O'Ghomoro Berry",
+    "growHours": 48,
+    "wiltHours": 72,
+    "witherHours": 96,
+    "itemId": 8161,
+    "seedId": 8178,
+    "seedName": "O'Ghomoro Berry Seeds",
+    "crossOnly": false,
+    "crossable": false,
+    "gatherable": true,
+    "sources": [
+      "Hunt Billmaster (15 Allied Seals)"
+    ]
+  },
+  {
+    "name": "Old World Fig",
+    "growHours": 120,
+    "wiltHours": 48,
+    "witherHours": 72,
+    "itemId": 12896,
+    "seedId": 13765,
+    "seedName": "Old World Fig Seeds",
+    "crossOnly": false,
+    "crossable": false,
+    "gatherable": true,
+    "sources": [
+      "Level 50 Three Star Unspoiled Node in Chocobo Forest, The Dravanian Forelands"
+    ]
+  },
+  {
+    "name": "Olive",
+    "growHours": 120,
+    "wiltHours": 48,
+    "witherHours": 72,
+    "itemId": 4804,
+    "seedId": 7719,
+    "seedName": "Olive Seeds",
+    "crossOnly": false,
+    "crossable": false,
+    "gatherable": true,
+    "sources": [
+      "Level 15 Node in Moraby Bay, Lower La Noscea"
+    ]
+  },
+  {
+    "name": "Onion Prince",
+    "growHours": 168,
+    "wiltHours": 24,
+    "witherHours": 48,
+    "itemId": 8192,
+    "seedId": 8184,
+    "seedName": "Onion Prince Seeds",
+    "crossOnly": true,
+    "crossable": true,
+    "gatherable": false
+  },
+  {
+    "name": "Pahsana Fruit",
+    "growHours": 120,
+    "wiltHours": 48,
+    "witherHours": 72,
+    "itemId": 7900,
+    "seedId": 8173,
+    "seedName": "Pahsana Fruit Seeds",
+    "crossOnly": true,
+    "crossable": true,
+    "gatherable": false
+  },
+  {
+    "name": "Paprika",
+    "growHours": 120,
+    "wiltHours": 48,
+    "witherHours": 72,
+    "itemId": 4785,
+    "seedId": 7715,
+    "seedName": "Paprika Seeds",
+    "crossOnly": false,
+    "crossable": true,
+    "gatherable": true,
+    "sources": [
+      "Level 20 Node in Quarterstone, Western La Noscea"
+    ]
+  },
+  {
+    "name": "Pearl Ginger Root",
+    "growHours": 120,
+    "wiltHours": 48,
+    "witherHours": 72,
+    "itemId": 4836,
+    "seedId": 7739,
+    "seedName": "Pearl Ginger Root",
+    "crossOnly": false,
+    "crossable": true,
+    "gatherable": true,
+    "sources": [
+      "Level 25 Node in Drybone, Eastern Thanalan"
+    ]
+  },
+  {
+    "name": "Pearl Roselle",
+    "growHours": 144,
+    "wiltHours": 36,
+    "witherHours": 60,
+    "itemId": 8023,
+    "seedId": 8167,
+    "seedName": "Pearl Roselle Seeds",
+    "crossOnly": true,
+    "crossable": true,
+    "gatherable": false
+  },
+  {
+    "name": "Pearl Sprout",
+    "growHours": 120,
+    "wiltHours": 48,
+    "witherHours": 72,
+    "itemId": 12877,
+    "seedId": 13767,
+    "seedName": "Pearl Sprout Seeds",
+    "crossOnly": false,
+    "crossable": false,
+    "gatherable": true,
+    "sources": [
+      "Level 55 Unspoiled Node in Riversmeet, Coerthas Western Highlands"
+    ]
+  },
+  {
+    "name": "Pixie Plum",
+    "growHours": 120,
+    "wiltHours": 48,
+    "witherHours": 72,
+    "itemId": 4812,
+    "seedId": 7729,
+    "seedName": "Pixie Plum Seeds",
+    "crossOnly": false,
+    "crossable": true,
+    "gatherable": true,
+    "sources": [
+      "Level 25 Node in Oakwood, Upper La Noscea"
+    ]
+  },
+  {
+    "name": "Popoto Set",
+    "growHours": 120,
+    "wiltHours": 48,
+    "witherHours": 72,
+    "itemId": 4787,
+    "seedId": 7720,
+    "seedName": "Popoto Set",
+    "crossOnly": false,
+    "crossable": true,
+    "gatherable": true,
+    "sources": [
+      "Level 20 Node in Sandgate, Eastern Thanalan"
+    ]
+  },
+  {
+    "name": "Prickly Pineapple",
+    "growHours": 120,
+    "wiltHours": 48,
+    "witherHours": 72,
+    "itemId": 4816,
+    "seedId": 7734,
+    "seedName": "Prickly Pineapple Seeds",
+    "crossOnly": false,
+    "crossable": true,
+    "gatherable": true,
+    "sources": [
+      "Level 50 One Star Unspoiled Node in Bloodshore, Eastern La Noscea"
+    ]
+  },
+  {
+    "name": "Rolanberry",
+    "growHours": 120,
+    "wiltHours": 48,
+    "witherHours": 72,
+    "itemId": 4815,
+    "seedId": 7732,
+    "seedName": "Rolanberry Seeds",
+    "crossOnly": false,
+    "crossable": true,
+    "gatherable": true,
+    "sources": [
+      "Level 45 Node in Bronze Lake, Upper La Noscea"
+    ]
+  },
+  {
+    "name": "Royal Fern",
+    "growHours": 120,
+    "wiltHours": 24,
+    "witherHours": 48,
+    "itemId": 20793,
+    "seedId": 20794,
+    "seedName": "Royal Fern Sori",
+    "crossOnly": true,
+    "crossable": true,
+    "gatherable": false
+  },
+  {
+    "name": "Royal Kukuru",
+    "growHours": 144,
+    "wiltHours": 36,
+    "witherHours": 60,
+    "itemId": 7604,
+    "seedId": 7750,
+    "seedName": "Royal Kukuru Seeds",
+    "crossOnly": true,
+    "crossable": true,
+    "gatherable": false
+  },
+  {
+    "name": "Shroud Tea",
+    "growHours": 144,
+    "wiltHours": 36,
+    "witherHours": 60,
+    "itemId": 7591,
+    "seedId": 7753,
+    "seedName": "Shroud Tea Seeds",
+    "crossOnly": true,
+    "crossable": true,
+    "gatherable": false
+  },
+  {
+    "name": "Star Anise",
+    "growHours": 144,
+    "wiltHours": 36,
+    "witherHours": 60,
+    "itemId": 7602,
+    "seedId": 7748,
+    "seedName": "Star Anise Seeds",
+    "crossOnly": true,
+    "crossable": true,
+    "gatherable": false
+  },
+  {
+    "name": "Sun Lemon",
+    "growHours": 120,
+    "wiltHours": 48,
+    "witherHours": 72,
+    "itemId": 4811,
+    "seedId": 7728,
+    "seedName": "Sun Lemon Seeds",
+    "crossOnly": false,
+    "crossable": true,
+    "gatherable": true,
+    "sources": [
+      "Level 20 Node in Cedarwood, Lower La Noscea"
+    ]
+  },
+  {
+    "name": "Sylkis Bud",
+    "growHours": 120,
+    "wiltHours": 48,
+    "witherHours": 72,
+    "itemId": 7895,
+    "seedId": 8170,
+    "seedName": "Sylkis Bud Seeds",
+    "crossOnly": true,
+    "crossable": true,
+    "gatherable": false
+  },
+  {
+    "name": "Tantalplant",
+    "growHours": 120,
+    "wiltHours": 48,
+    "witherHours": 72,
+    "itemId": 7898,
+    "seedId": 8172,
+    "seedName": "Tantalplant Seeds",
+    "crossOnly": true,
+    "crossable": true,
+    "gatherable": false
+  },
+  {
+    "name": "Thavnairian Onion",
+    "growHours": 240,
+    "wiltHours": 24,
+    "witherHours": 48,
+    "itemId": 8166,
+    "seedId": 8183,
+    "seedName": "Thavnairian Onion Seeds",
+    "crossOnly": true,
+    "crossable": true,
+    "gatherable": false
+  },
+  {
+    "name": "Tomato King",
+    "growHours": 168,
+    "wiltHours": 24,
+    "witherHours": 48,
+    "itemId": 8195,
+    "seedId": 8187,
+    "seedName": "Tomato King Seeds",
+    "crossOnly": true,
+    "crossable": true,
+    "gatherable": false
+  },
+  {
+    "name": "Umbrella Fig",
+    "growHours": 168,
+    "wiltHours": 24,
+    "witherHours": 48,
+    "itemId": 7773,
+    "seedId": 7754,
+    "seedName": "Umbrella Fig Seeds",
+    "crossOnly": true,
+    "crossable": true,
+    "gatherable": false
+  },
+  {
+    "name": "Valfruit",
+    "growHours": 48,
+    "wiltHours": 72,
+    "witherHours": 96,
+    "itemId": 8160,
+    "seedId": 8177,
+    "seedName": "Valfruit Seeds",
+    "crossOnly": false,
+    "crossable": false,
+    "gatherable": true,
+    "sources": [
+      "Hunt Billmaster (15 Allied Seals)"
+    ]
+  },
+  {
+    "name": "Voidrake",
+    "growHours": 12,
+    "wiltHours": 72,
+    "witherHours": 96,
+    "itemId": 15858,
+    "seedId": 15856,
+    "seedName": "Voidrake Seeds",
+    "crossOnly": false,
+    "crossable": false,
+    "gatherable": true,
+    "sources": [
+      "Grand Company (500 Seals, Rank Private Third Class) or Free Company (300 Credits, FC Rank 6)"
+    ]
+  },
+  {
+    "name": "Waterlight",
+    "growHours": 18,
+    "wiltHours": 72,
+    "witherHours": 96,
+    "itemId": 7,
+    "seedId": 15870,
+    "seedName": "Waterlight Seeds",
+    "crossOnly": false,
+    "crossable": false,
+    "gatherable": true,
+    "sources": [
+      "Level 15 Node in Horizon's Edge, Western Thanalan"
+    ]
+  },
+  {
+    "name": "Wild Onion Set",
+    "growHours": 120,
+    "wiltHours": 48,
+    "witherHours": 72,
+    "itemId": 4777,
+    "seedId": 7716,
+    "seedName": "Wild Onion Set",
+    "crossOnly": false,
+    "crossable": false,
+    "gatherable": true,
+    "sources": [
+      "Level 15 Node in Nophica's Wells, Western Thanalan"
+    ]
+  },
+  {
+    "name": "Windlight",
+    "growHours": 18,
+    "wiltHours": 72,
+    "witherHours": 96,
+    "itemId": 4,
+    "seedId": 15867,
+    "seedName": "Windlight Seeds",
+    "crossOnly": false,
+    "crossable": false,
+    "gatherable": true,
+    "sources": [
+      "Level 15 Node in Bentbranch, Central Shroud"
+    ]
+  },
+  {
+    "name": "Wizard Eggplant",
+    "growHours": 120,
+    "wiltHours": 48,
+    "witherHours": 72,
+    "itemId": 4788,
+    "seedId": 7722,
+    "seedName": "Wizard Eggplant Seeds",
+    "crossOnly": false,
+    "crossable": true,
+    "gatherable": true,
+    "sources": [
+      "Level 30 Node in Alder Springs, North Shroud"
+    ]
+  },
+  {
+    "name": "Xelphatol Apple",
+    "growHours": 48,
+    "wiltHours": 72,
+    "witherHours": 96,
+    "itemId": 8157,
+    "seedId": 8174,
+    "seedName": "Xelphatol Apple Seeds",
+    "crossOnly": false,
+    "crossable": false,
+    "gatherable": true,
+    "sources": [
+      "Hunt Billmaster (15 Allied Seals)"
+    ]
+  }
+]
