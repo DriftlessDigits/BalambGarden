@@ -124,6 +124,20 @@ internal static unsafe class ReconProbe
                 }
             }
             Plugin.Log.Information($"[Probe] datamap entries logged: {mapCount}");
+
+            // Key<->patch binding hypothesis (2026-08-12): map key low byte == patch
+            // GimmickId low byte (FC receipts matched 3/3: keys 1293/1313/1319 ->
+            // 13/33/39 vs founding GimmickId lows 13/39/33). Correlate in-reach beds.
+            foreach (var sighting in GardenScanner.NearbyEventObjects())
+            {
+                if (sighting.DataId != GardenScanner.GardenBedDataId)
+                    continue;
+                var native = (FFXIVClientStructs.FFXIV.Client.Game.Object.GameObject*)sighting.Object.Address;
+                var gimmick = native->GimmickId;
+                Plugin.Log.Information(
+                    $"[Probe] bed gimmick=0x{gimmick:X8} low=0x{gimmick & 0xFF:X2} ({gimmick & 0xFF}) "
+                    + $"dist={sighting.Distance:F1}y pos={sighting.Object.Position:F1}");
+            }
         }
         catch (Exception ex)
         {
