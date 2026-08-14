@@ -152,7 +152,7 @@ internal static unsafe class ReconProbe
     internal static void DumpBedStructs()
     {
         const int windowBytes = 0x220;
-        const int maxObjects = 20;
+        const int maxObjects = 32;
 
         var dumped = 0;
         foreach (var sighting in GardenScanner.NearbyEventObjects())
