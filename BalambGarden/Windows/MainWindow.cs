@@ -43,6 +43,8 @@ public class MainWindow : Window, IDisposable
             return;
         }
 
+        ImGui.TextDisabled($"Engine v2 loaded - {Plugin.Tables.SpeciesName(0x24)} says hi");
+
         var territoryId = Plugin.ClientState.TerritoryType;
         var territoryName = Plugin.DataManager.GetExcelSheet<TerritoryType>()
             .TryGetRow(territoryId, out var territoryRow)

@@ -22,6 +22,8 @@ public sealed class Plugin : IDalamudPlugin
 
     public static Configuration Configuration { get; private set; } = null!;
 
+    public static BalambGarden.Engine.Domain.DomainTables Tables { get; private set; } = null!;
+
     internal TendChain TendChain { get; init; }
 
     public readonly WindowSystem WindowSystem = new("BalambGarden");
@@ -34,6 +36,9 @@ public sealed class Plugin : IDalamudPlugin
         ECommonsMain.Init(PluginInterface, this);
 
         Configuration = PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
+
+        Tables = BalambGarden.Engine.Domain.DomainTables.Load();
+        Log.Information($"[Engine] domain tables loaded: sunflower check = {Tables.SpeciesName(103)}");
 
         TendChain = new TendChain();
 
