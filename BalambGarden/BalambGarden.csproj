@@ -9,5 +9,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\ECommons\ECommons\ECommons.csproj" />
+    <ProjectReference Include="..\BalambGarden.Engine\BalambGarden.Engine.csproj" />
   </ItemGroup>
 </Project>

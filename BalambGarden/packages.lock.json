@@ -14,6 +14,9 @@
         "resolved": "1.2.39",
         "contentHash": "fcFN01tDTIQqDuTwr1jUQK/geofiwjG5DycJQOnC72i1SsLAk1ELe+apBOuZ11UMQG8YKFZG1FgvjZPbqHyatg=="
       },
+      "balambgarden.engine": {
+        "type": "Project"
+      },
       "ecommons": {
         "type": "Project"
       }
