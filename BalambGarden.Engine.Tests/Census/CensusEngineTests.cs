@@ -87,4 +87,36 @@ public class CensusEngineTests
         engine.OnReceipt(Tend(3, stage: 2));
         Assert.Single(engine.LedgerBeds);
     }
+
+    [Fact] // sightings feed claimed beds; unclaimed ward data stays ephemeral
+    public void MapSightingObservesClaimedOnly()
+    {
+        var engine = new CensusEngine(new LedgerStore());
+        engine.Bind(Chelsea, 0, 110);
+        engine.OnReceipt(Tend(3));   // claims slot 3 only
+
+        var readings = Enumerable.Range(0, 8)
+            .Select(i => new BalambGarden.Engine.Sensing.BedReading(
+                i, (ushort)(i % 2 == 0 ? 0x41 : 0x11), 2, 0, true))
+            .ToList();
+
+        var count = engine.OnMapSighting(Chelsea, mapKey: 110, readings, T0.AddDays(1));
+
+        Assert.Equal(1, count);   // only the claimed bed
+        var bed = Assert.Single(engine.LedgerBeds);
+        Assert.Equal(2, bed.Ring.Count);
+        Assert.Equal(ObservationSource.MapSighting, bed.Latest!.Source);
+        Assert.Equal(2, bed.Latest.Stage);
+    }
+
+    [Fact] // sighting for a different key does not touch this bed
+    public void MapSightingWrongKeyIgnored()
+    {
+        var engine = new CensusEngine(new LedgerStore());
+        engine.Bind(Chelsea, 0, 110);
+        engine.OnReceipt(Tend(3));
+        var readings = new List<BalambGarden.Engine.Sensing.BedReading>
+            { new(3, 0x41, 3, 0, true) };
+        Assert.Equal(0, engine.OnMapSighting(Chelsea, mapKey: 116, readings, T0.AddDays(1)));
+    }
 }

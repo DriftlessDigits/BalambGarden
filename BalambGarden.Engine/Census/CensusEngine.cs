@@ -42,6 +42,26 @@ public sealed class CensusEngine(LedgerStore ledger)
         return bed;
     }
 
+    /// <summary>Map sightings only ever land on already-claimed beds. Ward-visible
+    /// unclaimed data is ephemeral by design (Sam's distance ruling, 08-12).</summary>
+    public int OnMapSighting(
+        EstateKey estate, int mapKey, IReadOnlyList<Sensing.BedReading> beds, DateTimeOffset at)
+    {
+        var count = 0;
+        foreach (var reading in beds)
+        {
+            if (!reading.Occupied)
+                continue;
+            var bed = ledger.Beds.FirstOrDefault(b =>
+                b.Estate == estate && b.MapKey == mapKey && b.BedSlot == reading.Slot);
+            if (bed is null)
+                continue;
+            bed.Observe(new Observation(at, reading.SpeciesIndex, reading.Stage, ObservationSource.MapSighting));
+            count++;
+        }
+        return count;
+    }
+
     public void Abandon(ClaimedBed bed) => ledger.Beds.Remove(bed);
 
     private static ObservationSource SourceFor(ReceiptVerb verb) => verb switch
