@@ -127,6 +127,14 @@ for (const [resultName, pairs] of Object.entries(crossbreeding)) {
 // Desk-verified 2026-08-12: index 0x11 = Mirror Apple matches the founding
 // dump exactly; 0x41 = Old World Fig (dissolves the founding session's
 // "0x41 conflict" - a patch label was wrong, not the table).
+// Indoor/deco tail: names absent from the Lotlab snapshot, verified via xivapi 2026-08-13.
+const SPECIES_NAME_OVERRIDES = {
+  100: 'Red Morning Glories',
+  102: 'Red Lupins',
+  103: 'Garden Sunflower',
+  107: 'Red Tea Flowers',
+};
+
 const lotlab = JSON.parse(readFileSync(src("lotlab_seeds.json"), "utf8"));
 const bySeedId = new Map(crops.map((c) => [c.seedId, c]));
 const speciesIndex = {};
@@ -135,7 +143,8 @@ for (const entry of lotlab) {
   speciesIndex[entry.Index] = {
     seedId: entry.Seed.Id,
     itemId: entry.Item.Id,
-    name: crop?.name ?? null, // null = flowerpot flower / not in outdoor crop table
+    // null = flowerpot flower / not in outdoor crop table
+    name: crop?.name ?? SPECIES_NAME_OVERRIDES[entry.Index] ?? null,
   };
 }
 const unnamed = Object.values(speciesIndex).filter((s) => !s.name).length;

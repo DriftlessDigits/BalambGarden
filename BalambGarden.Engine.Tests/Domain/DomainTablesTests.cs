@@ -58,6 +58,15 @@ public class DomainTablesTests
                      T.CrossResult(curiel.SeedId, kukuru.SeedId));
     }
 
+    [Fact] // xivapi-verified 2026-08-13; 103 receipt-bound in-game (sunflower pot, key=129)
+    public void IndoorTailSpeciesAreNamed()
+    {
+        Assert.Equal("Red Morning Glories", T.SpeciesName(100));
+        Assert.Equal("Red Lupins", T.SpeciesName(102));
+        Assert.Equal("Garden Sunflower", T.SpeciesName(103));
+        Assert.Equal("Red Tea Flowers", T.SpeciesName(107));
+    }
+
     [Fact]
     public void SpeciesIndexRoundTripsThroughSeedId()
     {

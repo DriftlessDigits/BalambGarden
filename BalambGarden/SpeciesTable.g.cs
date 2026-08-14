@@ -108,14 +108,14 @@ internal static class SpeciesTable
         [97] = "pot flower (item 35745)",
         [98] = "pot flower (item 37303)",
         [99] = "pot flower (item 38660)",
-        [100] = "pot flower (item 39461)",
+        [100] = "Red Morning Glories",
         [101] = "pot flower (item 40687)",
-        [102] = "pot flower (item 41161)",
-        [103] = "pot flower (item 43963)",
+        [102] = "Red Lupins",
+        [103] = "Garden Sunflower",
         [104] = "pot flower (item 44833)",
         [105] = "pot flower (item 47951)",
         [106] = "pot flower (item 46804)",
-        [107] = "pot flower (item 49774)",
+        [107] = "Red Tea Flowers",
     };
 
     internal static string Name(ushort index)

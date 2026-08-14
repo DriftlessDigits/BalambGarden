@@ -497,7 +497,7 @@
   "100": {
     "seedId": 39460,
     "itemId": 39461,
-    "name": null
+    "name": "Red Morning Glories"
   },
   "101": {
     "seedId": 40686,
@@ -507,12 +507,12 @@
   "102": {
     "seedId": 41160,
     "itemId": 41161,
-    "name": null
+    "name": "Red Lupins"
   },
   "103": {
     "seedId": 43962,
     "itemId": 43963,
-    "name": null
+    "name": "Garden Sunflower"
   },
   "104": {
     "seedId": 44832,
@@ -532,6 +532,6 @@
   "107": {
     "seedId": 49773,
     "itemId": 49774,
-    "name": null
+    "name": "Red Tea Flowers"
   }
 }
