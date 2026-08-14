@@ -66,26 +66,37 @@ public static class PipelineReader
                 $"-> {products}"));
         }
 
-        // Chain: one intent's result seed is a parent in another intent -> pipeline.
-        foreach (var feeder in intents)
+        // Chain: one intent's result seed is a parent in another patch's pair -> pipeline.
+        // One line per REAL relationship (feeder patch + feeder seed -> consumer patch);
+        // a multi-result patch on either side must not multiply the prose (spec: silence
+        // over filler - tips are advisory sentences a human reads).
+        var relationships = intents
+            .SelectMany(feeder => intents
+                .Where(consumer => (consumer.Estate, consumer.PatchOrdinal)
+                                   != (feeder.Estate, feeder.PatchOrdinal))
+                .Where(consumer => tables.SeedIdBySpeciesIndex(consumer.SpeciesA) == feeder.ResultSeedId
+                                   || tables.SeedIdBySpeciesIndex(consumer.SpeciesB) == feeder.ResultSeedId)
+                .Select(consumer => (feeder, consumer)))
+            .GroupBy(r => (
+                FeederEstate: r.feeder.Estate,
+                FeederPatch: r.feeder.PatchOrdinal,
+                FeederSeed: r.feeder.ResultSeedId,
+                ConsumerEstate: r.consumer.Estate,
+                ConsumerPatch: r.consumer.PatchOrdinal));
+
+        foreach (var relationship in relationships)
         {
-            foreach (var consumer in intents)
-            {
-                if (consumer == feeder) continue;
-                var consumerParents = new[]
-                {
-                    tables.SeedIdBySpeciesIndex(consumer.SpeciesA),
-                    tables.SeedIdBySpeciesIndex(consumer.SpeciesB),
-                };
-                if (!consumerParents.Contains(feeder.ResultSeedId))
-                    continue;
-                var product = tables.CropBySeedId(consumer.ResultSeedId)?.Name ?? "?";
-                var feederName = tables.CropBySeedId(feeder.ResultSeedId)?.Name ?? "?";
-                tips.Add(new Tip(TipKind.Bottleneck,
-                    $"{feederName} seeds feed the {product} patch " +
-                    $"({consumer.Estate.DisplayWardPlot()}) - feeder is " +
-                    $"{feeder.Estate.DisplayWardPlot()} patch {feeder.PatchOrdinal + 1}"));
-            }
+            var feeder = relationship.First().feeder;
+            var products = string.Join(" or ", relationship
+                .Select(r => r.consumer.ResultSeedId)
+                .Distinct()
+                .OrderBy(seed => seed)
+                .Select(seed => tables.CropBySeedId(seed)?.Name ?? "?"));
+            var feederName = tables.CropBySeedId(feeder.ResultSeedId)?.Name ?? "?";
+            tips.Add(new Tip(TipKind.Bottleneck,
+                $"{feederName} seeds feed the {products} patch " +
+                $"({relationship.Key.ConsumerEstate.DisplayWardPlot()}) - feeder is " +
+                $"{feeder.Estate.DisplayWardPlot()} patch {feeder.PatchOrdinal + 1}"));
         }
 
         // Anomaly: a patch that is one bed away from a clean A/B alternation.

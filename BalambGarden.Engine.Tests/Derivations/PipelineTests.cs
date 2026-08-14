@@ -77,6 +77,17 @@ public class PipelineTests
         Assert.Contains(tips, t => t.Kind == TipKind.Bottleneck);
     }
 
+    [Fact] // one line per real relationship - multi-result patches must not multiply the prose
+    public void BottleneckLinesAreOnePerRelationship()
+    {
+        var tips = PipelineReader.Tips(Household(), T, Now);
+        var bottlenecks = tips.Where(t => t.Kind == TipKind.Bottleneck).ToList();
+        Assert.Equal(2, bottlenecks.Count);
+        Assert.Contains(bottlenecks, t => t.Text.Contains("Royal Kukuru seeds feed"));
+        Assert.Contains(bottlenecks, t => t.Text.Contains("Curiel Root seeds feed"));
+        Assert.Contains(bottlenecks, t => t.Text.Contains("Thavnairian Onion"));
+    }
+
     [Fact] // one bed off-pattern: anomaly, phrased as a question, never a correction
     public void BrokenAlternationIsAnAnomaly()
     {
