@@ -36,14 +36,15 @@ public class DomainTablesTests
     {
         var kukuru = T.CropBySpeciesIndex(0x24)!;
         var curiel = T.CropBySpeciesIndex(0x2C)!;
-        Assert.NotNull(T.CrossResult(kukuru.SeedId, curiel.SeedId));
-
         // Table fact (08-13): this parent pair is listed under TWO results -
-        // Apricot (7751) and Thavnairian Onion (8183) - so single-valued
-        // CrossResult cannot pin the onion. Assert the pair table directly.
+        // Apricot (7751) and Thavnairian Onion (8183) - hence CrossResults, plural.
         var onion = T.CropBySeedId(8183);
         Assert.NotNull(onion);
         Assert.Contains("Thavnairian Onion", onion!.Name);
+
+        Assert.Contains(onion.SeedId, T.CrossResults(kukuru.SeedId, curiel.SeedId));
+
+        // The pair table itself still documents the recipe, both orderings tolerated.
         Assert.Contains(T.PairsForResult(onion.SeedId),
             p => (p.ParentA == kukuru.SeedId && p.ParentB == curiel.SeedId)
               || (p.ParentA == curiel.SeedId && p.ParentB == kukuru.SeedId));
@@ -54,8 +55,10 @@ public class DomainTablesTests
     {
         var kukuru = T.CropBySpeciesIndex(0x24)!;
         var curiel = T.CropBySpeciesIndex(0x2C)!;
-        Assert.Equal(T.CrossResult(kukuru.SeedId, curiel.SeedId),
-                     T.CrossResult(curiel.SeedId, kukuru.SeedId));
+        var forward = T.CrossResults(kukuru.SeedId, curiel.SeedId);
+        var reversed = T.CrossResults(curiel.SeedId, kukuru.SeedId);
+        Assert.NotEmpty(forward);
+        Assert.Equal(forward, reversed);   // same results, same (sorted) order
     }
 
     [Fact] // xivapi-verified 2026-08-13; 103 receipt-bound in-game (sunflower pot, key=129)

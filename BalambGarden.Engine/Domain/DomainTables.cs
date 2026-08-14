@@ -90,13 +90,28 @@ public sealed class DomainTables
     public IReadOnlyList<(uint ParentA, uint ParentB)> PairsForResult(uint resultSeedId)
         => pairsByResult.GetValueOrDefault(resultSeedId) ?? [];
 
-    /// <summary>Order-insensitive cross lookup: what does A x B produce, if anything?</summary>
-    public uint? CrossResult(uint parentA, uint parentB)
+    /// <summary>
+    /// Order-insensitive cross lookup: every result A x B can produce. Parent pairs are
+    /// genuinely multi-result (Royal Kukuru x Curiel Root yields both Apricot and
+    /// Thavnairian Onion), so this returns all of them, sorted ascending by result seedId
+    /// for determinism.
+    /// </summary>
+    public IReadOnlyList<uint> CrossResults(uint parentA, uint parentB)
     {
+        var results = new List<uint>();
         foreach (var (result, list) in pairsByResult)
+        {
             foreach (var (a, b) in list)
+            {
                 if ((a == parentA && b == parentB) || (a == parentB && b == parentA))
-                    return result;
-        return null;
+                {
+                    results.Add(result);
+                    break;
+                }
+            }
+        }
+
+        results.Sort();
+        return results;
     }
 }
