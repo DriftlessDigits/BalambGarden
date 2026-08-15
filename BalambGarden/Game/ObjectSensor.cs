@@ -1,0 +1,107 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Numerics;
+using BalambGarden.Engine.Sensing;
+using Dalamud.Game.ClientState.Objects.Enums;
+using Dalamud.Game.ClientState.Objects.Types;
+using ECommons.DalamudServices;
+using ECommons.GameHelpers;
+
+namespace BalambGarden.Game;
+
+internal readonly record struct BedObject(
+    IGameObject Object, BedGimmick Gimmick, float Distance, bool Targetable)
+{
+    internal bool InReach => Targetable && Distance <= ObjectSensor.EventObjRange;
+}
+
+internal sealed record PatchGroup(
+    ushort PatchId, int Ordinal, Vector3 Center, List<BedObject> Beds, float Distance)
+{
+    internal bool InReach => Distance <= ObjectSensor.EventObjRange;
+}
+
+internal readonly record struct PotObject(IGameObject Object, string Name, float Distance)
+{
+    internal bool InReach => Distance <= ObjectSensor.HousingEventObjRange;
+}
+
+/// <summary>Nearby bed/pot objects. Patches group by GimmickId patch-id (the game's
+/// own identity, receipt-verified 08-12/08-13) - never by position clustering.</summary>
+internal static unsafe class ObjectSensor
+{
+    internal const uint GardenBedDataId = 2003757;
+    internal const float EventObjRange = 4.6f;          // field-verified 08-11
+    internal const float HousingEventObjRange = 6.5f;
+
+    internal static List<BedObject> NearbyBeds(float maxDistance = 40f)
+    {
+        var beds = new List<BedObject>();
+        if (!Player.Available || Player.Object is not { } me)
+            return beds;
+
+        foreach (var obj in Svc.Objects)
+        {
+            if (obj is null || !obj.IsValid())
+                continue;
+            if (obj.ObjectKind is not (ObjectKind.EventObj or ObjectKind.HousingEventObject))
+                continue;
+            if (obj.BaseId != GardenBedDataId)
+                continue;
+
+            var distance = Vector3.Distance(me.Position, obj.Position);
+            if (distance > maxDistance)
+                continue;
+
+            var native = (FFXIVClientStructs.FFXIV.Client.Game.Object.GameObject*)obj.Address;
+            if (native == null)
+                continue;
+
+            beds.Add(new BedObject(obj, GimmickId.Decode(native->GimmickId), distance, obj.IsTargetable));
+        }
+        return beds;
+    }
+
+    internal static List<PatchGroup> Patches(float maxDistance = 40f)
+        => NearbyBeds(maxDistance)
+            .GroupBy(b => b.Gimmick.PatchId)
+            .Select(g =>
+            {
+                var beds = g.OrderBy(b => b.Gimmick.BedIndex).ToList();
+                // All beds in a patch share the centre position (08-11): in range of
+                // the centre IS in range of every bed.
+                return new PatchGroup(
+                    g.Key, beds[0].Gimmick.PatchOrdinal, beds[0].Object.Position,
+                    beds, beds.Min(b => b.Distance));
+            })
+            .OrderBy(p => p.Ordinal)
+            .ToList();
+
+    /// <summary>Indoor pots by name ("Flowerpot" models). Pots are dumb props with
+    /// per-model DataIds (08-13) - the name filter is the honest v1 identifier; a
+    /// pot the filter misses simply shows no verbs, never a wrong one.</summary>
+    internal static List<PotObject> NearbyPots(float maxDistance = 20f)
+    {
+        var pots = new List<PotObject>();
+        if (!EstateSensor.IsInside() || !Player.Available || Player.Object is not { } me)
+            return pots;
+
+        foreach (var obj in Svc.Objects)
+        {
+            if (obj is null || !obj.IsValid() || !obj.IsTargetable)
+                continue;
+            if (obj.ObjectKind != ObjectKind.HousingEventObject)
+                continue;
+            var name = obj.Name.TextValue;
+            if (!name.Contains("Flowerpot", StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            var distance = Vector3.Distance(me.Position, obj.Position);
+            if (distance > maxDistance)
+                continue;
+            pots.Add(new PotObject(obj, name, distance));
+        }
+        return pots.OrderBy(p => p.Distance).ToList();
+    }
+}

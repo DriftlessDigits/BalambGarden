@@ -4,6 +4,7 @@ using System.Numerics;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Utility.Raii;
 using Dalamud.Interface.Windowing;
+using BalambGarden.Game;
 using Lumina.Excel.Sheets;
 
 namespace BalambGarden.Windows;
@@ -57,9 +58,13 @@ public class MainWindow : Window, IDisposable
         DrawRecon(territoryId, territoryName);
     }
 
+    /// <summary>Bridges a sensor patch to the POC chain's shape - Task 7 retires this.</summary>
+    private static PatchSighting AsSighting(PatchGroup patch)
+        => new(patch.Center, patch.Beds, patch.Distance);
+
     private void DrawPatches()
     {
-        var patches = GardenScanner.NearbyPatches();
+        var patches = ObjectSensor.Patches();
         if (patches.Count == 0)
             return;
 
@@ -72,19 +77,20 @@ public class MainWindow : Window, IDisposable
         {
             if (ImGui.Button($"Tend All ({totalBeds} beds, {inReach.Count} patches)"))
             {
-                plugin.TendChain.TendAll(inReach);
+                plugin.TendChain.TendAll(inReach.Select(AsSighting));
                 plugin.RunLogWindow.IsOpen = true;
             }
         }
 
         foreach (var patch in patches)
         {
-            using var patchId = ImRaii.PushId(patch.Position.GetHashCode());
+            using var patchId = ImRaii.PushId(patch.PatchId);
             using (ImRaii.Disabled(plugin.TendChain.Busy || !patch.InReach))
             {
-                if (ImGui.Button($"Water Patch ({patch.Beds.Count} beds)"))
+                // Ordinal is raw 0-based; +1 only here, at the surface.
+                if (ImGui.Button($"Water Patch {patch.Ordinal + 1} ({patch.Beds.Count} beds)"))
                 {
-                    plugin.TendChain.TendPatch(patch);
+                    plugin.TendChain.TendPatch(AsSighting(patch));
                     plugin.RunLogWindow.IsOpen = true;
                 }
             }
@@ -143,65 +149,59 @@ public class MainWindow : Window, IDisposable
             : $"{(int)span.TotalDays}d ago";
     }
 
-    private bool reconBedsOnly = true;
-
     private void DrawRecon(uint territoryId, string territoryName)
     {
         ImGui.Spacing();
         if (!ImGui.CollapsingHeader("Recon###recon"))
             return;
 
-        var sightings = GardenScanner.NearbyEventObjects();
-        ImGui.Checkbox("Beds only", ref reconBedsOnly);
-        if (reconBedsOnly)
-            sightings = sightings.Where(s => s.DataId == GardenScanner.GardenBedDataId).ToList();
-
-        ImGui.SameLine();
+        // The sensor filters to beds by DataId, so the old "beds only" toggle is gone -
+        // what the table shows now IS the bed set, identified by the game's own gimmick.
+        var beds = ObjectSensor.NearbyBeds();
         if (ImGui.Button("Log snapshot"))
         {
-            Plugin.Log.Information($"[Recon] zone ({territoryId}) {territoryName}, {sightings.Count} event objects in 40y:");
-            foreach (var s in sightings)
+            Plugin.Log.Information($"[Recon] zone ({territoryId}) {territoryName}, {beds.Count} beds in 40y:");
+            foreach (var b in beds)
                 Plugin.Log.Information(
-                    $"[Recon] {s.Name} | {s.Kind} | DataId {s.DataId} | {s.Distance:F2}y | targetable={s.Targetable} | pos={s.Object.Position:F1}");
+                    $"[Recon] patch 0x{b.Gimmick.PatchId:X4} ordinal {b.Gimmick.PatchOrdinal} bed {b.Gimmick.BedIndex} "
+                    + $"| {b.Distance:F2}y | targetable={b.Targetable} | pos={b.Object.Position:F1}");
         }
         ImGui.SameLine();
-        ImGui.TextDisabled($"{sightings.Count} event objects within 40y");
+        ImGui.TextDisabled($"{beds.Count} beds within 40y");
 
-        using var table = ImRaii.Table("sightings", 6,
+        using var table = ImRaii.Table("sightings", 5,
             ImGuiTableFlags.RowBg | ImGuiTableFlags.Borders | ImGuiTableFlags.ScrollY,
             new Vector2(0, 0));
         if (!table.Success)
             return;
 
-        ImGui.TableSetupColumn("Name", ImGuiTableColumnFlags.WidthStretch);
-        ImGui.TableSetupColumn("Kind", ImGuiTableColumnFlags.WidthFixed, 130f);
-        ImGui.TableSetupColumn("DataId", ImGuiTableColumnFlags.WidthFixed, 70f);
+        ImGui.TableSetupColumn("Bed", ImGuiTableColumnFlags.WidthStretch);
+        ImGui.TableSetupColumn("Patch", ImGuiTableColumnFlags.WidthFixed, 70f);
         ImGui.TableSetupColumn("Dist", ImGuiTableColumnFlags.WidthFixed, 55f);
         ImGui.TableSetupColumn("Reach", ImGuiTableColumnFlags.WidthFixed, 45f);
         ImGui.TableSetupColumn("##tend", ImGuiTableColumnFlags.WidthFixed, 55f);
         ImGui.TableSetupScrollFreeze(0, 1);
         ImGui.TableHeadersRow();
 
-        foreach (var s in sightings)
+        foreach (var b in beds.OrderBy(b => b.Gimmick.PatchOrdinal).ThenBy(b => b.Gimmick.BedIndex))
         {
             ImGui.TableNextRow();
             ImGui.TableNextColumn();
-            ImGui.Text(s.Name);
+            // Gimmick indices are stored raw 0-based; +1 only in this display line.
+            ImGui.Text($"Patch {b.Gimmick.PatchOrdinal + 1} bed {b.Gimmick.BedIndex + 1}");
             ImGui.TableNextColumn();
-            ImGui.Text(s.Kind.ToString());
+            ImGui.Text($"0x{b.Gimmick.PatchId:X4}");
             ImGui.TableNextColumn();
-            ImGui.Text(s.DataId.ToString());
+            ImGui.Text($"{b.Distance:F1}y");
             ImGui.TableNextColumn();
-            ImGui.Text($"{s.Distance:F1}y");
+            ImGui.TextColored(b.InReach ? Green : Red, b.InReach ? "yes" : "no");
             ImGui.TableNextColumn();
-            ImGui.TextColored(s.InReach ? Green : Red, s.InReach ? "yes" : "no");
-            ImGui.TableNextColumn();
-            using var id = ImRaii.PushId((int)s.Object.EntityId);
-            using (ImRaii.Disabled(plugin.TendChain.Busy || !s.InReach))
+            using var id = ImRaii.PushId((int)b.Object.EntityId);
+            using (ImRaii.Disabled(plugin.TendChain.Busy || !b.InReach))
             {
                 if (ImGui.Button("Tend"))
                 {
-                    plugin.TendChain.TendOne(s.Object);
+                    plugin.TendChain.TendOne(b.Object);
                     plugin.RunLogWindow.IsOpen = true;
                 }
             }
