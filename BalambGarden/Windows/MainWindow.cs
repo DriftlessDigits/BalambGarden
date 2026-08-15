@@ -1,8 +1,11 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using BalambGarden.Chains;
 using BalambGarden.Engine.Census;
+using BalambGarden.Engine.Derivations;
+using BalambGarden.Engine.Ledger;
 using BalambGarden.Game;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Utility.Raii;
@@ -11,23 +14,32 @@ using Dalamud.Interface.Windowing;
 namespace BalambGarden.Windows;
 
 /// <summary>
-/// The gardening desk, v2 minimal: which estate we're standing on, the patch buttons
-/// that do the work, and the beds this estate has actually claimed (claims come from
-/// receipts alone - a bed appears here because we touched it). Recon lives in a
-/// collapsed section for plumbing sessions. Stage 3 rewrites this properly.
+/// The dashboard: the estate roster this ledger has actually visited, current estate
+/// pinned first and open, each one carrying its patch rollups and - expanded - the beds
+/// behind them. Every number states how old it is and what kind of claim it is making;
+/// a bed the map now reads empty says so in prose instead of pretending to be data.
 /// </summary>
 public class MainWindow : Window, IDisposable
 {
     private static readonly Vector4 Green = new(0.4f, 1f, 0.4f, 1f);
     private static readonly Vector4 Red = new(1f, 0.4f, 0.4f, 1f);
+    private static readonly Vector4 Amber = new(1f, 0.78f, 0.35f, 1f);
 
     private readonly Plugin plugin;
 
-    // Cycle launcher state: which patch's panel is open, its editable plan, and whether
-    // the launch button is on its second press (relabel-not-modal, no undo).
-    private ushort? cyclePatchId;
+    // Cycle launcher state: which patch's panel is open and its editable plan.
+    private (EstateKey Estate, int Ordinal)? cyclePatch;
     private ReplantPlan? cyclePlan;
-    private bool cycleArmed;
+
+    // Nickname editing: one estate at a time, written back on deactivation.
+    private EstateKey? renaming;
+    private string renameBuffer = "";
+
+    // Relabel-not-modal arming. One no-undo button may be hot at a time, and any other
+    // click in the window cools it - a press that cannot be undone should never be
+    // waiting patiently for a stray second click minutes later.
+    private string? armedButton;
+    private bool armedTouchedThisFrame;
 
     // 0 = no expectation; the pot chain then reports what the confirmation named instead
     // of judging it.
@@ -38,7 +50,7 @@ public class MainWindow : Window, IDisposable
     {
         SizeConstraints = new WindowSizeConstraints
         {
-            MinimumSize = new Vector2(520, 340),
+            MinimumSize = new Vector2(560, 380),
             MaximumSize = new Vector2(float.MaxValue, float.MaxValue),
         };
 
@@ -55,31 +67,43 @@ public class MainWindow : Window, IDisposable
             return;
         }
 
-        var estate = EstateSensor.Current();
-        DrawHeader(estate);
+        var here = EstateSensor.Current();
+        var now = DateTimeOffset.UtcNow;
+
+        armedTouchedThisFrame = false;
+
         DrawClaimToggle();
-        DrawPatches();
-        DrawPots();
-        DrawClaimedBeds(estate);
+        if (MapSensor.UnreadableCount > 0)
+            ImGui.TextColored(Amber, $"{MapSensor.UnreadableCount} map entries here are unreadable");
+
+        DrawRoster(here, now);
         DrawRecon();
+
+        // Anything else the player clicked disarms the hot button.
+        if (armedButton is not null && !armedTouchedThisFrame
+            && ImGui.IsMouseClicked(ImGuiMouseButton.Left))
+            armedButton = null;
     }
 
-    /// <summary>Estate line. Read-only: visiting is what writes the roster (the pump
-    /// upserts on arrival), so Draw never touches the ledger.</summary>
-    private static void DrawHeader(EstateKey? estate)
+    /// <summary>A press with no undo: the button relabels itself and wants a second click
+    /// (UI ruling 11 - relabel, never a modal). Returns true only on that second click.</summary>
+    private bool ArmedButton(string key, string label, string sureLabel, bool small = false)
     {
-        if (estate is null)
+        var armed = armedButton == key;
+        var text = armed ? sureLabel : label;
+        var pressed = small ? ImGui.SmallButton(text) : ImGui.Button(text);
+        if (!pressed)
+            return false;
+
+        armedTouchedThisFrame = true;
+        if (armed)
         {
-            ImGui.Text("Not at a housing estate.");
-            return;
+            armedButton = null;
+            return true;
         }
 
-        var name = Plugin.Garden.Ledger.Estates.FirstOrDefault(e => e.Key == estate)?.DisplayName
-                   ?? estate.DisplayWardPlot();
-        var unreadable = MapSensor.UnreadableCount > 0
-            ? $" - {MapSensor.UnreadableCount} unreadable"
-            : "";
-        ImGui.Text($"{name}{unreadable}");
+        armedButton = key;
+        return false;
     }
 
     private static void DrawClaimToggle()
@@ -94,17 +118,111 @@ public class MainWindow : Window, IDisposable
         }
     }
 
-    /// <summary>The working patch list: the capped sweep only (Sam's 08-14 ruling), so
-    /// a neighbour's garden never grows a verb here. Recon keeps the full 40y view.</summary>
-    private void DrawPatches()
+    // ------------------------------------------------------------------ roster
+
+    /// <summary>The roster is the ledger's, not the sensor's: an estate is on this list
+    /// because we stood on it once. Current estate first (it is the only one with verbs),
+    /// then most recently visited - the rest are memory, and say how old that memory is.</summary>
+    private void DrawRoster(EstateKey? here, DateTimeOffset now)
     {
-        var patches = ObjectSensor.Patches();
-        if (patches.Count == 0)
+        var estates = Plugin.Garden.Ledger.Estates
+            .OrderByDescending(e => e.Key == here)
+            .ThenByDescending(e => e.LastVisited)
+            .ToList();
+
+        if (estates.Count == 0)
+        {
+            ImGui.Spacing();
+            ImGui.TextDisabled("No estates visited yet - walk onto one and it joins the roster.");
             return;
+        }
 
-        ImGui.Spacing();
-        ImGui.Text("Patches");
+        foreach (var record in estates)
+        {
+            using var id = ImRaii.PushId(record.Key.BindingKey(0));
 
+            var isHere = record.Key == here;
+            var beds = Plugin.Garden.Census.LedgerBeds.Where(b => b.Estate == record.Key).ToList();
+            var staleness = isHere ? "" : $" · seen {WindowFormat.Ago(record.LastVisited, now)}";
+            var flags = isHere ? ImGuiTreeNodeFlags.DefaultOpen : ImGuiTreeNodeFlags.None;
+
+            var open = ImGui.CollapsingHeader(
+                $"{record.DisplayName} - {beds.Count} claimed{staleness}###estate", flags);
+            ImGui.SameLine();
+            DrawRenameControl(record);
+
+            if (!open)
+                continue;
+
+            using var indent = ImRaii.PushIndent();
+            DrawEstate(record, beds, isHere, now);
+        }
+    }
+
+    /// <summary>A nickname is the one piece of an estate the player authors. The pencil
+    /// swaps the header's tail for a field; the write lands when the field loses focus,
+    /// so a half-typed name never becomes the estate's name.</summary>
+    private void DrawRenameControl(EstateRecord record)
+    {
+        if (renaming == record.Key)
+        {
+            ImGui.SetNextItemWidth(160f);
+            ImGui.InputText("##nickname", ref renameBuffer, 48);
+            if (ImGui.IsItemDeactivated())
+            {
+                record.Nickname = renameBuffer.Trim();
+                Plugin.Garden.Save();
+                renaming = null;
+            }
+            return;
+        }
+
+        if (!ImGui.SmallButton("rename"))
+            return;
+        renaming = record.Key;
+        renameBuffer = record.Nickname;
+    }
+
+    private void DrawEstate(
+        EstateRecord record, List<ClaimedBed> beds, bool isHere, DateTimeOffset now)
+    {
+        var rollups = Rollups.ForEstate(
+            record.Key, Plugin.Garden.Census.LedgerBeds, Plugin.Tables, Plugin.Garden.Wilt, now);
+
+        // Objects only exist where the player is standing. Everything else on this row is
+        // memory, and memory never grows a verb.
+        var patches = isHere ? ObjectSensor.Patches() : new List<PatchGroup>();
+
+        if (isHere)
+        {
+            DrawUnclaimedLine(patches, beds);
+            DrawTendAll(patches);
+        }
+
+        foreach (var rollup in rollups)
+            DrawRollupRow(record, rollup, patches, isHere, now);
+
+        // A patch standing right there that the ledger has nothing for at all: it still
+        // needs a row, or a fresh ledger could never be bootstrapped (tending is the only
+        // thing that claims).
+        foreach (var patch in patches.Where(p =>
+                     rollups.All(r => r.IsPots || r.PatchOrdinal != p.Ordinal)))
+            DrawUnclaimedPatchRow(patch);
+
+        if (isHere)
+            DrawPots();
+    }
+
+    private static void DrawUnclaimedLine(List<PatchGroup> patches, List<ClaimedBed> beds)
+    {
+        var sensed = patches.Sum(p => p.Beds.Count);
+        var claimed = beds.Count(b => !b.IsPot);
+        if (sensed > claimed)
+            ImGui.TextColored(Amber, $"{sensed - claimed} unclaimed beds here - tend to claim");
+    }
+
+    private void DrawTendAll(List<PatchGroup> patches)
+    {
         var inReach = patches.Where(p => p.InReach).ToList();
         var totalBeds = inReach.Sum(p => p.Beds.Count);
         using (ImRaii.Disabled(plugin.AnyChainBusy || inReach.Count == 0))
@@ -115,46 +233,285 @@ public class MainWindow : Window, IDisposable
                 plugin.Launched(plugin.TendChain);
             }
         }
+    }
 
-        foreach (var patch in patches)
+    // ------------------------------------------------------------------ rollups
+
+    /// <summary>One patch (or the pot group) as a line: what is claimed, what wants
+    /// attention, and when the next thing ripens - with the marker that says how much
+    /// that window is really claiming. Open it for the beds behind the numbers.</summary>
+    private void DrawRollupRow(
+        EstateRecord record, PatchRollup rollup, List<PatchGroup> patches,
+        bool isHere, DateTimeOffset now)
+    {
+        using var id = ImRaii.PushId($"{(rollup.IsPots ? "pots" : "patch")}{rollup.PatchOrdinal}");
+
+        // Ordinals are stored raw 0-based; +1 only in display strings.
+        var line = rollup.IsPots
+            ? $"Pots: {rollup.Claimed} claimed"
+            : $"Patch {rollup.PatchOrdinal + 1}: {rollup.Claimed}/8 claimed";
+
+        var thirsty = rollup.Due + rollup.Overdue + rollup.Danger;
+        if (thirsty > 0)
+            line += $" · {thirsty} thirsty";
+        if (rollup.Ripe > 0)
+            line += $" · {rollup.Ripe} ripe";
+        if (rollup.Unknown > 0)
+            line += $" · {rollup.Unknown} unknown";
+        if (rollup.NextRipe is { } window)
+            line += $" · ripe ~{WindowFormat.Range(window.Earliest.ToLocalTime(), window.Latest.ToLocalTime())}";
+
+        var open = ImGui.TreeNodeEx($"{line}###row");
+
+        if (rollup.NextRipe is { } marked)
         {
-            using var patchId = ImRaii.PushId(patch.PatchId);
-            using (ImRaii.Disabled(plugin.AnyChainBusy || !patch.InReach))
-            {
-                // Ordinal is raw 0-based; +1 only here, at the surface.
-                if (ImGui.Button($"Water Patch {patch.Ordinal + 1} ({patch.Beds.Count} beds)"))
-                {
-                    plugin.TendChain.TendPatch(patch);
-                    plugin.Launched(plugin.TendChain);
-                }
+            ImGui.SameLine();
+            ImGui.TextDisabled(WindowFormat.Mark(marked.Provenance));
+            if (ImGui.IsItemHovered())
+                ImGui.SetTooltip(WindowFormat.MarkMeaning(marked.Provenance));
+        }
 
-                ImGui.SameLine();
-                if (ImGui.Button(cyclePatchId == patch.PatchId ? "Cycle (close)" : "Cycle..."))
-                {
-                    if (cyclePatchId == patch.PatchId)
-                    {
-                        cyclePatchId = null;
-                    }
-                    else
-                    {
-                        cyclePatchId = patch.PatchId;
-                        cyclePlan = EstateSensor.Current() is { } here
-                            ? ReplantPlan.DefaultFor(here, patch.Ordinal)
-                            : new ReplantPlan();
-                        cycleArmed = false;
-                    }
-                }
+        var patch = rollup.IsPots
+            ? null
+            : patches.FirstOrDefault(p => p.Ordinal == rollup.PatchOrdinal);
+        if (patch is not null)
+            DrawPatchVerbs(record, patch);
+
+        if (open)
+        {
+            DrawBedGrid(record, rollup, patch, isHere, now);
+            ImGui.TreePop();
+        }
+
+        if (patch is not null && cyclePatch == (record.Key, rollup.PatchOrdinal))
+            DrawCyclePanel(patch);
+    }
+
+    private void DrawPatchVerbs(EstateRecord record, PatchGroup patch)
+    {
+        ImGui.SameLine();
+        using (ImRaii.Disabled(plugin.AnyChainBusy || !patch.InReach))
+        {
+            if (ImGui.SmallButton("Water Patch"))
+            {
+                plugin.TendChain.TendPatch(patch);
+                plugin.Launched(plugin.TendChain);
             }
 
             ImGui.SameLine();
-            ImGui.TextColored(
-                patch.InReach ? Green : Red,
-                $"{patch.Distance:F1}y {(patch.InReach ? "- in reach" : "- walk closer")}");
+            var openHere = cyclePatch == (record.Key, patch.Ordinal);
+            if (ImGui.SmallButton(openHere ? "Cycle (close)" : "Cycle..."))
+            {
+                if (openHere)
+                {
+                    cyclePatch = null;
+                }
+                else
+                {
+                    cyclePatch = (record.Key, patch.Ordinal);
+                    cyclePlan = ReplantPlan.DefaultFor(record.Key, patch.Ordinal);
+                }
+            }
+        }
 
-            if (cyclePatchId == patch.PatchId)
-                DrawCyclePanel(patch);
+        if (!patch.InReach)
+        {
+            ImGui.SameLine();
+            ImGui.TextColored(Red, $"{patch.Distance:F1}y - walk closer");
         }
     }
+
+    /// <summary>A patch in front of you with nothing claimed in it. No rollup can exist
+    /// for it (rollups read the ledger), but a verb has to, or nothing here is reachable.</summary>
+    private void DrawUnclaimedPatchRow(PatchGroup patch)
+    {
+        using var id = ImRaii.PushId($"unclaimed{patch.PatchId}");
+        ImGui.TextDisabled($"Patch {patch.Ordinal + 1}: nothing claimed yet ({patch.Beds.Count} beds here)");
+        ImGui.SameLine();
+        using (ImRaii.Disabled(plugin.AnyChainBusy || !patch.InReach))
+        {
+            if (ImGui.SmallButton("Tend to claim"))
+            {
+                plugin.TendChain.TendPatch(patch);
+                plugin.Launched(plugin.TendChain);
+            }
+        }
+
+        if (!patch.InReach)
+        {
+            ImGui.SameLine();
+            ImGui.TextColored(Red, $"{patch.Distance:F1}y - walk closer");
+        }
+    }
+
+    // ------------------------------------------------------------------ bed grid
+
+    private void DrawBedGrid(
+        EstateRecord record, PatchRollup rollup, PatchGroup? patch, bool isHere, DateTimeOffset now)
+    {
+        var beds = Plugin.Garden.Census.LedgerBeds
+            .Where(b => b.Estate == record.Key
+                        && b.IsPot == rollup.IsPots
+                        && b.PatchOrdinal == rollup.PatchOrdinal)
+            .OrderBy(b => b.BedSlot)
+            .ToList();
+        if (beds.Count == 0)
+            return;
+
+        using var table = ImRaii.Table($"beds{rollup.PatchOrdinal}", 6,
+            ImGuiTableFlags.RowBg | ImGuiTableFlags.Borders | ImGuiTableFlags.SizingStretchProp);
+        if (!table.Success)
+            return;
+
+        ImGui.TableSetupColumn("Bed", ImGuiTableColumnFlags.WidthFixed, 120f);
+        ImGui.TableSetupColumn("Plant", ImGuiTableColumnFlags.WidthStretch);
+        ImGui.TableSetupColumn("Stage", ImGuiTableColumnFlags.WidthFixed, 90f);
+        ImGui.TableSetupColumn("Water", ImGuiTableColumnFlags.WidthFixed, 110f);
+        ImGui.TableSetupColumn("Ripe", ImGuiTableColumnFlags.WidthFixed, 150f);
+        ImGui.TableSetupColumn("##verbs", ImGuiTableColumnFlags.WidthFixed, 60f);
+        ImGui.TableHeadersRow();
+
+        foreach (var bed in beds)
+        {
+            using var id = ImRaii.PushId(bed.BedSlot);
+            ImGui.TableNextRow();
+
+            if (ReadsEmptyNow(bed, isHere))
+            {
+                DrawDriftRow(bed);
+                continue;
+            }
+
+            var bedObject = patch?.Beds.FirstOrDefault(b => b.Gimmick.BedIndex == bed.BedSlot);
+            var latest = bed.Latest;
+            var crop = latest is null ? null : Plugin.Tables.CropBySpeciesIndex(latest.SpeciesIndex);
+
+            ImGui.TableNextColumn();
+            ImGui.Text(bed.IsPot ? $"pot key {bed.MapKey}" : $"Bed {bed.BedSlot + 1}");
+            if (bedObject is { InReach: true })
+            {
+                ImGui.SameLine();
+                ImGui.TextColored(Green, "in reach");
+            }
+
+            ImGui.TableNextColumn();
+            ImGui.Text(latest is null ? "?" : Plugin.Tables.SpeciesName(latest.SpeciesIndex));
+
+            // Staleness rides beside the numbers it qualifies: a stage read two days ago
+            // is a different sentence from the same stage read a minute ago.
+            ImGui.TableNextColumn();
+            ImGui.Text(latest is null ? "?" : latest.Stage.ToString());
+            if (latest is not null)
+            {
+                ImGui.SameLine();
+                ImGui.TextDisabled(WindowFormat.Ago(latest.At, now));
+            }
+
+            ImGui.TableNextColumn();
+            DrawWaterCell(bed, crop, now);
+
+            ImGui.TableNextColumn();
+            DrawRipeCell(bed, crop, latest, now);
+
+            ImGui.TableNextColumn();
+            DrawBedVerbs(bedObject);
+        }
+    }
+
+    /// <summary>State as text plus a dot in the state's colour - the text carries the
+    /// claim on its own, the dot is only there to find it fast.</summary>
+    private static void DrawWaterCell(ClaimedBed bed, Engine.Domain.Crop? crop, DateTimeOffset now)
+    {
+        // Pot flowers have never been seen to wilt (08-15: every flowerpot seed in the
+        // third-party table carries no wilt time, and our own sunflower went seed-to-ripe
+        // unwatered). Whether a normal CROP in a pot wilts is still unknown - a lab is
+        // running - so this cell prints exactly what the Engine reports and asserts
+        // nothing more.
+        var state = bed.IsPot ? WaterState.NotApplicable
+            : crop is null ? WaterState.Unknown
+            : Plugin.Garden.Wilt.StateFor(bed, crop, now);
+
+        var color = state switch
+        {
+            WaterState.Watered => Green,
+            WaterState.Due => Amber,
+            WaterState.Overdue => Amber,
+            WaterState.Danger => Red,
+            _ => new Vector4(0.6f, 0.6f, 0.6f, 1f),
+        };
+
+        ImGui.TextColored(color, "●");
+        ImGui.SameLine();
+        ImGui.Text(WindowFormat.Water(state));
+    }
+
+    /// <summary>A bed at stage 4 IS ripe - it is a sighting, not a forecast - so it says
+    /// "ripe now" with the age of that sighting, and carries no provenance marker: there
+    /// is no claim about the future left to qualify.</summary>
+    private static void DrawRipeCell(
+        ClaimedBed bed, Engine.Domain.Crop? crop, Observation? latest, DateTimeOffset now)
+    {
+        if (latest?.Stage == 4)
+        {
+            ImGui.Text("ripe now");
+            ImGui.SameLine();
+            ImGui.TextDisabled(WindowFormat.Ago(latest.At, now));
+            return;
+        }
+
+        if (crop is null || StageModel.RipeWindow(bed.Ring, crop.GrowHours) is not { } window)
+        {
+            ImGui.TextDisabled("?");
+            return;
+        }
+
+        ImGui.Text(WindowFormat.Range(window.Earliest.ToLocalTime(), window.Latest.ToLocalTime()));
+        ImGui.SameLine();
+        ImGui.TextDisabled(WindowFormat.Mark(window.Provenance));
+        if (ImGui.IsItemHovered())
+            ImGui.SetTooltip(WindowFormat.MarkMeaning(window.Provenance));
+    }
+
+    private void DrawBedVerbs(BedObject? bedObject)
+    {
+        using (ImRaii.Disabled(plugin.AnyChainBusy || bedObject is not { InReach: true }))
+        {
+            if (ImGui.SmallButton("Tend") && bedObject is { InReach: true } target)
+            {
+                plugin.TendChain.TendOne(target);
+                plugin.Launched(plugin.TendChain);
+            }
+        }
+    }
+
+    /// <summary>Drift: the ledger remembers a plant here, the map read a moment ago says
+    /// the bed is empty. That is a sentence about the world, not a data point - so it
+    /// replaces the row rather than corrupting it, and the only button is the honest one.</summary>
+    private static void DrawDriftRow(ClaimedBed bed)
+    {
+        ImGui.TableNextColumn();
+        ImGui.Text($"Bed {bed.BedSlot + 1}");
+        ImGui.TableNextColumn();
+        ImGui.TextColored(Amber, $"Bed {bed.BedSlot + 1} reads empty now - replanted without me?");
+        ImGui.TableNextColumn();
+        ImGui.TableNextColumn();
+        ImGui.TableNextColumn();
+        ImGui.TableNextColumn();
+    }
+
+    /// <summary>True only when a fresh read of THIS estate's map shows the slot vacant.
+    /// Away from the estate there is no read at all, and "I cannot see it" is never
+    /// evidence that something is gone.</summary>
+    private static bool ReadsEmptyNow(ClaimedBed bed, bool isHere)
+    {
+        if (!isHere || bed.IsPot)
+            return false;
+        if (!CensusPump.LastOutdoor.TryGetValue(bed.MapKey, out var readings))
+            return false;
+        return readings.FirstOrDefault(r => r.Slot == bed.BedSlot) is { Occupied: false };
+    }
+
+    // ------------------------------------------------------------------ cycle
 
     /// <summary>
     /// The cycle launcher: what will be replanted where, and a pre-flight line re-checked
@@ -209,33 +566,28 @@ public class MainWindow : Window, IDisposable
         if (refusal is not null)
         {
             ImGui.TextColored(Red, refusal);
-            cycleArmed = false;
+            if (armedButton == "cycle")
+                armedButton = null;
         }
 
         using (ImRaii.Disabled(plugin.AnyChainBusy || refusal is not null))
         {
-            var label = cycleArmed
-                ? $"Run cycle: {plan.Seeds.Count} beds - sure?"
-                : $"Run cycle ({plan.Seeds.Count} beds)";
-            if (ImGui.Button(label))
+            if (ArmedButton("cycle",
+                    $"Run cycle ({plan.Seeds.Count} beds)",
+                    $"Run cycle: {plan.Seeds.Count} beds - sure?"))
             {
-                if (cycleArmed)
-                {
-                    plugin.CycleChain.Run(patch, plan);
-                    plugin.Launched(plugin.CycleChain);
-                    cycleArmed = false;
-                    cyclePatchId = null;
-                }
-                else
-                {
-                    cycleArmed = true;
-                }
+                plugin.CycleChain.Run(patch, plan);
+                plugin.Launched(plugin.CycleChain);
+                cyclePatch = null;
             }
         }
     }
 
-    /// <summary>Indoor pots. Watering a pot is the PIGMENT mechanic, not a drink -
-    /// flowerpots cannot wilt (08-15) - so the verb says so on its face.</summary>
+    // ------------------------------------------------------------------ pots
+
+    /// <summary>Indoor pots in front of you. Watering a pot is the PIGMENT mechanic, not
+    /// a drink - pot flowers have never been seen to wilt (08-15) - so the verb says so
+    /// on its face.</summary>
     private void DrawPots()
     {
         if (!EstateSensor.IsInside())
@@ -246,7 +598,7 @@ public class MainWindow : Window, IDisposable
             return;
 
         ImGui.Spacing();
-        ImGui.Text($"Pots ({pots.Count} nearby)");
+        ImGui.Text($"Pots in reach ({pots.Count} nearby)");
 
         DrawPotSeedPicker();
 
@@ -262,7 +614,7 @@ public class MainWindow : Window, IDisposable
                 }
 
                 if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
-                    ImGui.SetTooltip("Applies pigment. Flowerpots never wilt - this is colour, not water.");
+                    ImGui.SetTooltip("Applies pigment. Pot flowers never wilt - this is colour, not water.");
 
                 ImGui.SameLine();
                 if (ImGui.Button("Harvest"))
@@ -320,80 +672,7 @@ public class MainWindow : Window, IDisposable
         return inventory == null ? 0 : inventory->GetInventoryItemCount(itemId);
     }
 
-    /// <summary>What this estate has claimed. Water reads "?" whenever the crop or the
-    /// tend clock is missing - an unknown state is stated, never guessed - and "-" for
-    /// pots, which cannot wilt at all.</summary>
-    private static void DrawClaimedBeds(EstateKey? estate)
-    {
-        if (estate is null)
-            return;
-
-        var beds = Plugin.Garden.Census.LedgerBeds
-            .Where(b => b.Estate == estate)
-            .OrderBy(b => b.IsPot).ThenBy(b => b.PatchOrdinal).ThenBy(b => b.BedSlot)
-            .ToList();
-        if (beds.Count == 0)
-        {
-            ImGui.Spacing();
-            ImGui.TextDisabled("No beds claimed here yet - tend one and it appears.");
-            return;
-        }
-
-        ImGui.Spacing();
-        if (!ImGui.CollapsingHeader($"Beds ({beds.Count})###claimed", ImGuiTreeNodeFlags.DefaultOpen))
-            return;
-
-        using var table = ImRaii.Table("claimed", 5,
-            ImGuiTableFlags.RowBg | ImGuiTableFlags.Borders | ImGuiTableFlags.ScrollY,
-            new Vector2(0, 200));
-        if (!table.Success)
-            return;
-
-        ImGui.TableSetupColumn("Bed", ImGuiTableColumnFlags.WidthStretch);
-        ImGui.TableSetupColumn("Plant", ImGuiTableColumnFlags.WidthStretch);
-        ImGui.TableSetupColumn("Stage", ImGuiTableColumnFlags.WidthFixed, 55f);
-        ImGui.TableSetupColumn("Water", ImGuiTableColumnFlags.WidthFixed, 75f);
-        ImGui.TableSetupColumn("Last seen", ImGuiTableColumnFlags.WidthFixed, 85f);
-        ImGui.TableSetupScrollFreeze(0, 1);
-        ImGui.TableHeadersRow();
-
-        var now = DateTimeOffset.UtcNow;
-        foreach (var bed in beds)
-        {
-            var latest = bed.Latest;
-            ImGui.TableNextRow();
-            ImGui.TableNextColumn();
-            // Ordinals and slots are stored raw 0-based; +1 only in these display strings.
-            ImGui.Text(bed.IsPot
-                ? $"pot key {bed.MapKey}"
-                : $"Patch {bed.PatchOrdinal + 1} bed {bed.BedSlot + 1}");
-            ImGui.TableNextColumn();
-            ImGui.Text(latest is null ? "?" : Plugin.Tables.SpeciesName(latest.SpeciesIndex));
-            ImGui.TableNextColumn();
-            ImGui.Text(latest is null ? "?" : latest.Stage.ToString());
-            ImGui.TableNextColumn();
-            var crop = latest is null ? null : Plugin.Tables.CropBySpeciesIndex(latest.SpeciesIndex);
-            // Flowerpots cannot wilt (08-15 finding: third-party table shows every pot seed
-            // at 1-day grow with no wilt time, plus our own unwatered sunflower receipt) -
-            // indoor watering is the pigment mechanic, cosmetic only. "-" says the column
-            // does not apply here; "?" would claim we merely don't know.
-            ImGui.Text(bed.IsPot ? "-"
-                : crop is null ? "?"
-                : Plugin.Garden.Wilt.StateFor(bed, crop, now).ToString());
-            ImGui.TableNextColumn();
-            ImGui.Text(latest is null ? "?" : Ago(latest.At));
-        }
-    }
-
-    private static string Ago(DateTimeOffset at)
-    {
-        var span = DateTimeOffset.UtcNow - at;
-        // Clock skew clamps to "just now", never a negative age (Scrooge ruling).
-        return span.TotalMinutes < 1 ? "just now"
-            : span.TotalHours < 1 ? $"{(int)span.TotalMinutes}m ago"
-            : span.TotalDays < 1 ? $"{(int)span.TotalHours}h ago"
-            : $"{(int)span.TotalDays}d ago";
-    }
+    // ------------------------------------------------------------------ recon
 
     private void DrawRecon()
     {
