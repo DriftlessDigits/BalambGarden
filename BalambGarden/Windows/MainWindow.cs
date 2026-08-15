@@ -132,7 +132,15 @@ public class MainWindow : Window, IDisposable
         {
             if (bar.Success)
             {
+                // A tab means "my garden", not "somewhere I once stood" (Sam's ruling
+                // 08-15, emphatic). Visits are still recorded underneath - the tab
+                // appears the moment a first claim lands here. The one exception is the
+                // estate we are standing AT: its tab must exist unclaimed, because it is
+                // where the act-to-claim invitations live; walk away without claiming
+                // and it vanishes behind you.
                 foreach (var record in estates
+                             .Where(e => e.Key == here
+                                 || Plugin.Garden.Census.LedgerBeds.Any(b => b.Estate == e.Key))
                              .OrderByDescending(e => e.Key == here)
                              .ThenByDescending(e => e.LastVisited))
                     DrawEstateTab(record, here, now);
