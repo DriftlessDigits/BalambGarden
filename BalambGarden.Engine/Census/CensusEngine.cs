@@ -10,19 +10,20 @@ public sealed class CensusEngine(LedgerStore ledger)
 
     public IReadOnlyList<ClaimedBed> LedgerBeds => ledger.Beds;
 
-    public void Bind(EstateKey estate, int patchOrdinal, int mapKey)
-        => ledger.Bindings[estate.BindingKey(patchOrdinal)] = mapKey;
+    public void Bind(EstateKey estate, int patchOrdinal, int mapKey, bool isPot = false)
+        => ledger.Bindings[estate.BindingKey(patchOrdinal, isPot)] = mapKey;
 
-    public int? BoundKey(EstateKey estate, int patchOrdinal)
-        => ledger.Bindings.TryGetValue(estate.BindingKey(patchOrdinal), out var k) ? k : null;
+    public int? BoundKey(EstateKey estate, int patchOrdinal, bool isPot = false)
+        => ledger.Bindings.TryGetValue(estate.BindingKey(patchOrdinal, isPot), out var k) ? k : null;
 
     public ClaimedBed? OnReceipt(ReceiptEvent e)
     {
-        if (BoundKey(e.Estate, e.PatchOrdinal) is not { } mapKey)
+        if (BoundKey(e.Estate, e.PatchOrdinal, e.IsPot) is not { } mapKey)
             return null;
 
         var bed = ledger.Beds.FirstOrDefault(b =>
-            b.Estate == e.Estate && b.PatchOrdinal == e.PatchOrdinal && b.BedSlot == e.BedSlot);
+            b.Estate == e.Estate && b.IsPot == e.IsPot
+            && b.PatchOrdinal == e.PatchOrdinal && b.BedSlot == e.BedSlot);
 
         if (bed is null)
         {
@@ -43,9 +44,12 @@ public sealed class CensusEngine(LedgerStore ledger)
     }
 
     /// <summary>Map sightings only ever land on already-claimed beds. Ward-visible
-    /// unclaimed data is ephemeral by design (Sam's distance ruling, 08-12).</summary>
+    /// unclaimed data is ephemeral by design (Sam's distance ruling, 08-12). isPot keeps
+    /// an indoor read off an outdoor bed that happens to carry the same map key - one
+    /// estate key now spans both DataMaps.</summary>
     public int OnMapSighting(
-        EstateKey estate, int mapKey, IReadOnlyList<Sensing.BedReading> beds, DateTimeOffset at)
+        EstateKey estate, int mapKey, IReadOnlyList<Sensing.BedReading> beds, DateTimeOffset at,
+        bool isPot = false)
     {
         var count = 0;
         foreach (var reading in beds)
@@ -53,7 +57,8 @@ public sealed class CensusEngine(LedgerStore ledger)
             if (!reading.Occupied)
                 continue;
             var bed = ledger.Beds.FirstOrDefault(b =>
-                b.Estate == estate && b.MapKey == mapKey && b.BedSlot == reading.Slot);
+                b.Estate == estate && b.IsPot == isPot
+                && b.MapKey == mapKey && b.BedSlot == reading.Slot);
             if (bed is null)
                 continue;
             bed.Observe(new Observation(at, reading.SpeciesIndex, reading.Stage, ObservationSource.MapSighting));

@@ -15,6 +15,7 @@ internal static class CensusPump
 {
     private static DateTime nextTickUtc = DateTime.MinValue;
     private static EstateKey? announcedEstate;
+    private static bool announcedInside;
 
     /// <summary>Session-only join evidence: every (slot, species) a receipt has shown at
     /// an unbound patch. One receipt rarely narrows a small estate's shortlist to one key
@@ -59,34 +60,47 @@ internal static class CensusPump
             return;
         }
 
-        // First tick at a new estate: visit + sight + (maybe) the one chat line.
-        if (announcedEstate != estate)
+        // The front door no longer changes the estate key (08-15: one plot, one record), so
+        // the inside/outside flip is its own sighting trigger - the two DataMaps are read by
+        // different code paths and neither refreshes the other.
+        var inside = EstateSensor.IsInside();
+        if (announcedEstate == estate)
         {
-            SightNow();
-            // The map can populate a beat after zone-in; an empty read means try
-            // again next tick rather than announcing a garden we haven't seen.
-            if (LastOutdoor.Count == 0 && LastIndoor.Count == 0
-                && Plugin.Garden.Ledger.Beds.Any(b => b.Estate == estate))
-                return;
-
-            announcedEstate = estate;
-            // A new visit starts with no proposal evidence: a garden can be replanted
-            // between visits, and stale species would argue against the truth. Held
-            // receipts go with it - a receipt that outlived its visit has no identity
-            // to resolve to.
-            joinEvidence.Clear();
-            pendingReceipts.Clear();
-            Plugin.Garden.Ledger.UpsertEstate(estate, DateTimeOffset.UtcNow);
-            Plugin.Garden.Save();
-
-            if (Plugin.Configuration.NudgeEnabled)
+            if (announcedInside != inside)
             {
-                var rollups = Rollups.ForEstate(
-                    estate, Plugin.Garden.Census.LedgerBeds, Plugin.Tables,
-                    Plugin.Garden.Wilt, DateTimeOffset.UtcNow);
-                if (Rollups.ArrivalNudge(estate, rollups, Plugin.Configuration.NudgeLabel) is { } line)
-                    Svc.Chat.Print(line);
+                announcedInside = inside;
+                SightNow();
             }
+            return;
+        }
+
+        // First tick at a new estate: visit + sight + (maybe) the one chat line.
+        SightNow();
+        // The map can populate a beat after zone-in; an empty read means try
+        // again next tick rather than announcing a garden we haven't seen. Only the
+        // side we are standing on can answer for itself.
+        if ((inside ? LastIndoor.Count : LastOutdoor.Count) == 0
+            && Plugin.Garden.Ledger.Beds.Any(b => b.Estate == estate && b.IsPot == inside))
+            return;
+
+        announcedEstate = estate;
+        announcedInside = inside;
+        // A new visit starts with no proposal evidence: a garden can be replanted
+        // between visits, and stale species would argue against the truth. Held
+        // receipts go with it - a receipt that outlived its visit has no identity
+        // to resolve to.
+        joinEvidence.Clear();
+        pendingReceipts.Clear();
+        Plugin.Garden.Ledger.UpsertEstate(estate, DateTimeOffset.UtcNow);
+        Plugin.Garden.Save();
+
+        if (Plugin.Configuration.NudgeEnabled)
+        {
+            var rollups = Rollups.ForEstate(
+                estate, Plugin.Garden.Census.LedgerBeds, Plugin.Tables,
+                Plugin.Garden.Wilt, DateTimeOffset.UtcNow);
+            if (Rollups.ArrivalNudge(estate, rollups, Plugin.Configuration.NudgeLabel) is { } line)
+                Svc.Chat.Print(line);
         }
     }
 
@@ -103,7 +117,8 @@ internal static class CensusPump
             foreach (var (key, pot) in LastIndoor)
             {
                 Plugin.Garden.Census.OnMapSighting(estate, key,
-                    [new BedReading(0, pot.SpeciesIndex, pot.Stage, pot.Extra, pot.Occupied)], now);
+                    [new BedReading(0, pot.SpeciesIndex, pot.Stage, pot.Extra, pot.Occupied)], now,
+                    isPot: true);
             }
         }
         else
@@ -252,8 +267,10 @@ internal static class CensusPump
         if (key is null)
             return $"pot with {plantName} is ambiguous (several or none in map) - unbound";
 
-        // A pot is its own one-bed patch: ordinal = map key, slot 0.
-        Plugin.Garden.Census.Bind(estate, key.Value, key.Value);
+        // A pot is its own one-bed patch: ordinal = map key, slot 0. The pot namespace keeps
+        // that ordinal off the outdoor patch ordinals now that indoors and outdoors share
+        // one estate key (the 08-13 probe saw an outdoor map key of 2).
+        Plugin.Garden.Census.Bind(estate, key.Value, key.Value, isPot: true);
         var stage = LastIndoor.TryGetValue(key.Value, out var pot) ? pot.Stage : (byte)0;
         var receipt = new ReceiptEvent(
             estate, key.Value, 0, verb, species, stage, DateTimeOffset.UtcNow, IsPot: true);

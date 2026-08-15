@@ -47,7 +47,19 @@ public sealed class GardenService
             }
         }
 
-        return new GardenService(ledgerPath, ledger, trailPath);
+        var service = new GardenService(ledgerPath, ledger, trailPath);
+
+        // Ledgers written before 08-15 hold one physical plot as two records (the house
+        // interior had its own territory id). Idempotent: a clean file reports nothing.
+        var report = LedgerMigration.NormalizeEstates(ledger);
+        foreach (var note in report.Notes)
+            Plugin.Log.Information($"[Garden] ledger migration: {note}");
+        foreach (var warning in report.Warnings)
+            Plugin.Log.Warning($"[Garden] ledger migration COULD NOT MERGE - {warning}");
+        if (report.Changed)
+            service.Save();
+
+        return service;
     }
 
     public void Save()
