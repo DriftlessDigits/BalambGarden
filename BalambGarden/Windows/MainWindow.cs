@@ -38,6 +38,13 @@ public class MainWindow : Window, IDisposable
     private static readonly Vector4 Amber = new(1f, 0.78f, 0.35f, 1f);
     private static readonly Vector4 Dim = new(0.55f, 0.55f, 0.55f, 1f);
 
+    /// <summary>The one sentence every untracked, sensor-only surface says - word for word,
+    /// everywhere it applies, so it is learned once and then recognised. Presence and
+    /// tracking are two different signals: "in reach" means you can act on this right now
+    /// and never means it is yours, and a row with no ledger behind it carries no data at
+    /// all, only this invitation.</summary>
+    private const string UntrackedTag = "not tracked - act on it through Balamb and it joins the ledger";
+
     // Strip geometry. Cells are one text line tall so a strip sits on the row it labels.
     private const float CellGap = 3f;
     private const float WaterBarHeight = 2.5f;
@@ -353,6 +360,9 @@ public class MainWindow : Window, IDisposable
             DrawUnclaimedPatchRow(patch);
     }
 
+    /// <summary>Tracked pots first, from the ledger, and they render whether or not you are
+    /// standing here - a claimed pot is memory like any other bed. The block under them is
+    /// pure sensor: what is within arm's reach right now.</summary>
     private void DrawIndoorSection(
         EstateRecord record, List<PatchRollup> rollups, List<PotObject> pots,
         bool isHere, DateTimeOffset now)
@@ -360,15 +370,28 @@ public class MainWindow : Window, IDisposable
         foreach (var rollup in rollups)
             DrawRollupRow(record, rollup, [], isHere, now);
 
-        DrawPots(pots);
+        // How many planted pots in this room no ledger row claims. Counted off the MAP, not
+        // off the pot objects: a pot object cannot be matched back to a map key (that is the
+        // whole reason the chain has to diff for it), but the map knows exactly which keys
+        // are occupied and the ledger knows exactly which ones are claimed. It goes quiet
+        // the moment the last one binds, which is how a bind becomes visible here.
+        var untracked = isHere && EstateSensor.IsInside()
+            ? CensusPump.LastIndoor.Keys.Count(key => !Plugin.Garden.Census.LedgerBeds.Any(
+                b => b.Estate == record.Key && b.IsPot && b.MapKey == key))
+            : 0;
+
+        DrawPots(pots, untracked);
     }
 
     private static void DrawUnclaimedLine(List<PatchGroup> patches, List<ClaimedBed> beds)
     {
         var sensed = patches.Sum(p => p.Beds.Count);
         var claimed = beds.Count(b => !b.IsPot);
-        if (sensed > claimed)
-            ImGui.TextColored(Amber, $"{sensed - claimed} unclaimed beds here - tend to claim");
+        if (sensed <= claimed)
+            return;
+
+        ImGui.TextColored(Amber, $"{sensed - claimed} beds here are untracked");
+        ImGui.TextDisabled(UntrackedTag);
     }
 
     /// <summary>Tend All, or - when nothing is in reach - the sentence that says what to
@@ -584,7 +607,7 @@ public class MainWindow : Window, IDisposable
         StripCell cell, ClaimedBed? bed, bool drifted, DateTimeOffset now)
     {
         if (bed is null)
-            return $"Bed {cell.Slot + 1}: not claimed - tend it and it joins the ledger";
+            return $"Bed {cell.Slot + 1}: {UntrackedTag}";
         if (drifted)
             return $"Bed {cell.Slot + 1}: reads empty now - replanted without me?";
 
@@ -658,13 +681,13 @@ public class MainWindow : Window, IDisposable
         using var id = ImRaii.PushId($"unclaimed{patch.PatchId}");
 
         ImGui.Spacing();
-        ImGui.TextDisabled(
-            $"Patch {patch.Ordinal + 1} · nothing claimed yet · {patch.Beds.Count} beds here");
+        ImGui.TextDisabled($"Patch {patch.Ordinal + 1} · {patch.Beds.Count} beds here");
+        ImGui.TextDisabled(UntrackedTag);
 
         using var indent = ImRaii.PushIndent();
         if (!patch.InReach)
         {
-            ImGui.TextDisabled($"{patch.Distance:F1}y away - walk closer to claim it");
+            ImGui.TextDisabled($"{patch.Distance:F1}y away - walk closer");
             return;
         }
 
@@ -1015,14 +1038,23 @@ public class MainWindow : Window, IDisposable
 
     /// <summary>Indoor pots in front of you. Watering a pot is the PIGMENT mechanic, not
     /// a drink - pot flowers have never been seen to wilt (08-15) - so the verb says so
-    /// on its face. A pot out of reach is a dim line, not a row of dead buttons.</summary>
-    private void DrawPots(List<PotObject> pots)
+    /// on its face. A pot out of reach is a dim line, not a row of dead buttons.
+    ///
+    /// <para>These rows are presence, never tracking: they exist because you are standing
+    /// near them. <paramref name="untracked"/> is how many planted pots in this room the
+    /// ledger has no row for, and while there is one the block carries the same invitation
+    /// every other untracked surface carries. Which of these pots it is cannot be said from
+    /// here - a pot object has no map key on it - so the note is about the room, and
+    /// planting or harvesting one through the chain is what settles it.</para></summary>
+    private void DrawPots(List<PotObject> pots, int untracked)
     {
         if (pots.Count == 0)
             return;
 
         ImGui.Spacing();
         ImGui.Text($"Pots in reach ({pots.Count} nearby)");
+        if (untracked > 0)
+            ImGui.TextDisabled(UntrackedTag);
 
         using var indent = ImRaii.PushIndent();
         DrawPotSeedPicker();

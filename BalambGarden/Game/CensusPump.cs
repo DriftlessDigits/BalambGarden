@@ -252,7 +252,14 @@ internal static class CensusPump
             .Select(p => p.PatchId)
             .ToList();
 
-    internal static string OnPotReceipt(ReceiptVerb verb, string plantName)
+    /// <summary>
+    /// A pot receipt. <paramref name="diffKey"/> is the pot the chain's own map diff named -
+    /// one action, one changed entry (see PotDiff) - and when it is present it decides the
+    /// identity outright. Species uniqueness is the fallback for receipts that no chain
+    /// action bracketed; it still works for a lone plant of its kind and cannot work for
+    /// twins, which is the whole reason the diff exists.
+    /// </summary>
+    internal static string OnPotReceipt(ReceiptVerb verb, string plantName, int? diffKey = null)
     {
         var estate = EstateSensor.Current();
         if (estate is null)
@@ -260,20 +267,37 @@ internal static class CensusPump
 
         SightNow();
         var species = Plugin.Tables.SpeciesIndexByName(plantName) ?? 0;
-        if (species == 0)
-            return $"pot plant '{plantName}' unknown - cannot bind, not recorded";
 
-        var key = PotBind.UniqueSpeciesKey(species, LastIndoor);
-        if (key is null)
-            return $"pot with {plantName} is ambiguous (several or none in map) - unbound";
+        int key;
+        if (diffKey is { } diffed)
+        {
+            key = diffed;
+            // The name-variant gap (a ripe pot's Talk says "Red Sunflowers", the index says
+            // "Garden Sunflower") stops a NAME resolving, but it has no say over identity
+            // here - the diff already named the pot. Fall back to what the map itself says
+            // is growing there, and record 0 (unknown) rather than guess when it says
+            // nothing, which is what an emptied pot correctly says after a harvest.
+            if (species == 0)
+                species = LastIndoor.TryGetValue(key, out var sighted) ? sighted.SpeciesIndex : (ushort)0;
+            Plugin.Log.Information(
+                $"[Census] pot bound by map diff: key {key} at {estate.DisplayLabel()}");
+        }
+        else
+        {
+            if (species == 0)
+                return $"pot plant '{plantName}' unknown - cannot bind, not recorded";
+            if (PotBind.UniqueSpeciesKey(species, LastIndoor) is not { } unique)
+                return $"pot with {plantName} is ambiguous (several or none in map) - unbound";
+            key = unique;
+        }
 
         // A pot is its own one-bed patch: ordinal = map key, slot 0. The pot namespace keeps
         // that ordinal off the outdoor patch ordinals now that indoors and outdoors share
         // one estate key (the 08-13 probe saw an outdoor map key of 2).
-        Plugin.Garden.Census.Bind(estate, key.Value, key.Value, isPot: true);
-        var stage = LastIndoor.TryGetValue(key.Value, out var pot) ? pot.Stage : (byte)0;
+        Plugin.Garden.Census.Bind(estate, key, key, isPot: true);
+        var stage = LastIndoor.TryGetValue(key, out var pot) ? pot.Stage : (byte)0;
         var receipt = new ReceiptEvent(
-            estate, key.Value, 0, verb, species, stage, DateTimeOffset.UtcNow, IsPot: true);
+            estate, key, 0, verb, species, stage, DateTimeOffset.UtcNow, IsPot: true);
         return Deliver(receipt, $"pot (key {key}): {DisplayPlant(plantName)}");
     }
 
