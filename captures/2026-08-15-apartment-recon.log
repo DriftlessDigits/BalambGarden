@@ -1,0 +1,49 @@
+# Apartment recon - day 0 - 2026-08-15 16:25 (Sam's new apartment, bought for science)
+# Fired via the v2 single Recon capture button.
+
+2026-08-15 16:25:48.869  [Probe] Housing: territory=999 ward=7 plot=-128 room=29 inside=True
+2026-08-15 16:25:48.872  [Probe] object entity=40006C31 index=449 name='Oasis Flowerpot' pos=<-1.5, -0.0, -1.3> dist=2.61y
+2026-08-15 16:25:48.872  [Probe] object entity=40006C34 index=450 name='Oasis Flowerpot' pos=<1.5, 0.0, -1.5> dist=2.77y
+2026-08-15 16:25:48.872  [Probe] dumped 2 objects (220 bytes each)
+
+## FINDINGS
+# F1. APARTMENT SENTINEL: plot = -128 indoors. territory=999 (apartment interior
+#     template; district identity NOT derivable from it), ward=7 raw, room=29.
+# F2. No DataMap decode lines: both pots empty - pot objects are dumb props and the
+#     DataMap only carries planted entries (consistent with 08-13 finding).
+# F3. GUARD GAP FOUND: no [Estate] warning fired - the sensor's plot<0 early return
+#     swallowed the apartment SILENTLY before the loud IsApartment refusal (and its
+#     HouseId hex print) could run. The intended fail-closed-loudly path was
+#     unreachable for apartments.
+#
+## FIXES APPLIED SAME DAY (pending build):
+#  - ReconProbe housing dump now always prints raw HouseId + decoded fields indoors.
+#  - EstateSensor routes plot==-128 indoors to the LOUD refusal before the silent
+#    plot<0 return.
+## RE-FIRE 16:30 (post-fix build) - THE HOUSEID RECEIPT:
+2026-08-15 16:28:06  [Estate] WRN apartment refusal fired correctly (HouseId 0x003703D307470080)
+2026-08-15 16:30:22  [Probe] Housing: territory=999 ward=7 plot=-128 room=29 inside=True
+2026-08-15 16:30:22  [Probe] HouseId: 0x003703D307470080 territory=979 world=55 ward=7 plot=0 room=29 isApartment=True apartmentDivision=0 isWorkshop=False
+#
+# F4. HouseId.TerritoryTypeId=979 for the apartment != interior template 999 - it names
+#     the apartment BUILDING's zone (district-unique). Packing self-confirms:
+#     world=0x0037(55), territory=0x03D3(979), Data2=0x0747 -> room=29(>>6), ward=7(&0x3F),
+#     low byte 0x80 = apartment flag. Apartment estate identity is designable on receipts:
+#     (979, ward 7, division 0, room 29).
+# F5. Guard-gap fix verified live: plot==-128 now reaches the loud refusal.
+#
+## PLANTING 16:34-16:35 (watcher on): 2x Allagan Melon planted (potting soil), flow
+#  shape IDENTICAL to house pots. NEW INTEL - the slot-fill picker is NOT opaque:
+#  ContextIconMenu fires per slot with the chosen item NAME at AtkValues[13]
+#  ('Potting Soil' / 'Allagan Melon Seeds'; AtkValues[5] int = -1). The morning
+#  capture missed this addon entirely. Seam for future full-auto / live observation
+#  of the hybrid fill. (Post-bench design pile.)
+#
+## POST-PLANT RECON 16:35:22:
+#  key=0 indoor decode: Allagan Melon (0x5E) stage=01 extra=00 recognized=True
+#  key=1 indoor decode: Allagan Melon (0x5E) stage=01 extra=00 recognized=True
+# F6. Apartment pot keys start at 0 (house pots: 129/180/181) - each DataMap numbers
+#     its own. Both melons day-0 stage 1. More normal-crop-in-pot evidence (0x5E).
+#
+## NEXT: FC room capture (same button, in the private chamber) -> expect house-shaped
+#  HouseId with RoomNumber > 0 -> then design apartment+room estate identity together.

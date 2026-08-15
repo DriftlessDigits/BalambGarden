@@ -1,0 +1,53 @@
+# Plant-flow capture - 2026-08-15 (Task 9 bench recon)
+# Source: dalamud.log [PlantRecon] watcher, Sam's indoor flowerpot (own house, Ward 12 Plot 33 interior)
+# Flow: harvest ripe Red Sunflowers -> plant daisy (1 potting soil + 1 daisy seed), NOT watered.
+# Times local (UTC-05:00). Non-BalambGarden log noise stripped; AtkValue text verbatim.
+
+2026-08-15 09:02:14.634  [PlantRecon] watching plant-flow addons
+
+## HARVEST (ripe pot)
+2026-08-15 09:04:34.173  --- Talk (12 values) ---
+2026-08-15 09:04:34.174  Talk AtkValues[0] = 'Red Sunflowers
+These flowers are in bloom.'
+2026-08-15 09:04:36.743  --- SelectString (9 values) ---
+2026-08-15 09:04:36.743  SelectString AtkValues[7] = 'Harvest Crop'
+2026-08-15 09:04:36.743  SelectString AtkValues[8] = 'Quit'
+# No SelectYesno and no completion Talk after 'Harvest Crop' - harvest executes on
+# menu selection; watcher saw no further addon events for it.
+
+## PLANT (now-empty pot)
+2026-08-15 09:04:44.840  --- Talk (12 values) ---
+2026-08-15 09:04:44.840  Talk AtkValues[0] = 'There is nothing in this flowerpot.'
+2026-08-15 09:04:45.867  --- SelectString (9 values) ---
+2026-08-15 09:04:45.867  SelectString AtkValues[7] = 'Plant Seeds'
+2026-08-15 09:04:45.867  SelectString AtkValues[8] = 'Quit'
+2026-08-15 09:04:47.218  --- HousingGardening (0 values) ---
+2026-08-15 09:04:53.707  --- SelectYesno (13 values) ---
+2026-08-15 09:04:53.707  SelectYesno AtkValues[0] = 'Prepare the bed with a bag of potting soil and a bag of daisy seeds?'
+2026-08-15 09:04:53.707  SelectYesno AtkValues[1] = 'Yes'
+2026-08-15 09:04:53.707  SelectYesno AtkValues[2] = 'No'
+# No addon event after Yes - planting completes silently at the addon layer.
+
+## FINDINGS (constants for CycleChain, Task 10)
+# F1. Chain shape (occupied ripe pot -> replant):
+#     Talk -> SelectString['Harvest Crop'] -> Talk('nothing in this flowerpot')
+#     -> SelectString['Plant Seeds'] -> HousingGardening -> SelectYesno[Yes].
+# F2. HousingGardening (the soil/seed picker) exposes ZERO AtkValues. It is
+#     TWO EMPTY SLOTS (soil left, seed right) the player fills FROM INVENTORY,
+#     then Confirm (Sam, live). No text at the addon layer because selection
+#     happens inventory-side; the SelectYesno prompt is generated from the
+#     filled slots. For the chain: filling those slots is an inventory-item
+#     interaction against the addon, not a menu pick. The ONLY text identifying
+#     soil+seed is the SelectYesno prompt - parse item names from that string.
+#     Pattern: "Prepare the bed with a bag of <soil> and a bag of <seed> seeds?"
+# F3. The game calls a flowerpot a "bed" in the plant prompt. Dialogue text can
+#     NEVER distinguish pot vs outdoor bed - sensor side only.
+# F4. Harvest has NO yes/no confirm and NO completion Talk; it fires on the
+#     SelectString selection itself. COMPLETION RECEIPT IS IN CHAT (Sam, live):
+#     "You obtain a bouquet of red sunflowers." - the obtain line is the
+#     harvest-completed signal. Chain should key harvest completion on the chat
+#     obtain message (passive chat parsing, Scrooge-style), not an addon event.
+# F5. SelectString option labels sit at AtkValues[7..8] in both menus (watcher
+#     logs string-typed values only).
+# F6. Empty-pot Talk text: 'There is nothing in this flowerpot.' Ripe-pot Talk:
+#     '<Species>\nThese flowers are in bloom.'

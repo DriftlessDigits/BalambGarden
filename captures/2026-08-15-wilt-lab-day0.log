@@ -1,0 +1,34 @@
+# Wilt Lab v2 (twin-pot differential) - DAY 0 BASELINE - 2026-08-15
+# Location (probe receipt 15:47:15): territory=649 ward=3 plot=51 room=0 inside=True
+#   = Papa's Place, Shirogane Ward 4 Plot 52 (display), INTERIOR. Both arms here.
+#   (Session log's earlier "Lavender Beds W12 P33" placement was wrong - probe wins.)
+#
+# Design: two Krakka Root pots, same species, same day.
+#   Arm A (DRY):     planted ~11:10 local (bracketed). NEVER watered.
+#   Arm B (CONTROL): planted ~15:00 local (bracketed). First water ~15:40.
+#   Arms self-label: A planted ~4h earlier -> whichever key's stage flips first = A.
+#
+# Snapshot 15:47:17 (7 min after Arm B's first water):
+#   key=180 indoor decode: Krakka Root (0x31) stage=01 extra=00 recognized=True
+#   key=181 indoor decode: Krakka Root (0x31) stage=01 extra=00 recognized=True
+#
+# FINDINGS at day 0:
+# F1. Twin pots BYTE-IDENTICAL in decoded fields despite one being freshly watered -
+#     watering wrote nothing visible in (species, stage, extra). Matches the 08-12
+#     outdoor finding (tend/water not in DataMap). extra(byte-3) stayed 00 on a watered
+#     CROP - the pigment hypothesis for byte-3 remains flower-scoped; watering a crop
+#     did not touch it.
+# F2. The wilt field hunt is therefore forward-looking: watch for a field that APPEARS
+#     or diverges on the dry pot (key set may also grow - full raw entries are in
+#     dalamud.log 15:47 dump if byte-level diff is needed later).
+#
+# Also on record from the same snapshot (context, not lab):
+#   key=115 outdoor decode 5/8 occupied: Wild Onion Set(0x02) s3, Olive(0x05) s3,
+#     2x Unknown(0x15C) s1, Unknown(0x145) s1 - two species indices beyond our table
+#     (0x145=325, 0x15C=348) seen outdoors; SpeciesIndex tail question for later.
+#
+# Protocol: on each home visit, hit Recon > Log snapshot; Fable distills stage/extra
+# per key here with timestamp. No special trips - cook literacy cadence, days-scale.
+
+## Readings
+2026-08-15 15:47  key=180 stage=01 extra=00 | key=181 stage=01 extra=00  (baseline)
