@@ -17,7 +17,7 @@ public class LedgerTests
 
     [Fact] // 0-based raw storage, +1 display only (Frame 2 / probe-proven gotcha)
     public void DisplayConvertsZeroBasedToHuman()
-        => Assert.Equal("Ward 12 Plot 33", Chelsea.DisplayWardPlot());
+        => Assert.Equal("Ward 12 Plot 33", Chelsea.DisplayLabel());
 
     [Fact]
     public void RingKeepsNewestEight()

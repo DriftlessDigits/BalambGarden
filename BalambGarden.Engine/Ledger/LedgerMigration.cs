@@ -33,12 +33,22 @@ public static class LedgerMigration
 
         foreach (var group in store.Estates.GroupBy(e => (e.Key.Ward, e.Key.Plot)).ToList())
         {
-            var interiors = group.Where(e => e.Key.Room >= 0).ToList();
+            // Apartments are their own estates and have no plot at all (negative Plot
+            // sentinel). Nothing about them was ever split, and their Room is a real
+            // apartment number, so this pass has no business touching them.
+            if (group.Key.Plot < 0)
+                continue;
+
+            // Only Room == 0 is the bug's fingerprint: the old sensor filed a house's MAIN
+            // FLOOR under the interior territory id. Room > 0 is a private room, which is
+            // now an estate in its own right (08-15 ruling) - folding one into its house
+            // would be a new bug wearing the old repair's clothes.
+            var interiors = group.Where(e => e.Key.Room == 0).ToList();
             if (interiors.Count == 0)
                 continue;   // nothing split here; two districts sharing a ward/plot is normal
 
             var exteriors = group.Where(e => e.Key.Room < 0).ToList();
-            var label = interiors[0].Key.DisplayWardPlot();
+            var label = interiors[0].Key.DisplayLabel();
 
             if (exteriors.Count == 0)
             {
@@ -164,7 +174,7 @@ public static class LedgerMigration
             // winner - the ring caps itself at the newest RingCapacity either way.
             store.Beds[store.Beds.IndexOf(twin)] = Combine(twin, bed, canonical);
             store.Beds.Remove(bed);
-            notes.Add($"merged duplicate bed {canonical.DisplayWardPlot()} "
+            notes.Add($"merged duplicate bed {canonical.DisplayLabel()} "
                 + $"patch {bed.PatchOrdinal} slot {bed.BedSlot}");
         }
     }

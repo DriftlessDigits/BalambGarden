@@ -61,7 +61,7 @@ public static class PipelineReader
                 .OrderBy(i => i.ResultSeedId)
                 .Select(i => tables.CropBySeedId(i.ResultSeedId)?.Name ?? $"seed {i.ResultSeedId}"));
             tips.Add(new Tip(TipKind.Stock,
-                $"{patch.Key.Estate.DisplayWardPlot()} patch {patch.Key.PatchOrdinal + 1}: " +
+                $"{patch.Key.Estate.DisplayLabel()} patch {patch.Key.PatchOrdinal + 1}: " +
                 $"{tables.SpeciesName(patch.Key.SpeciesA)} x {tables.SpeciesName(patch.Key.SpeciesB)} " +
                 $"-> {products}"));
         }
@@ -95,8 +95,8 @@ public static class PipelineReader
             var feederName = tables.CropBySeedId(feeder.ResultSeedId)?.Name ?? "?";
             tips.Add(new Tip(TipKind.Bottleneck,
                 $"{feederName} seeds feed the {products} patch " +
-                $"({relationship.Key.ConsumerEstate.DisplayWardPlot()}) - feeder is " +
-                $"{feeder.Estate.DisplayWardPlot()} patch {feeder.PatchOrdinal + 1}"));
+                $"({relationship.Key.ConsumerEstate.DisplayLabel()}) - feeder is " +
+                $"{feeder.Estate.DisplayLabel()} patch {feeder.PatchOrdinal + 1}"));
         }
 
         // Anomaly: a patch that is one bed away from a clean A/B alternation.
@@ -117,7 +117,7 @@ public static class PipelineReader
                 (kv.Key % 2 == 0 && kv.Value != evenGroups[0].Key) ||
                 (kv.Key % 2 == 1 && kv.Value != oddGroups[0].Key)).Key;
             tips.Add(new Tip(TipKind.Anomaly,
-                $"{patch.Key.Estate.DisplayWardPlot()} patch {patch.Key.PatchOrdinal + 1} " +
+                $"{patch.Key.Estate.DisplayLabel()} patch {patch.Key.PatchOrdinal + 1} " +
                 $"bed {offSlot + 1} breaks the alternation - intentional?"));
         }
 

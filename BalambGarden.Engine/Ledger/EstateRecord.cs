@@ -13,5 +13,5 @@ public sealed class EstateRecord
     public DateTimeOffset LastVisited { get; set; }
 
     [JsonIgnore]
-    public string DisplayName => Nickname.Length > 0 ? Nickname : Key.DisplayWardPlot();
+    public string DisplayName => Nickname.Length > 0 ? Nickname : Key.DisplayLabel();
 }

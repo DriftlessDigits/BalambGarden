@@ -21,9 +21,9 @@ namespace BalambGarden.Windows;
 /// inside grows no Indoor half rather than an empty one.
 ///
 /// <para>The tab for the estate you are standing on selects itself once, on arrival, and
-/// then leaves your clicking alone. Apartments and FC rooms have no yard, so their tab is
-/// indoor-only - the estate sensor refuses to mint an apartment key today (zero receipts),
-/// so that path is shape, not a claim that it works.</para>
+/// then leaves your clicking alone. Apartments and private rooms have no yard, so their tab
+/// is indoor-only; both are real estates the sensor mints from live HouseId receipts
+/// (08-15), and a private room is its own tab rather than a corner of its house.</para>
 ///
 /// <para>Hierarchy still comes from space and brightness rather than chrome: full
 /// brightness is reserved for the few things that matter now (ripe, danger, a refusal),
@@ -178,7 +178,7 @@ public class MainWindow : Window, IDisposable
         else if (here is { } key && estates.All(e => e.Key != key))
             // The ledger writes an estate on arrival. If that write has not landed yet,
             // say where we are rather than inventing a tab for it.
-            ImGui.TextDisabled($"{key.DisplayWardPlot()} - reading the estate...");
+            ImGui.TextDisabled($"{key.DisplayLabel()} - reading the estate...");
 
         if (MapSensor.UnreadableCount > 0)
             ImGui.TextColored(Amber, $"{MapSensor.UnreadableCount} map entries here are unreadable");
@@ -289,20 +289,21 @@ public class MainWindow : Window, IDisposable
         var outdoorRollups = rollups.Where(r => !r.IsPots).ToList();
         var potRollups = rollups.Where(r => r.IsPots).ToList();
 
-        // Apartments and FC-house rooms are indoor-only places: Room >= 0 is the apartment
-        // identity shape. EstateSensor refuses to mint one today (zero receipts), so no
-        // such record can exist yet - this is the shape it would render in, nothing more.
-        var isApartment = record.Key.Room >= 0;
+        // An apartment or a private room is four walls with no yard, so its tab has an
+        // Indoor half and nothing else - an Outdoor section there would be a promise about
+        // a garden that cannot exist (Sam's ruling 08-15). Both shapes are live now: the
+        // sensor mints them from the 08-15 HouseId receipts.
+        var isIndoorOnly = record.Key.IsIndoorOnly;
 
         // Objects only exist where the player is standing. Everything else is memory, and
         // memory never grows a verb.
         var inside = isHere && EstateSensor.IsInside();
-        var patches = isHere && !inside && !isApartment
+        var patches = isHere && !inside && !isIndoorOnly
             ? ObjectSensor.Patches()
             : new List<PatchGroup>();
         var pots = inside ? ObjectSensor.NearbyPots() : new List<PotObject>();
 
-        var hasOutdoor = !isApartment && (outdoorRollups.Count > 0 || patches.Count > 0);
+        var hasOutdoor = !isIndoorOnly && (outdoorRollups.Count > 0 || patches.Count > 0);
         var hasIndoor = potRollups.Count > 0 || pots.Count > 0;
 
         if (hasOutdoor)

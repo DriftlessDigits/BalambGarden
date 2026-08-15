@@ -195,6 +195,96 @@ public class EstateNormalizationTests
         Assert.Equal(701, store.Bindings[Inside.BindingKey(7)]);
     }
 
+    [Fact] // a private room is its own estate now - the split-repair must not eat one
+    public void PrivateRoomRecordSurvivesUntouched()
+    {
+        var room = new EstateKey(641, 3, 51, Room: 7);
+        var store = new LedgerStore();
+        store.Estates.Add(Record(Outside, T0));
+        store.Estates.Add(Record(room, T0));
+
+        var report = LedgerMigration.NormalizeEstates(store);
+
+        Assert.Equal(0, report.MergedRecords);
+        Assert.Empty(report.Warnings);
+        Assert.Equal(2, store.Estates.Count);
+        Assert.Contains(store.Estates, e => e.Key == room);
+    }
+
+    [Fact] // apartments have no plot and were never split: no merge, and no warning noise
+    public void ApartmentRecordIsIgnoredEntirely()
+    {
+        var apartment = EstateKey.Apartment(979, ward: 7, division: 0, room: 29);
+        var store = new LedgerStore();
+        store.Estates.Add(Record(apartment, T0));
+
+        var report = LedgerMigration.NormalizeEstates(store);
+
+        Assert.False(report.Changed);
+        Assert.Empty(report.Warnings);
+        Assert.Empty(report.Notes);
+        Assert.Equal(apartment, Assert.Single(store.Estates).Key);
+    }
+
+    [Fact] // a ledger written before any of this loads with every value where it was
+    public void OldShapeLedgerLoadsUnchanged()
+    {
+        // A v2 file as it was written on 08-15, before estates had three shapes: one house
+        // plot, one pot bed and one pot binding under it.
+        const string json = """
+        {
+          "Version": 2,
+          "Beds": [
+            {
+              "Estate": { "TerritoryId": 641, "Ward": 3, "Plot": 51, "Room": -1 },
+              "MapKey": 129,
+              "PatchOrdinal": 129,
+              "BedSlot": 0,
+              "IsPot": true,
+              "ClaimedAt": "2026-08-15T04:00:00+00:00",
+              "LastTended": "2026-08-15T05:00:00+00:00",
+              "RingStorage": [
+                { "At": "2026-08-15T05:00:00+00:00", "SpeciesIndex": 94, "Stage": 2,
+                  "Source": "TendReceipt" }
+              ]
+            }
+          ],
+          "Bindings": { "641:3:51:-1#pot129": 129 },
+          "Estates": [
+            {
+              "Key": { "TerritoryId": 641, "Ward": 3, "Plot": 51, "Room": -1 },
+              "Nickname": "Home",
+              "FirstSeen": "2026-08-13T19:10:00+00:00",
+              "LastVisited": "2026-08-15T05:00:00+00:00"
+            }
+          ]
+        }
+        """;
+
+        var store = LedgerStore.FromJson(json);
+
+        var estate = Assert.Single(store.Estates);
+        Assert.Equal(Outside, estate.Key);
+        Assert.Equal("Home", estate.Nickname);
+        Assert.False(estate.Key.IsApartment);
+        Assert.False(estate.Key.IsIndoorOnly);
+        Assert.Equal("Home", estate.DisplayName);
+
+        var bed = Assert.Single(store.Beds);
+        Assert.Equal(Outside, bed.Estate);
+        Assert.True(bed.IsPot);
+        Assert.Equal(129, bed.MapKey);
+        Assert.Equal(94, Assert.Single(bed.Ring).SpeciesIndex);
+        Assert.Equal(129, store.Bindings[Outside.BindingKey(129, isPot: true)]);
+
+        // ...and the repair pass has nothing to say about it, twice.
+        Assert.False(LedgerMigration.NormalizeEstates(store).Changed);
+        Assert.False(LedgerMigration.NormalizeEstates(store).Changed);
+        Assert.Single(store.Estates);
+        Assert.Single(store.Beds);
+        Assert.Single(store.Bindings);
+    }
+
     [Fact] // one estate key now spans two DataMaps, so the pot space has to be named apart
     public void PotAndPatchNamespacesNeverCollide()
     {

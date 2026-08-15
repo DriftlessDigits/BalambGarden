@@ -169,7 +169,7 @@ internal static class CensusPump
                 for (var ordinal = 0; ordinal < confirmed.Count; ordinal++)
                     Plugin.Garden.Census.Bind(estate, ordinal, confirmed[ordinal]);
                 Plugin.Log.Information(
-                    $"[Census] receipt bound {estate.DisplayWardPlot()} on {evidence.Count} "
+                    $"[Census] receipt bound {estate.DisplayLabel()} on {evidence.Count} "
                     + $"constraint(s): keys {string.Join(",", confirmed)}");
                 boundHere = true;
                 ReplayHeldReceipts(estate);
