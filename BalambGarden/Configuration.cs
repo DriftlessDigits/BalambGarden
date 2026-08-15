@@ -44,6 +44,10 @@ public class Configuration : IPluginConfiguration
     public bool NudgeEnabled { get; set; } = true;
     public bool TrailEnabled { get; set; } = true;
 
+    /// <summary>What the arrival nudge calls itself in chat. The chat log is the player's
+    /// room; the name we speak under in it is theirs to set.</summary>
+    public string NudgeLabel { get; set; } = "Balamb";
+
     // The garden ledger: every tended bed's latest census record.
     public List<BedRecord> Ledger { get; set; } = [];
 

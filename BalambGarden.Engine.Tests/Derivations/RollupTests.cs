@@ -55,6 +55,16 @@ public class RollupTests
         Assert.Contains("1", line);   // one thirsty
     }
 
+    [Fact] // the name it speaks under is the caller's setting, not a constant in here
+    public void NudgePrefixIsTheCallersToChoose()
+    {
+        var rollups = Rollups.ForEstate(Chelsea, [Bed(0, 4, 1)], T, new ClockWiltSource(), Now);
+
+        Assert.StartsWith("Balamb: ", Rollups.ArrivalNudge(Chelsea, rollups));
+        Assert.StartsWith("Garden: ", Rollups.ArrivalNudge(Chelsea, rollups, "Garden"));
+        Assert.StartsWith("1 ripe", Rollups.ArrivalNudge(Chelsea, rollups, ""));
+    }
+
     [Fact] // all watered, nothing ripe: silence over filler
     public void NudgeSilentWhenAllQuiet()
     {

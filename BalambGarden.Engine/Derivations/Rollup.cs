@@ -57,8 +57,12 @@ public static class Rollups
             .ToList();
     }
 
-    /// <summary>The one line the plugin ever says unprompted. Null = stay silent.</summary>
-    public static string? ArrivalNudge(EstateKey estate, IReadOnlyList<PatchRollup> rollups)
+    /// <summary>The one line the plugin ever says unprompted. Null = stay silent. The
+    /// prefix belongs to the caller: it is the name the plugin announces itself under in
+    /// the player's own chat log, which is a setting, not a derivation constant. Blank
+    /// prefix = the line speaks with no name at all.</summary>
+    public static string? ArrivalNudge(
+        EstateKey estate, IReadOnlyList<PatchRollup> rollups, string label = "Balamb")
     {
         var thirsty = rollups.Sum(r => r.Due + r.Overdue + r.Danger);
         var ripe = rollups.Sum(r => r.Ripe);
@@ -68,6 +72,7 @@ public static class Rollups
         var parts = new List<string>();
         if (thirsty > 0) parts.Add($"{thirsty} bed{(thirsty == 1 ? "" : "s")} thirsty here");
         if (ripe > 0) parts.Add($"{ripe} ripe");
-        return $"Balamb: {string.Join(", ", parts)}";
+        var line = string.Join(", ", parts);
+        return label.Length > 0 ? $"{label}: {line}" : line;
     }
 }

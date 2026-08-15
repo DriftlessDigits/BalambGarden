@@ -105,6 +105,7 @@ internal abstract class ChainBase : IDisposable
         lastUnitAt = RunStartUtc;
         TotalUnits = units;
         LastOutcome = startOutcome;
+        running = this;
         return true;
     }
 
@@ -122,10 +123,28 @@ internal abstract class ChainBase : IDisposable
 
     private bool stopRequested;
 
+    /// <summary>A stop is asked for and has not reached its boundary yet. The run log says
+    /// so on the button: a stop that looks like it did nothing gets pressed again, and a
+    /// user pressing harder is exactly how a clean stop turns into a mid-dialogue one.</summary>
+    internal bool StopPending => stopRequested && Busy;
+
     /// <summary>The user's stop: honored at the NEXT unit boundary, never mid-dialogue
     /// (spec: interruption stops clean at a bed boundary). Chains call
     /// CheckStop() as the first step of every unit.</summary>
     internal void RequestStop() => stopRequested = true;
+
+    /// <summary>The run on the floor right now - for the few things outside a chain that
+    /// legitimately have something to tell its feed, namely the census when a late bind
+    /// claims beds whose lines have already been printed.</summary>
+    private static ChainBase? running;
+
+    /// <summary>Adds a line to the running chain's feed, if there is one. Never a unit:
+    /// somebody else's news must not move this run's progress or its ETA.</summary>
+    internal static void NoteOnActiveRun(string line)
+    {
+        if (running is { Busy: true } chain)
+            chain.Report.Add(line);
+    }
 
     /// <summary>Unit-boundary gate. Enqueue as each unit's first task: true = carry on,
     /// aborts the run cleanly when a stop was requested.</summary>

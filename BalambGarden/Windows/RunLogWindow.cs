@@ -43,12 +43,21 @@ public class RunLogWindow : Window, IDisposable
             ImGui.Text(line);
             ImGui.SameLine();
             // A user stop lands at the next bed boundary, never mid-dialogue (spec):
-            // RequestStop, not Abort - the current bed finishes its conversation.
-            if (ImGui.Button("Stop"))
-                chain.RequestStop();
+            // RequestStop, not Abort - the current bed finishes its conversation. The
+            // button says the request is in flight, so the wait reads as the design and
+            // not as a dead button.
+            using (ImRaii.Disabled(chain.StopPending))
+            {
+                if (ImGui.Button(chain.StopPending ? "Stopping..." : "Stop"))
+                    chain.RequestStop();
+            }
+
+            if (chain.StopPending && ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+                ImGui.SetTooltip("stopping at the next bed - the one in progress finishes its dialogue");
         }
         else
         {
+            // LastOutcome carries the clean-stop report ("stopped at 3/8 - <reason>").
             ImGui.Text($"Last run: {chain.LastOutcome}");
         }
 

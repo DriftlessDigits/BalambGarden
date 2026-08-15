@@ -1,6 +1,7 @@
 using System;
 using System.Numerics;
 using Dalamud.Bindings.ImGui;
+using Dalamud.Interface.Utility.Raii;
 using Dalamud.Interface.Windowing;
 
 namespace BalambGarden.Windows;
@@ -14,7 +15,7 @@ public class ConfigWindow : Window, IDisposable
         Flags = ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoScrollbar |
                 ImGuiWindowFlags.NoScrollWithMouse;
 
-        Size = new Vector2(320, 200);
+        Size = new Vector2(400, 330);
         SizeCondition = ImGuiCond.Always;
 
         configuration = Plugin.Configuration;
@@ -37,6 +38,8 @@ public class ConfigWindow : Window, IDisposable
 
     public override void Draw()
     {
+        DrawBehaviour();
+        ImGui.Separator();
         ImGui.Text("Tend pacing");
 
         var pace = configuration.TendPaceMS;
@@ -64,6 +67,48 @@ public class ConfigWindow : Window, IDisposable
         if (ImGui.SliderInt("Jitter (+/- ms)", ref jitter, 0, 1500))
         {
             configuration.JitterMS = jitter;
+            configuration.Save();
+        }
+    }
+
+    /// <summary>The three switches that decide when the plugin speaks, what it writes
+    /// down, and whether acting claims.</summary>
+    private void DrawBehaviour()
+    {
+        var nudge = configuration.NudgeEnabled;
+        if (ImGui.Checkbox("Arrival nudge - one chat line when a garden needs you", ref nudge))
+        {
+            configuration.NudgeEnabled = nudge;
+            configuration.Save();
+        }
+
+        // The nudge is the plugin's only unprompted line, so the name it announces itself
+        // under belongs to the player, not to a string literal in the derivation.
+        using (ImRaii.Disabled(!configuration.NudgeEnabled))
+        {
+            var label = configuration.NudgeLabel;
+            ImGui.SetNextItemWidth(140f);
+            ImGui.InputText("Nudge prefix", ref label, 24);
+            if (ImGui.IsItemDeactivatedAfterEdit())
+            {
+                configuration.NudgeLabel = label.Trim();
+                configuration.Save();
+            }
+        }
+
+        var trail = configuration.TrailEnabled;
+        if (ImGui.Checkbox("Debug trail - append receipts to trail.jsonl", ref trail))
+        {
+            configuration.TrailEnabled = trail;
+            configuration.Save();
+        }
+
+        var claim = configuration.ClaimOnAction;
+        if (ImGui.Checkbox("Claim as I go - a completed action claims the bed", ref claim))
+        {
+            configuration.ClaimOnAction = claim;
+            // One flag, two homes: the engine decides claims, the config remembers.
+            Plugin.Garden.Census.ClaimOnAction = claim;
             configuration.Save();
         }
     }

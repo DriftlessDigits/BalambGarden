@@ -84,7 +84,7 @@ internal static class CensusPump
                 var rollups = Rollups.ForEstate(
                     estate, Plugin.Garden.Census.LedgerBeds, Plugin.Tables,
                     Plugin.Garden.Wilt, DateTimeOffset.UtcNow);
-                if (Rollups.ArrivalNudge(estate, rollups) is { } line)
+                if (Rollups.ArrivalNudge(estate, rollups, Plugin.Configuration.NudgeLabel) is { } line)
                     Svc.Chat.Print(line);
             }
         }
@@ -213,6 +213,14 @@ internal static class CensusPump
         foreach (var receipt in held)
             Plugin.Garden.Census.OnReceipt(receipt);
         Plugin.Log.Information($"[Census] replayed {held.Count} held receipt(s) after bind");
+
+        // The run log's earlier lines read "not claimed: patch unbound", and they were
+        // true when they printed - a feed is history, not live state, so it is never
+        // rewritten behind the player's back. The correction gets its own line, at the
+        // moment it actually happened.
+        Chains.ChainBase.NoteOnActiveRun(
+            $"patch identified - {held.Count} earlier bed(s) now claimed "
+            + "(the 'patch unbound' lines above were true when they printed)");
     }
 
     /// <summary>Shortlist input: the nearest patch per ordinal, in ordinal order.
