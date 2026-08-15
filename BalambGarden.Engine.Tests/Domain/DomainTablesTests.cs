@@ -7,7 +7,7 @@ public class DomainTablesTests
 {
     private static readonly DomainTables T = DomainTables.Load();
 
-    [Fact] // receipts: SpeciesTable.g.cs verified in-game 08-12
+    [Fact] // receipts: species indices verified in-game 08-12
     public void KnownSpeciesNamesDecode()
     {
         Assert.Equal("Mirror Apple", T.SpeciesName(0x11));
@@ -29,6 +29,38 @@ public class DomainTablesTests
     [Fact] // 08-13: id 108 exists in-game but is newer than the index snapshot
     public void UnknownSpeciesFallsBackHonestly()
         => Assert.Equal("Unknown (0x6C)", T.SpeciesName(0x6C));
+
+    [Fact] // 108 is LISTED but joins to nothing - listing an id is not a claim about it
+    public void ListedButUnknownSpeciesHasNoSeedJoin()
+    {
+        Assert.Null(T.SeedIdBySpeciesIndex(108));
+        Assert.Null(T.CropBySpeciesIndex(108));
+        Assert.Null(T.SpeciesIndexBySeedId(0));   // no invented seed 0 filling the hole
+    }
+
+    [Fact] // the shipped table must be unambiguous; this is the guard, not the recovery
+    public void ShippedSpeciesNamesAreUnique()
+        => Assert.Empty(T.SpeciesNameCollisions);
+
+    [Fact] // a duplicate display name must not stop the plugin from starting
+    public void DuplicateSpeciesNamesFailSoftAndAreReported()
+    {
+        var collisions = new List<string>();
+        var index = DomainTables.BuildNameIndex(
+            new Dictionary<ushort, string>
+            {
+                [40] = "Garden Sunflower",
+                [12] = "Krakka Root",
+                [103] = "Garden Sunflower",
+            },
+            collisions);
+
+        Assert.Equal((ushort)40, index["Garden Sunflower"]);   // lowest index wins
+        Assert.Equal((ushort)12, index["Krakka Root"]);
+        var collision = Assert.Single(collisions);
+        Assert.Contains("Garden Sunflower", collision);
+        Assert.Contains("103", collision);
+    }
 
     [Fact]
     public void KrakkaCropTimersLoad()

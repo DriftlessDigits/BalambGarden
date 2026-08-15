@@ -7,6 +7,12 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- Loader internals (e.g. the fail-soft name-index fold) are testable without
+         widening the Engine's public surface for the plugin. -->
+    <InternalsVisibleTo Include="BalambGarden.Engine.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <EmbeddedResource Include="..\Data\Crops.json" LogicalName="Data.Crops.json" />
     <EmbeddedResource Include="..\Data\CrossbreedPairs.json" LogicalName="Data.CrossbreedPairs.json" />
     <EmbeddedResource Include="..\Data\SpeciesIndex.json" LogicalName="Data.SpeciesIndex.json" />

@@ -15,7 +15,10 @@ internal static unsafe class MapSensor
     /// "N unreadable" surface for the dashboard.</summary>
     internal static int UnreadableCount { get; private set; }
 
-    private static Dictionary<int, byte[]> ReadRawEntries()
+    /// <summary>The one map read in the plugin. Internal rather than private so the debug
+    /// probe reads through it too: an instrument that walked the DataMap by its own route
+    /// could disagree with the app about what was there, and then neither is evidence.</summary>
+    internal static Dictionary<int, byte[]> ReadRawEntries()
     {
         var result = new Dictionary<int, byte[]>();
         var housing = HousingManager.Instance();

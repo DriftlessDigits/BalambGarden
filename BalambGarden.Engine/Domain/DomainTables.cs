@@ -13,6 +13,7 @@ public sealed class DomainTables
     private readonly Dictionary<string, ushort> indexByName;
     private readonly Dictionary<uint, List<(uint, uint)>> pairsByResult;
     private readonly List<Soil> soils;
+    private readonly List<string> nameCollisions = [];
 
     private DomainTables(
         Dictionary<uint, Crop> crops,
@@ -27,8 +28,31 @@ public sealed class DomainTables
         this.pairsByResult = pairsByResult;
         this.soils = soils;
         indexBySeedId = seedIdByIndex.ToDictionary(kv => kv.Value, kv => kv.Key);
-        indexByName = nameByIndex.ToDictionary(
-            kv => kv.Value, kv => kv.Key, StringComparer.OrdinalIgnoreCase);
+
+        indexByName = BuildNameIndex(nameByIndex, nameCollisions);
+    }
+
+    /// <summary>
+    /// Name -> index, failing SOFT on duplicates. A ToDictionary here would throw, which
+    /// turns a data-file typo (or a genuine game re-use of a display name) into a plugin
+    /// that will not start at all - a table nobody can load is worse than a table with one
+    /// ambiguous name in it. Lowest index wins, deterministically, and every collision is
+    /// REPORTED (<see cref="SpeciesNameCollisions"/>) rather than swallowed.
+    /// </summary>
+    internal static Dictionary<string, ushort> BuildNameIndex(
+        IReadOnlyDictionary<ushort, string> nameByIndex, List<string> collisions)
+    {
+        var index = new Dictionary<string, ushort>(StringComparer.OrdinalIgnoreCase);
+        foreach (var (species, name) in nameByIndex.OrderBy(kv => kv.Key))
+        {
+            if (index.TryGetValue(name, out var first))
+            {
+                collisions.Add($"'{name}' listed for species {first} and {species}; {first} wins");
+                continue;
+            }
+            index[name] = species;
+        }
+        return index;
     }
 
     public static DomainTables Load()
@@ -50,10 +74,22 @@ public sealed class DomainTables
 
         var seedIdByIndex = new Dictionary<ushort, uint>();
         var nameByIndex = new Dictionary<ushort, string>();
+        // Every id the game can put in a bed is LISTED here, including ones we know
+        // nothing about (id 108, seen in-game 08-13, is newer than the Lotlab snapshot):
+        // a null seedId means "this species exists, we have no join for it", and the
+        // lookups below answer null rather than inventing seed 0.
+        //
+        // KNOWN GAP (08-15, ledgered): a species' index name and the name the game speaks
+        // in dialogue are not always the same string. Species 103 is "Garden Sunflower"
+        // here, but a ripe pot's Talk calls it "Red Sunflowers" - so SpeciesIndexByName
+        // misses on that receipt and the honest "cannot bind" path runs. Deliberately NOT
+        // papered over with an alias table: how variants should be learned (receipt-fed?
+        // generated?) is a design question that waits for bench evidence.
         foreach (var prop in ReadJson("Data.SpeciesIndex.json").RootElement.EnumerateObject())
         {
             var index = ushort.Parse(prop.Name);
-            seedIdByIndex[index] = prop.Value.GetProperty("seedId").GetUInt32();
+            if (prop.Value.GetProperty("seedId") is { ValueKind: JsonValueKind.Number } seed)
+                seedIdByIndex[index] = seed.GetUInt32();
             if (prop.Value.GetProperty("name").GetString() is { Length: > 0 } name)
                 nameByIndex[index] = name;
         }
@@ -111,6 +147,11 @@ public sealed class DomainTables
     /// <summary>Honest fallback: unknown ids display as unknown, never guessed.</summary>
     public string SpeciesName(ushort index)
         => nameByIndex.GetValueOrDefault(index) ?? $"Unknown (0x{index:X2})";
+
+    /// <summary>Species whose display name is shared with an earlier index. Empty today;
+    /// non-empty means <see cref="SpeciesIndexByName"/> can only answer for the first of
+    /// them, and whoever loaded the tables should say so rather than pretend otherwise.</summary>
+    public IReadOnlyList<string> SpeciesNameCollisions => nameCollisions;
 
     /// <summary>Receipt joins: dialogue names a plant, the map speaks species indices.</summary>
     public ushort? SpeciesIndexByName(string name)

@@ -771,6 +771,16 @@ public class MainWindow : Window, IDisposable
 
     // ------------------------------------------------------------------ recon
 
+#if DEBUG
+    /// <summary>Hover text for the instrument buttons - what each one writes to the log,
+    /// so a probe run is a deliberate act rather than a mystery button.</summary>
+    private static void ReconTip(string text)
+    {
+        if (ImGui.IsItemHovered())
+            ImGui.SetTooltip(text);
+    }
+#endif
+
     private void DrawRecon()
     {
         ImGui.Spacing();
@@ -793,8 +803,29 @@ public class MainWindow : Window, IDisposable
         ImGui.TextDisabled($"{beds.Count} beds within 40y");
 
 #if DEBUG
+        // The instruments. All log-only, all DEBUG-only - a Release plugin has no probe
+        // in it at all (the whole ReconProbe file is #if DEBUG), so these buttons cannot
+        // exist without it.
+        if (ImGui.Button("Log housing"))
+            ReconProbe.LogHousingLocation();
+        ReconTip("Ward/plot/room + inside flag from HousingManager -> log.");
+
+        ImGui.SameLine();
+        if (ImGui.Button("Dump records"))
+            ReconProbe.DumpHousingRecords();
+        ReconTip(
+            "Furniture vector + the gardening DataMap (raw hex beside the decode, read\n"
+            + "through the same MapSensor the census uses) + bed gimmick ids -> log.");
+
+        ImGui.SameLine();
+        if (ImGui.Button("Dump bed structs"))
+            ReconProbe.DumpBedStructs();
+        ReconTip(
+            "0x220 bytes of each nearby bed/pot object -> log. A diff instrument:\n"
+            + "capture the same bed in two states and diff the hex.");
+
         // Sow-flow recon: Sam plants by hand with this on, the log records what the
-        // addons actually held. Debug-only - it ships with no plugin.
+        // addons actually held.
         var watching = Chains.PlantFlow.Watching;
         if (ImGui.Checkbox("Watch plant flow", ref watching))
         {

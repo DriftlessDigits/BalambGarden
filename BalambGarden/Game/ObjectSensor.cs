@@ -110,4 +110,37 @@ internal static unsafe class ObjectSensor
         }
         return pots.OrderBy(p => p.Distance).ToList();
     }
+
+#if DEBUG
+    /// <summary>Recon sweep (debug builds only): beds by DataId plus ANY close housing
+    /// object. Deliberately wider than <see cref="NearbyPots"/> - the probe's job is
+    /// partly to find the pot models the name filter does not know yet, so it must be
+    /// able to see an object the app cannot name. Still routed through this sensor so
+    /// the instrument and the app share one object route.</summary>
+    internal static List<(IGameObject Object, float Distance)> ReconObjects(
+        float bedRange, float housingRange)
+    {
+        var found = new List<(IGameObject, float)>();
+        if (!Player.Available || Player.Object is not { } me)
+            return found;
+
+        foreach (var obj in Svc.Objects)
+        {
+            if (obj is null || !obj.IsValid())
+                continue;
+            if (obj.ObjectKind is not (ObjectKind.EventObj or ObjectKind.HousingEventObject))
+                continue;
+
+            var distance = Vector3.Distance(me.Position, obj.Position);
+            var isBed = obj.BaseId == GardenBedDataId && distance <= bedRange;
+            var isCloseHousingObject =
+                obj.ObjectKind == ObjectKind.HousingEventObject && distance <= housingRange;
+            if (!isBed && !isCloseHousingObject)
+                continue;
+
+            found.Add((obj, distance));
+        }
+        return found.OrderBy(f => f.Item2).ToList();
+    }
+#endif
 }
