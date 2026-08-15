@@ -1,42 +1,195 @@
-#if DEBUG
 using System;
-using System.Collections.Generic;
 using Dalamud.Memory;
 using ECommons;
+using ECommons.UIHelpers.AddonMasterImplementations;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 
 namespace BalambGarden.Chains;
 
 /// <summary>
-/// Recon instrument for the sow flow (debug builds only - the whole class is behind
-/// <c>#if DEBUG</c>, so a Release plugin carries none of it).
+/// The sow/harvest flow's driver half: the addon names, the menu wording, and the
+/// small read/click primitives that <see cref="CycleChain"/> and <see cref="PotChain"/>
+/// compose into steps. Every constant below is quoted from
+/// <c>captures/2026-08-15-plant-flow.log</c> - the bench capture, not this code's guesses,
+/// is the binding authority for what the game says.
 ///
-/// <para>Tend is mapped; planting is not. Sowing walks a different set of addons
-/// (a soil picker, a seed picker, a confirm) and we do not yet know which AtkValue
-/// index carries the bed name, the item id, or the confirm button. This watcher does
-/// no clicking and makes no claims - it stands next to the flow while Sam plays it by
-/// hand and writes down what the addons actually held. The resulting capture, not this
-/// code's guesses, is the binding authority for the sow chain's constants.</para>
-///
-/// <para>Read-only and defensive throughout: a recon tool that throws would break the
-/// very interaction it is trying to observe.</para>
+/// <para>Pacing lives in the chains, not here: these methods read and click, the caller
+/// decides when. Nothing here writes to the ledger.</para>
 /// </summary>
-internal static unsafe class PlantFlow
+internal static unsafe partial class PlantFlow
 {
-    /// <summary>Addons the sow flow is known or suspected to walk through. Ints are
-    /// dumped for the two that carry structured selection state; the rest are dialogue
-    /// surfaces where only the text matters.</summary>
+    // capture: "SelectString AtkValues[7] = 'Plant Seeds'" (empty pot menu)
+    internal const string PlantOption = "Plant Seeds";
+
+    // capture: "SelectString AtkValues[7] = 'Harvest Crop'" (ripe pot menu)
+    internal const string HarvestOption = "Harvest Crop";
+
+    // capture: "SelectString AtkValues[8] = 'Quit'" (both menus)
+    internal const string QuitOption = "Quit";
+
+    // Not in the capture (the recon covered a ripe pot and an empty pot, never a growing
+    // one). Same wording family TendChain has matched at the bench since 08-11; a pot that
+    // does not offer it simply quits the menu and says so.
+    internal const string TendOption = "Tend";
+
+    // capture: "Talk AtkValues[0] = 'There is nothing in this flowerpot.'"
+    internal const string EmptyPotTalk = "There is nothing in this flowerpot.";
+
+    // capture: "Talk AtkValues[0] = 'Red Sunflowers\nThese flowers are in bloom.'"
+    internal const string BloomTalkLine = "These flowers are in bloom.";
+
+    // capture: "--- HousingGardening (0 values) ---" - the soil/seed picker, and it is
+    // EMPTY. Two slots the player fills from inventory (capture F2), which is why the
+    // chain waits here instead of driving it.
+    internal const string GardeningAddon = "HousingGardening";
+
+    /// <summary>How long the chain will stand at an open picker waiting for the human to
+    /// fill both slots and press Confirm. Deliberately far above the step timeout: waiting
+    /// on a person is not a stalled dialogue, and a run must not die because someone went
+    /// looking for the right seed.</summary>
+    internal const int HumanFillTimeoutMS = 120_000;
+
+    /// <summary>The bed identity in a bed/pot menu ("2nd Bed, 1st Patch"), index mapped
+    /// live 2026-08-11.</summary>
+    private const int HeaderValueIndex = 2;
+
+    internal static bool MenuReady(out AtkUnitBase* addon)
+        => GenericHelpers.TryGetAddonByName("SelectString", out addon)
+            && GenericHelpers.IsAddonReady(addon);
+
+    internal static bool TalkReady(out AtkUnitBase* addon)
+        => GenericHelpers.TryGetAddonByName("Talk", out addon)
+            && GenericHelpers.IsAddonReady(addon);
+
+    /// <summary>Is the soil/seed picker up? Its contents are unreadable (zero AtkValues),
+    /// so its mere presence is the whole signal: the human's turn.</summary>
+    internal static bool GardeningOpen()
+        => GenericHelpers.TryGetAddonByName<AtkUnitBase>(GardeningAddon, out var addon)
+            && GenericHelpers.IsAddonReady(addon);
+
+    /// <summary>The sow confirmation, if it is up. Its text is the only place the game
+    /// names what is about to be planted.</summary>
+    internal static bool SowPromptReady(out string prompt)
+    {
+        prompt = "";
+        if (!GenericHelpers.TryGetAddonByName<AtkUnitBase>("SelectYesno", out var addon)
+            || !GenericHelpers.IsAddonReady(addon))
+            return false;
+
+        // capture: "SelectYesno AtkValues[0] = 'Prepare the bed with a bag of ...?'"
+        prompt = ReadStringValue(addon, 0);
+        return prompt.Length > 0;
+    }
+
+    /// <summary>Yes sows; No walks away with nothing planted and nothing spent.</summary>
+    internal static bool AnswerSow(bool yes)
+    {
+        if (!GenericHelpers.TryGetAddonByName<AtkUnitBase>("SelectYesno", out var addon)
+            || !GenericHelpers.IsAddonReady(addon))
+            return false;
+
+        var master = new AddonMaster.SelectYesno((nint)addon);
+        if (yes)
+            master.Yes();
+        else
+            master.No();
+        return true;
+    }
+
+    internal static void ClickTalk(AtkUnitBase* talk)
+        => new AddonMaster.Talk((nint)talk).Click();
+
+    /// <summary>The Talk's whole first value - "Red Sunflowers\nThese flowers are in bloom."</summary>
+    internal static string TalkText(AtkUnitBase* talk) => ReadStringValue(talk, 0);
+
+    /// <summary>The first line of a status Talk is the plant's name.</summary>
+    internal static string TalkHeadline(AtkUnitBase* talk)
+    {
+        var text = TalkText(talk);
+        var newline = text.IndexOf('\n');
+        return (newline > 0 ? text[..newline] : text).Trim();
+    }
+
+    internal static string MenuHeader(AtkUnitBase* menu)
+    {
+        var text = ReadStringValue(menu, HeaderValueIndex);
+        return text.Length > 0 ? text : "(unknown bed)";
+    }
+
+    internal static bool MenuOffers(AtkUnitBase* menu, string needle)
+    {
+        foreach (var entry in new AddonMaster.SelectString(menu).Entries)
+        {
+            if (entry.Text.Contains(needle, StringComparison.OrdinalIgnoreCase))
+                return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>Picks the first option whose text contains <paramref name="needle"/>.
+    /// False = this menu does not offer it, which is a fact for the caller to report,
+    /// never something to retry into a timeout.</summary>
+    internal static bool SelectOption(AtkUnitBase* menu, string needle)
+    {
+        foreach (var entry in new AddonMaster.SelectString(menu).Entries)
+        {
+            if (!entry.Text.Contains(needle, StringComparison.OrdinalIgnoreCase))
+                continue;
+            entry.Select();
+            return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>Reads one string-typed AtkValue defensively; empty string when absent.</summary>
+    internal static string ReadStringValue(AtkUnitBase* addon, int index)
+    {
+        try
+        {
+            if (addon->AtkValuesCount > index
+                && addon->AtkValues[index].Type is AtkValueType.String or AtkValueType.ConstString
+                    or AtkValueType.WideString or AtkValueType.ManagedString
+                && addon->AtkValues[index].String.Value != null)
+                return MemoryHelper.ReadSeStringNullTerminated(
+                    (nint)addon->AtkValues[index].String.Value).GetText();
+        }
+        catch
+        {
+            // unreadable value = absent value
+        }
+
+        return "";
+    }
+}
+
+#if DEBUG
+/// <summary>
+/// The recon half (debug builds only - a Release plugin carries none of it). It did its
+/// job on 2026-08-15: the constants above are what it wrote down. Kept because the flow
+/// will need re-reading the next time the game changes a dialog, and a watcher that no
+/// longer exists cannot be turned on.
+///
+/// <para>Read-only and defensive throughout: a recon tool that throws would break the very
+/// interaction it is trying to observe.</para>
+/// </summary>
+internal static unsafe partial class PlantFlow
+{
+    /// <summary>Addons the sow flow walks through. Ints are dumped for the two that might
+    /// carry structured selection state; the rest are dialogue surfaces where only the text
+    /// matters. (The capture settled it: HousingGardening carries nothing at all.)</summary>
     private static readonly string[] WatchedAddons =
         ["HousingGardening", "ContextIconMenu", "SelectYesno", "SelectString", "Talk"];
 
-    private static readonly HashSet<string> DumpInts =
+    private static readonly System.Collections.Generic.HashSet<string> DumpInts =
         ["HousingGardening", "ContextIconMenu"];
 
     /// <summary>Last dumped shape per addon. An addon that is merely still open has not
     /// said anything new, and at pump tempo it would say it hundreds of times - so a
     /// dump only repeats when the addon's shape changes (a new open, a new page, a
     /// different selection).</summary>
-    private static readonly Dictionary<string, int> lastShape = [];
+    private static readonly System.Collections.Generic.Dictionary<string, int> lastShape = [];
 
     internal static bool Watching { get; private set; }
 
@@ -109,25 +262,13 @@ internal static unsafe class PlantFlow
         return HashCode.Combine(addon->AtkValuesCount, firstInt);
     }
 
-    /// <summary>
-    /// Same defensive idiom as <c>TendChain.DumpStrings</c>, duplicated rather than
-    /// shared: that one hardcodes the [TendChain] prefix and lives in a Release-built
-    /// class, while this copy is compiled out entirely and dies with the recon.
-    /// </summary>
     private static void DumpStrings(AtkUnitBase* addon, string tag)
     {
         try
         {
             for (var i = 0; i < addon->AtkValuesCount; i++)
             {
-                var value = addon->AtkValues[i];
-                if (value.Type is not (AtkValueType.String or AtkValueType.ConstString
-                    or AtkValueType.WideString or AtkValueType.ManagedString))
-                    continue;
-                if (value.String.Value == null)
-                    continue;
-
-                var text = MemoryHelper.ReadSeStringNullTerminated((nint)value.String.Value).GetText();
+                var text = ReadStringValue(addon, i);
                 if (text.Length > 0)
                     Plugin.Log.Information($"[PlantRecon] {tag} AtkValues[{i}] = '{text}'");
             }
@@ -138,8 +279,8 @@ internal static unsafe class PlantFlow
         }
     }
 
-    /// <summary>Ints for the picker addons: item ids, slot indices and button states ride
-    /// here, and those are what a sow chain would have to send back in a Callback.</summary>
+    /// <summary>Ints for the picker addons: item ids, slot indices and button states would
+    /// ride here if the picker carried any.</summary>
     private static void DumpIntValues(AtkUnitBase* addon, string tag)
     {
         try

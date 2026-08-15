@@ -26,6 +26,11 @@ internal abstract class ChainBase : IDisposable
     internal DateTime RunStartUtc { get; private set; }
     internal int TotalUnits { get; private set; }
 
+    /// <summary>Completed units. Counted separately from <see cref="Report"/> because the
+    /// feed also carries lines that are not units (a chain waiting on the player says so
+    /// there) - billing a note as progress would make the ETA lie.</summary>
+    internal int UnitsDone { get; private set; }
+
     internal TimeSpan Elapsed => Busy ? DateTime.UtcNow - RunStartUtc : TimeSpan.Zero;
 
     /// <summary>Countdown ETA, pace frozen at unit boundaries (POC/Scrooge ruling -
@@ -36,7 +41,7 @@ internal abstract class ChainBase : IDisposable
         {
             if (!Busy || TotalUnits == 0)
                 return null;
-            var done = Report.Count;
+            var done = UnitsDone;
             var remaining = TotalUnits - done;
             if (remaining <= 0)
                 return null;
@@ -95,6 +100,7 @@ internal abstract class ChainBase : IDisposable
             15000, Plugin.Configuration.PostTendDelayMS + Plugin.Configuration.PostTendJitterMS + 5000);
         stopRequested = false;
         Report.Clear();
+        UnitsDone = 0;
         RunStartUtc = DateTime.UtcNow;
         lastUnitAt = RunStartUtc;
         TotalUnits = units;
@@ -106,8 +112,13 @@ internal abstract class ChainBase : IDisposable
     protected void RecordOutcome(string line)
     {
         Report.Add(line);
+        UnitsDone++;
         lastUnitAt = DateTime.UtcNow;
     }
+
+    /// <summary>A line for the feed that is not a completed unit - "waiting on you",
+    /// mostly. Never anchors the ETA and never counts as progress.</summary>
+    protected void Note(string line) => Report.Add(line);
 
     private bool stopRequested;
 
@@ -132,7 +143,7 @@ internal abstract class ChainBase : IDisposable
     internal void Abort(string reason = "aborted")
     {
         TaskManager.Abort();
-        LastOutcome = $"stopped at {Report.Count}/{TotalUnits} - {reason}";
+        LastOutcome = $"stopped at {UnitsDone}/{TotalUnits} - {reason}";
     }
 
     public void Dispose() => TaskManager.Abort();

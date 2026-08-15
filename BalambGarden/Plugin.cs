@@ -74,6 +74,10 @@ public sealed class Plugin : IDalamudPlugin
         // The census heartbeat rides the framework tick (self-throttled inside).
         Svc.Framework.Update += OnFrameworkUpdate;
 
+        // Harvest has no closing dialogue - the chat obtain line is its only completion
+        // signal (capture 2026-08-15 F4), so the listener lives as long as the plugin does.
+        Game.ObtainWatch.Start();
+
         // Add a simple message to the log with level set to information
         // Use /xllog to open the log window in-game
         // Example Output: 00:57:54.959 | INF | [BalambGarden] ===A cool log message from Balamb Garden===
@@ -87,6 +91,7 @@ public sealed class Plugin : IDalamudPlugin
         PluginInterface.UiBuilder.OpenConfigUi -= ToggleConfigUi;
         PluginInterface.UiBuilder.OpenMainUi -= ToggleMainUi;
         Svc.Framework.Update -= OnFrameworkUpdate;
+        Game.ObtainWatch.Stop();
 
         WindowSystem.RemoveAllWindows();
 
