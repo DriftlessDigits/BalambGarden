@@ -28,7 +28,8 @@ public static class PatchStrip
 
     /// <summary>Cells for one patch's claimed beds. The caller filters to the patch; this
     /// only lays them out by slot. Water follows the same rule as everywhere else: a pot
-    /// is NotApplicable (flowerpots cannot wilt), a bed whose crop we cannot identify is
+    /// is NotApplicable (pot FLOWERS have never been seen to wilt - 08-15; whether a normal
+    /// crop in a pot wilts is still under live test), a bed whose crop we cannot identify is
     /// Unknown, and an unclaimed slot has no water claim to make at all.</summary>
     public static IReadOnlyList<StripCell> ForPatch(
         IReadOnlyList<ClaimedBed> beds, DomainTables tables, IWiltSource wilt,
