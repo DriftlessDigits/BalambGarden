@@ -28,7 +28,7 @@ public sealed class Plugin : IDalamudPlugin
     /// <summary>The v2 spine (ledger file + census brain + trail), loaded at startup.</summary>
     public static GardenService Garden { get; private set; } = null!;
 
-    internal TendChain TendChain { get; init; }
+    internal Chains.TendChain TendChain { get; init; }
 
     public readonly WindowSystem WindowSystem = new("BalambGarden");
     private ConfigWindow ConfigWindow { get; init; }
@@ -46,7 +46,7 @@ public sealed class Plugin : IDalamudPlugin
 
         Garden = GardenService.Load(PluginInterface.GetPluginConfigDirectory());
 
-        TendChain = new TendChain();
+        TendChain = new Chains.TendChain();
 
         ConfigWindow = new ConfigWindow(this);
         MainWindow = new MainWindow(this);

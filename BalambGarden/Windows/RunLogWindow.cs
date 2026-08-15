@@ -36,13 +36,15 @@ public class RunLogWindow : Window, IDisposable
 
         if (chain.Busy)
         {
-            var line = $"Watering... {chain.Report.Count}/{chain.TotalBeds} | elapsed {chain.Elapsed:mm\\:ss}";
+            var line = $"Watering... {chain.Report.Count}/{chain.TotalUnits} | elapsed {chain.Elapsed:mm\\:ss}";
             if (chain.Eta is { } eta)
                 line += $" | ETA {eta:mm\\:ss}";
             ImGui.Text(line);
             ImGui.SameLine();
-            if (ImGui.Button("Abort"))
-                chain.Abort();
+            // A user stop lands at the next bed boundary, never mid-dialogue (spec):
+            // RequestStop, not Abort - the current bed finishes its conversation.
+            if (ImGui.Button("Stop"))
+                chain.RequestStop();
         }
         else
         {
