@@ -32,4 +32,22 @@ public class WiltTests
     [Fact] // never tended under watch: honest Unknown, not a guess
     public void NoTendReceiptMeansUnknown()
         => Assert.Equal(WaterState.Unknown, Source.StateFor(Bed(null), Krakka, T0));
+
+    private static ClaimedBed Pot(DateTimeOffset? tended) => new()
+    {
+        Estate = new EstateKey(340, 11, 32), MapKey = 3, PatchOrdinal = 3, BedSlot = 0,
+        IsPot = true, LastTended = tended,
+    };
+
+    [Theory] // flowerpots cannot wilt - no age of tend clock ever makes one thirsty
+    [InlineData(0)]
+    [InlineData(37)]
+    [InlineData(10_000)]
+    public void PotsNeverWilt(int hoursSinceTend)
+        => Assert.Equal(WaterState.NotApplicable,
+            Source.StateFor(Pot(T0), Krakka, T0.AddHours(hoursSinceTend)));
+
+    [Fact] // ...and an untended pot is Not Applicable too, never a hedged Unknown
+    public void UntendedPotIsNotApplicable()
+        => Assert.Equal(WaterState.NotApplicable, Source.StateFor(Pot(null), Krakka, T0));
 }

@@ -125,7 +125,8 @@ public class MainWindow : Window, IDisposable
     }
 
     /// <summary>What this estate has claimed. Water reads "?" whenever the crop or the
-    /// tend clock is missing - an unknown state is stated, never guessed.</summary>
+    /// tend clock is missing - an unknown state is stated, never guessed - and "-" for
+    /// pots, which cannot wilt at all.</summary>
     private static void DrawClaimedBeds(EstateKey? estate)
     {
         if (estate is null)
@@ -176,7 +177,13 @@ public class MainWindow : Window, IDisposable
             ImGui.Text(latest is null ? "?" : latest.Stage.ToString());
             ImGui.TableNextColumn();
             var crop = latest is null ? null : Plugin.Tables.CropBySpeciesIndex(latest.SpeciesIndex);
-            ImGui.Text(crop is null ? "?" : Plugin.Garden.Wilt.StateFor(bed, crop, now).ToString());
+            // Flowerpots cannot wilt (08-15 finding: third-party table shows every pot seed
+            // at 1-day grow with no wilt time, plus our own unwatered sunflower receipt) -
+            // indoor watering is the pigment mechanic, cosmetic only. "-" says the column
+            // does not apply here; "?" would claim we merely don't know.
+            ImGui.Text(bed.IsPot ? "-"
+                : crop is null ? "?"
+                : Plugin.Garden.Wilt.StateFor(bed, crop, now).ToString());
             ImGui.TableNextColumn();
             ImGui.Text(latest is null ? "?" : Ago(latest.At));
         }

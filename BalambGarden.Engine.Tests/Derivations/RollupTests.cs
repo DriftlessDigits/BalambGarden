@@ -61,4 +61,46 @@ public class RollupTests
         var rollups = Rollups.ForEstate(Chelsea, [Bed(1, 2, 1)], T, new ClockWiltSource(), Now);
         Assert.Null(Rollups.ArrivalNudge(Chelsea, rollups));
     }
+
+    private static ClaimedBed Pot(int mapKey, byte stage, double tendedHoursAgo)
+    {
+        var pot = new ClaimedBed
+        {
+            Estate = Chelsea, MapKey = mapKey, PatchOrdinal = mapKey, BedSlot = 0, IsPot = true,
+            LastTended = Now.AddHours(-tendedHoursAgo),
+        };
+        pot.Observe(new Observation(Now.AddHours(-tendedHoursAgo), 0x31, stage,
+            ObservationSource.TendReceipt));
+        return pot;
+    }
+
+    [Fact] // a pot untouched for a month is still not thirsty - flowerpots cannot wilt
+    public void AncientPotContributesNoThirst()
+    {
+        var rollup = Assert.Single(
+            Rollups.ForEstate(Chelsea, [Pot(3, 2, 720)], T, new ClockWiltSource(), Now));
+        Assert.True(rollup.IsPots);
+        Assert.Equal(1, rollup.Claimed);
+        Assert.Equal(0, rollup.Due);
+        Assert.Equal(0, rollup.Overdue);
+        Assert.Equal(0, rollup.Danger);
+        Assert.Equal(0, rollup.Unknown);
+    }
+
+    [Fact] // ...so an estate of nothing but stale pots gets no nudge at all
+    public void NudgeSilentWhenOnlyPotsAreStale()
+    {
+        var rollups = Rollups.ForEstate(
+            Chelsea, [Pot(3, 2, 720), Pot(4, 1, 500)], T, new ClockWiltSource(), Now);
+        Assert.Null(Rollups.ArrivalNudge(Chelsea, rollups));
+    }
+
+    [Fact] // but a ripe pot still speaks: pots ripen, they just never die
+    public void RipePotStillCounts()
+    {
+        var rollups = Rollups.ForEstate(
+            Chelsea, [Pot(3, 4, 720)], T, new ClockWiltSource(), Now);
+        Assert.Equal(1, rollups.Sum(r => r.Ripe));
+        Assert.Contains("1 ripe", Rollups.ArrivalNudge(Chelsea, rollups));
+    }
 }
