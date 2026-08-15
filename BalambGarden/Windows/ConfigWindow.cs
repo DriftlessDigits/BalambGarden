@@ -15,7 +15,7 @@ public class ConfigWindow : Window, IDisposable
         Flags = ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoScrollbar |
                 ImGuiWindowFlags.NoScrollWithMouse;
 
-        Size = new Vector2(400, 330);
+        Size = new Vector2(400, 400);
         SizeCondition = ImGuiCond.Always;
 
         configuration = Plugin.Configuration;
@@ -39,6 +39,8 @@ public class ConfigWindow : Window, IDisposable
     public override void Draw()
     {
         DrawBehaviour();
+        ImGui.Separator();
+        DrawSensing();
         ImGui.Separator();
         ImGui.Text("Tend pacing");
 
@@ -67,6 +69,23 @@ public class ConfigWindow : Window, IDisposable
         if (ImGui.SliderInt("Jitter (+/- ms)", ref jitter, 0, 1500))
         {
             configuration.JitterMS = jitter;
+            configuration.Save();
+        }
+    }
+
+    /// <summary>How far the dashboard's patch sweep reaches. Wider finds a far corner of a
+    /// big plot; too wide starts finding the neighbour's beds (their twin ordinal sat at
+    /// 37.9y on 08-14), and a patch you cannot claim is worse than one you have to walk to.
+    /// Recon's own 40y sweep is fixed and untouched by this - the instrument is supposed to
+    /// see more than the app.</summary>
+    private void DrawSensing()
+    {
+        ImGui.Text("Sensing");
+
+        var radius = configuration.PatchScanRadius;
+        if (ImGui.SliderFloat("Patch scan radius (y)", ref radius, 5f, 40f, "%.0f"))
+        {
+            configuration.PatchScanRadius = radius;
             configuration.Save();
         }
     }

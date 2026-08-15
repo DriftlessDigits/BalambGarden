@@ -14,15 +14,22 @@ using Dalamud.Interface.Windowing;
 namespace BalambGarden.Windows;
 
 /// <summary>
-/// The dashboard, read top to bottom: the estate you are standing on gets the whole
-/// room - strips, counts, verbs - and every other estate is one dim line of memory that
-/// expands read-only when you ask it to. Hierarchy comes from space and brightness, not
-/// chrome: full brightness is reserved for the few things that matter now (ripe, danger,
-/// a refusal), ages and counts sit at TextDisabled, and colour is semantic only.
+/// The dashboard, modelled on Scrooge's Gil Dashboard: one verdict line about the whole
+/// garden above the bar, then a tab per place. An estate's tab splits into the Outdoor
+/// section (patches, strips, verbs, the cycle launcher) and the Indoor section (pots), and
+/// a section only exists when it has something in it - an estate you have never been
+/// inside grows no Indoor half rather than an empty one.
 ///
-/// <para>The patch strip is the one bold element: eight cells, one per bed, fill for stage
-/// and an under-bar for water. It is a summary layer - the grid and the tooltips remain
-/// the reading that carries the claim, so colour is never the only channel.</para>
+/// <para>The tab for the estate you are standing on selects itself once, on arrival, and
+/// then leaves your clicking alone. Apartments and FC rooms have no yard, so their tab is
+/// indoor-only - the estate sensor refuses to mint an apartment key today (zero receipts),
+/// so that path is shape, not a claim that it works.</para>
+///
+/// <para>Hierarchy still comes from space and brightness rather than chrome: full
+/// brightness is reserved for the few things that matter now (ripe, danger, a refusal),
+/// ages and counts sit at TextDisabled, and colour is semantic only. The patch strip is
+/// the one bold element - eight cells, one per bed - and the grid and tooltips under it
+/// remain the reading that carries the claim, so colour is never the only channel.</para>
 /// </summary>
 public class MainWindow : Window, IDisposable
 {
@@ -41,10 +48,6 @@ public class MainWindow : Window, IDisposable
     private (EstateKey Estate, int Ordinal)? cyclePatch;
     private ReplantPlan? cyclePlan;
 
-    // Which remembered estate is opened up. One at a time: memory is a list you glance at,
-    // not a stack of drawers left hanging open.
-    private EstateKey? expanded;
-
     // Nickname editing: one estate at a time, written back on deactivation.
     private EstateKey? renaming;
     private string renameBuffer = "";
@@ -59,6 +62,12 @@ public class MainWindow : Window, IDisposable
     // of judging it.
     private uint potSeedId;
 
+    // Arrival selection. lastHere is where we were on the previous frame; when it changes,
+    // the new estate's tab takes the selection for exactly one frame. Selecting every
+    // frame would fight the player every time they clicked another tab.
+    private EstateKey? lastHere;
+    private EstateKey? selectOnce;
+
     public MainWindow(Plugin plugin)
         : base("Balamb Garden##BalambGardenMain")
     {
@@ -69,6 +78,20 @@ public class MainWindow : Window, IDisposable
         };
 
         this.plugin = plugin;
+
+        // The dashboard is the front door; settings live behind the cog (Scrooge's idiom).
+        TitleBarButtons.Add(new TitleBarButton
+        {
+            Icon = Dalamud.Interface.FontAwesomeIcon.Cog,
+            IconOffset = new Vector2(2, 1),
+            Click = _ => plugin.ToggleConfigUi(),
+            ShowTooltip = () =>
+            {
+                ImGui.BeginTooltip();
+                ImGui.Text("Balamb Garden settings");
+                ImGui.EndTooltip();
+            },
+        });
     }
 
     public void Dispose() { }
@@ -86,21 +109,79 @@ public class MainWindow : Window, IDisposable
 
         armedTouchedThisFrame = false;
 
-        DrawClaimToggle();
-        if (MapSensor.UnreadableCount > 0)
-            ImGui.TextColored(Amber, $"{MapSensor.UnreadableCount} map entries here are unreadable");
+        if (here != lastHere)
+        {
+            selectOnce = here;
+            lastHere = here;
+        }
 
         var estates = Plugin.Garden.Ledger.Estates.ToList();
 
-        DrawHere(estates, here, now);
-        DrawMemory(estates, here, now);
-        DrawTips(now);
-        DrawRecon();
+        DrawVerdict(estates, now);
+        DrawLocatorNotes(estates, here);
+
+        ImGui.Spacing();
+        using (var bar = ImRaii.TabBar("##BalambTabs"))
+        {
+            if (bar.Success)
+            {
+                foreach (var record in estates
+                             .OrderByDescending(e => e.Key == here)
+                             .ThenByDescending(e => e.LastVisited))
+                    DrawEstateTab(record, here, now);
+
+                DrawTipsTab(now);
+#if DEBUG
+                DrawReconTab();
+#endif
+            }
+        }
+
+        selectOnce = null;
 
         // Anything else the player clicked disarms the hot button.
         if (armedButton is not null && !armedTouchedThisFrame
             && ImGui.IsMouseClicked(ImGuiMouseButton.Left))
             armedButton = null;
+    }
+
+    // ------------------------------------------------------------------ verdict
+
+    /// <summary>The Gil-Dashboard summary line, in garden terms: across every estate the
+    /// ledger knows, the worst thing that wants a human - or, when nothing does, the next
+    /// window instead of an invented errand. The Engine owns the sentence; this only prints
+    /// it, and carries the provenance marker for any window it quoted.</summary>
+    private static void DrawVerdict(List<EstateRecord> estates, DateTimeOffset now)
+    {
+        var verdict = Verdicts.ForGarden(
+            estates, Plugin.Garden.Census.LedgerBeds, Plugin.Tables, Plugin.Garden.Wilt, now,
+            w => WindowFormat.Range(w.Earliest.ToLocalTime(), w.Latest.ToLocalTime()));
+
+        ImGui.Text(verdict.Text);
+
+        if (verdict.Window is not { } window)
+            return;
+
+        ImGui.SameLine();
+        ImGui.TextDisabled(WindowFormat.Mark(window.Provenance));
+        if (ImGui.IsItemHovered())
+            ImGui.SetTooltip(WindowFormat.MarkMeaning(window.Provenance));
+    }
+
+    /// <summary>The two things the verdict cannot say: that no estate has a tab yet, and
+    /// that we are standing somewhere the ledger has not finished writing down. Both are
+    /// silent when they do not apply.</summary>
+    private static void DrawLocatorNotes(List<EstateRecord> estates, EstateKey? here)
+    {
+        if (estates.Count == 0)
+            ImGui.TextDisabled("No estates visited yet - walk onto one and it joins the roster.");
+        else if (here is { } key && estates.All(e => e.Key != key))
+            // The ledger writes an estate on arrival. If that write has not landed yet,
+            // say where we are rather than inventing a tab for it.
+            ImGui.TextDisabled($"{key.DisplayWardPlot()} - reading the estate...");
+
+        if (MapSensor.UnreadableCount > 0)
+            ImGui.TextColored(Amber, $"{MapSensor.UnreadableCount} map entries here are unreadable");
     }
 
     /// <summary>A press with no undo: the button relabels itself and wants a second click
@@ -124,18 +205,6 @@ public class MainWindow : Window, IDisposable
         return false;
     }
 
-    private static void DrawClaimToggle()
-    {
-        var claim = Plugin.Configuration.ClaimOnAction;
-        if (ImGui.Checkbox("Claim as I go", ref claim))
-        {
-            Plugin.Configuration.ClaimOnAction = claim;
-            // One flag, two homes: the engine decides claims, the config remembers.
-            Plugin.Garden.Census.ClaimOnAction = claim;
-            Plugin.Configuration.Save();
-        }
-    }
-
     /// <summary>The one tooltip a busy chain owes every verb it greys out.</summary>
     private void BusyTip()
     {
@@ -143,81 +212,46 @@ public class MainWindow : Window, IDisposable
             ImGui.SetTooltip("a run is going - one chain at a time");
     }
 
-    // ------------------------------------------------------------------ current estate
+    // ------------------------------------------------------------------ estate tabs
 
-    /// <summary>The hero: where you are standing, open, with every verb. Objects only
-    /// exist here, so this is the only estate that can grow a button.</summary>
-    private void DrawHere(List<EstateRecord> estates, EstateKey? here, DateTimeOffset now)
+    /// <summary>One place, one tab. Verbs only exist where the player is standing - objects
+    /// do not travel - so every other tab is memory that reads but never acts.</summary>
+    private void DrawEstateTab(EstateRecord record, EstateKey? here, DateTimeOffset now)
     {
-        ImGui.Spacing();
+        var isHere = record.Key == here;
+        var flags = selectOnce is { } arrival && arrival == record.Key
+            ? ImGuiTabItemFlags.SetSelected
+            : ImGuiTabItemFlags.None;
 
-        if (here is not { } key)
-        {
-            ImGui.TextDisabled("Not standing at an estate - walk onto one and it opens here.");
+        // Label is the nickname, identity is the key: renaming an estate must not read as
+        // a different tab appearing.
+        var label = $"{record.DisplayName}###{record.Key.BindingKey(0)}";
+        using var tab = ImRaii.TabItem(label, flags);
+        if (!tab.Success)
             return;
-        }
-
-        var record = estates.FirstOrDefault(e => e.Key == key);
-        if (record is null)
-        {
-            // The ledger writes an estate on arrival. If that write has not landed yet,
-            // say where we are rather than inventing a row for it.
-            ImGui.TextDisabled($"{key.DisplayWardPlot()} - reading the estate...");
-            return;
-        }
 
         using var id = ImRaii.PushId(record.Key.BindingKey(0));
 
-        ImGui.Text(record.DisplayName);
-        ImGui.SameLine();
-        ImGui.TextDisabled("you are here");
-        ImGui.SameLine();
-        DrawRenameControl(record);
-
         var beds = Plugin.Garden.Census.LedgerBeds.Where(b => b.Estate == record.Key).ToList();
 
-        using var indent = ImRaii.PushIndent();
-        DrawEstateBody(record, beds, isHere: true, now);
+        ImGui.Spacing();
+        DrawEstateHeader(record, beds, isHere, now);
+        DrawEstateSections(record, beds, isHere, now);
     }
 
-    /// <summary>Every other estate is memory: one dim line saying what it holds and how
-    /// old that memory is. Clicking opens it read-only - away from an estate there are no
-    /// objects, so there is nothing there to press.</summary>
-    private void DrawMemory(List<EstateRecord> estates, EstateKey? here, DateTimeOffset now)
+    private void DrawEstateHeader(
+        EstateRecord record, List<ClaimedBed> beds, bool isHere, DateTimeOffset now)
     {
-        var others = estates
-            .Where(e => e.Key != here)
-            .OrderByDescending(e => e.LastVisited)
-            .ToList();
-
-        if (others.Count == 0)
-        {
-            if (here is null)
-                ImGui.TextDisabled("No estates visited yet - walk onto one and it joins the roster.");
-            return;
-        }
-
-        ImGui.Spacing();
-        ImGui.Separator();
-        ImGui.Spacing();
-
-        foreach (var record in others)
-        {
-            using var id = ImRaii.PushId(record.Key.BindingKey(0));
-
-            var beds = Plugin.Garden.Census.LedgerBeds.Where(b => b.Estate == record.Key).ToList();
+        if (isHere)
+            ImGui.TextDisabled("you are here");
+        else
+            // Memory says how old it is, every time. A count with no age is a count
+            // pretending to be current.
             ImGui.TextDisabled(
-                $"{record.DisplayName} · {beds.Count} claimed · {WindowFormat.Ago(record.LastVisited, now)}");
-            if (ImGui.IsItemClicked())
-                expanded = expanded == record.Key ? null : record.Key;
+                $"{beds.Count} claimed · last visited {WindowFormat.Ago(record.LastVisited, now)}");
 
-            if (expanded != record.Key)
-                continue;
-
-            using var indent = ImRaii.PushIndent();
-            DrawRenameControl(record);
-            DrawEstateBody(record, beds, isHere: false, now);
-        }
+        ImGui.SameLine();
+        DrawRenameControl(record);
     }
 
     /// <summary>A nickname is the one piece of an estate the player authors. The button
@@ -244,27 +278,69 @@ public class MainWindow : Window, IDisposable
         renameBuffer = record.Nickname;
     }
 
-    private void DrawEstateBody(
+    /// <summary>Outdoor and Indoor, each drawn only when it holds something. An estate with
+    /// a yard you have walked and a living room you never have shows one section, not one
+    /// section and an empty promise.</summary>
+    private void DrawEstateSections(
         EstateRecord record, List<ClaimedBed> beds, bool isHere, DateTimeOffset now)
     {
         var rollups = Rollups.ForEstate(
             record.Key, Plugin.Garden.Census.LedgerBeds, Plugin.Tables, Plugin.Garden.Wilt, now);
+        var outdoorRollups = rollups.Where(r => !r.IsPots).ToList();
+        var potRollups = rollups.Where(r => r.IsPots).ToList();
 
-        // Objects only exist where the player is standing. Everything else on this row is
-        // memory, and memory never grows a verb.
-        var patches = isHere ? ObjectSensor.Patches() : new List<PatchGroup>();
+        // Apartments and FC-house rooms are indoor-only places: Room >= 0 is the apartment
+        // identity shape. EstateSensor refuses to mint one today (zero receipts), so no
+        // such record can exist yet - this is the shape it would render in, nothing more.
+        var isApartment = record.Key.Room >= 0;
+
+        // Objects only exist where the player is standing. Everything else is memory, and
+        // memory never grows a verb.
         var inside = isHere && EstateSensor.IsInside();
+        var patches = isHere && !inside && !isApartment
+            ? ObjectSensor.Patches()
+            : new List<PatchGroup>();
+        var pots = inside ? ObjectSensor.NearbyPots() : new List<PotObject>();
 
-        if (isHere && !inside)
+        var hasOutdoor = !isApartment && (outdoorRollups.Count > 0 || patches.Count > 0);
+        var hasIndoor = potRollups.Count > 0 || pots.Count > 0;
+
+        if (hasOutdoor)
         {
-            DrawUnclaimedLine(patches, beds);
-            DrawTendAll(patches);
+            SectionHeader("Outdoor");
+            DrawOutdoorSection(record, outdoorRollups, patches, beds, isHere, now);
         }
 
-        // An estate you are standing on with nothing to show gets an invitation, not a
-        // row of dead controls.
-        if (isHere && rollups.Count == 0 && patches.Count == 0)
-            ImGui.TextDisabled("Nothing claimed here yet - tend a bed and it appears.");
+        if (hasIndoor)
+        {
+            SectionHeader("Indoor");
+            DrawIndoorSection(record, potRollups, pots, isHere, now);
+        }
+
+        if (hasOutdoor || hasIndoor)
+            return;
+
+        // A place you are standing in with nothing to show gets an invitation, not a row
+        // of dead controls.
+        ImGui.TextDisabled(isHere
+            ? "Nothing claimed here yet - tend a bed and it appears."
+            : "Nothing remembered here yet.");
+    }
+
+    private static void SectionHeader(string text)
+    {
+        ImGui.Spacing();
+        using (ImRaii.PushColor(ImGuiCol.Text, Dim))
+            ImGui.Text(text);
+        ImGui.Separator();
+    }
+
+    private void DrawOutdoorSection(
+        EstateRecord record, List<PatchRollup> rollups, List<PatchGroup> patches,
+        List<ClaimedBed> beds, bool isHere, DateTimeOffset now)
+    {
+        DrawUnclaimedLine(patches, beds);
+        DrawTendAll(patches);
 
         foreach (var rollup in rollups)
             DrawRollupRow(record, rollup, patches, isHere, now);
@@ -272,12 +348,18 @@ public class MainWindow : Window, IDisposable
         // A patch standing right there that the ledger has nothing for at all: it still
         // needs a row, or a fresh ledger could never be bootstrapped (tending is the only
         // thing that claims).
-        foreach (var patch in patches.Where(p =>
-                     rollups.All(r => r.IsPots || r.PatchOrdinal != p.Ordinal)))
+        foreach (var patch in patches.Where(p => rollups.All(r => r.PatchOrdinal != p.Ordinal)))
             DrawUnclaimedPatchRow(patch);
+    }
 
-        if (isHere)
-            DrawPots();
+    private void DrawIndoorSection(
+        EstateRecord record, List<PatchRollup> rollups, List<PotObject> pots,
+        bool isHere, DateTimeOffset now)
+    {
+        foreach (var rollup in rollups)
+            DrawRollupRow(record, rollup, [], isHere, now);
+
+        DrawPots(pots);
     }
 
     private static void DrawUnclaimedLine(List<PatchGroup> patches, List<ClaimedBed> beds)
@@ -895,18 +977,24 @@ public class MainWindow : Window, IDisposable
 
     // ------------------------------------------------------------------ tips
 
-    /// <summary>The pipeline reader's advisory lines. Hidden entirely when it has nothing
-    /// to say - an empty "Tips (0)" header is filler, and filler trains people to stop
-    /// reading the panel that matters.</summary>
-    private static void DrawTips(DateTimeOffset now)
+    /// <summary>The pipeline reader's advisory lines, in their own tab. The count only
+    /// appears when there is one - a permanent "Tips (0)" is filler, and filler trains
+    /// people to stop reading the panel that matters.</summary>
+    private static void DrawTipsTab(DateTimeOffset now)
     {
         var tips = PipelineReader.Tips(Plugin.Garden.Census.LedgerBeds, Plugin.Tables, now);
-        if (tips.Count == 0)
+
+        var label = tips.Count > 0 ? $"Tips ({tips.Count})###tips" : "Tips###tips";
+        using var tab = ImRaii.TabItem(label);
+        if (!tab.Success)
             return;
 
         ImGui.Spacing();
-        if (!ImGui.CollapsingHeader($"Tips ({tips.Count})###tips"))
+        if (tips.Count == 0)
+        {
+            ImGui.TextDisabled("Nothing to flag right now.");
             return;
+        }
 
         foreach (var tip in tips)
         {
@@ -927,12 +1015,8 @@ public class MainWindow : Window, IDisposable
     /// <summary>Indoor pots in front of you. Watering a pot is the PIGMENT mechanic, not
     /// a drink - pot flowers have never been seen to wilt (08-15) - so the verb says so
     /// on its face. A pot out of reach is a dim line, not a row of dead buttons.</summary>
-    private void DrawPots()
+    private void DrawPots(List<PotObject> pots)
     {
-        if (!EstateSensor.IsInside())
-            return;
-
-        var pots = ObjectSensor.NearbyPots();
         if (pots.Count == 0)
             return;
 
@@ -1027,74 +1111,57 @@ public class MainWindow : Window, IDisposable
         if (ImGui.IsItemHovered())
             ImGui.SetTooltip(text);
     }
-#endif
 
-    /// <summary>The instrument, quarantined at the very bottom: dim header, closed by
-    /// default, named for what it is. Nothing in here is product - it writes to the log
-    /// and mints capture fixtures - so it should never read like a feature.</summary>
-    private void DrawRecon()
+    /// <summary>The instrument, quarantined in its own tab and DEBUG-only: a Release plugin
+    /// has no probe in it at all (the whole ReconProbe file is #if DEBUG), so this tab
+    /// cannot exist without one. Nothing in here is product - it writes to the log and
+    /// mints capture fixtures - so it keeps reading as an instrument inside its own tab.
+    ///
+    /// <para>One button, on purpose (Sam's ruling 08-15): a capture that missed the one
+    /// dump you needed costs another whole trip out to the estate, so it fires everything
+    /// at once and catches too much rather than not enough. Watch-plant-flow stays a
+    /// separate toggle - it is a recording that runs while you play, not a snapshot.</para>
+    /// </summary>
+    private void DrawReconTab()
     {
-        ImGui.Spacing();
-        ImGui.Separator();
-        ImGui.Spacing();
-
-        bool open;
-        using (ImRaii.PushColor(ImGuiCol.Text, Dim))
-        {
-            open = ImGui.CollapsingHeader("Recon - instrument, not product###recon");
-        }
-
-        if (!open)
+        using var tab = ImRaii.TabItem("Recon###recon");
+        if (!tab.Success)
             return;
+
+        ImGui.Spacing();
+        using (ImRaii.PushColor(ImGuiCol.Text, Dim))
+            ImGui.TextWrapped("Instrument, not product. Everything here writes to the Dalamud log.");
 
         // The sensor filters to beds by DataId, so the old "beds only" toggle is gone -
         // what the table shows now IS the bed set, identified by the game's own gimmick.
+        // Recon keeps the fixed 40y sweep: the instrument is meant to see further than
+        // the app's own (now player-set) scan radius.
         var beds = ObjectSensor.NearbyBeds();
-        var territoryId = Plugin.ClientState.TerritoryType;
-        if (ImGui.Button("Log snapshot"))
-        {
-            Plugin.Log.Information($"[Recon] zone ({territoryId}), {beds.Count} beds in 40y:");
-            foreach (var b in beds)
-                Plugin.Log.Information(
-                    $"[Recon] patch 0x{b.Gimmick.PatchId:X4} ordinal {b.Gimmick.PatchOrdinal} bed {b.Gimmick.BedIndex} "
-                    + $"| {b.Distance:F2}y | targetable={b.Targetable} | pos={b.Object.Position:F1}");
-        }
-        ImGui.SameLine();
-        ImGui.TextDisabled($"{beds.Count} beds within 40y");
 
-#if DEBUG
-        // The instruments. All log-only, all DEBUG-only - a Release plugin has no probe
-        // in it at all (the whole ReconProbe file is #if DEBUG), so these buttons cannot
-        // exist without it.
-        if (ImGui.Button("Log housing"))
-            ReconProbe.LogHousingLocation();
-        ReconTip("Ward/plot/room + inside flag from HousingManager -> log.");
-
-        ImGui.SameLine();
-        if (ImGui.Button("Dump records"))
-            ReconProbe.DumpHousingRecords();
+        if (ImGui.Button("Capture everything"))
+            CaptureEverything(beds);
         ReconTip(
-            "Furniture vector + the gardening DataMap (raw hex beside the decode, read\n"
-            + "through the same MapSensor the census uses) + bed gimmick ids -> log.");
+            "One press, everything at once:\n"
+            + "  · housing location (ward/plot/room + inside flag)\n"
+            + "  · housing records (furniture vector + gardening DataMap, raw hex + decode)\n"
+            + "  · bed/pot struct dumps and the nearby-object sweep\n"
+            + "  · the bed snapshot (zone, patch ids, distances, targetable)\n"
+            + "Catch too much rather than not enough.");
 
         ImGui.SameLine();
-        if (ImGui.Button("Dump bed structs"))
-            ReconProbe.DumpBedStructs();
-        ReconTip(
-            "0x220 bytes of each nearby bed/pot object -> log. A diff instrument:\n"
-            + "capture the same bed in two states and diff the hex.");
 
         // Sow-flow recon: Sam plants by hand with this on, the log records what the
-        // addons actually held.
-        var watching = Chains.PlantFlow.Watching;
+        // addons actually held. A recording, not a snapshot - so it keeps its own switch.
+        var watching = PlantFlow.Watching;
         if (ImGui.Checkbox("Watch plant flow", ref watching))
         {
             if (watching)
-                Chains.PlantFlow.StartWatching();
+                PlantFlow.StartWatching();
             else
-                Chains.PlantFlow.StopWatching();
+                PlantFlow.StopWatching();
         }
-#endif
+
+        ImGui.TextDisabled($"{beds.Count} beds within 40y");
 
         using var table = ImRaii.Table("sightings", 5,
             ImGuiTableFlags.RowBg | ImGuiTableFlags.Borders | ImGuiTableFlags.ScrollY,
@@ -1134,4 +1201,24 @@ public class MainWindow : Window, IDisposable
             }
         }
     }
+
+    /// <summary>Every instrument, one press, fenced in the log so a capture is one findable
+    /// block rather than four runs someone has to stitch together afterwards.</summary>
+    private static void CaptureEverything(List<BedObject> beds)
+    {
+        Plugin.Log.Information("[Recon] ===== capture start =====");
+        ReconProbe.LogHousingLocation();
+        ReconProbe.DumpHousingRecords();
+        ReconProbe.DumpBedStructs();
+
+        Plugin.Log.Information(
+            $"[Recon] zone ({Plugin.ClientState.TerritoryType}), {beds.Count} beds in 40y:");
+        foreach (var b in beds)
+            Plugin.Log.Information(
+                $"[Recon] patch 0x{b.Gimmick.PatchId:X4} ordinal {b.Gimmick.PatchOrdinal} bed {b.Gimmick.BedIndex} "
+                + $"| {b.Distance:F2}y | targetable={b.Targetable} | pos={b.Object.Position:F1}");
+
+        Plugin.Log.Information("[Recon] ===== capture end =====");
+    }
+#endif
 }

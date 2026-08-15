@@ -48,6 +48,12 @@ public class Configuration : IPluginConfiguration
     /// room; the name we speak under in it is theirs to set.</summary>
     public string NudgeLabel { get; set; } = "Balamb";
 
+    /// <summary>How far the working patch sweep looks, in yalms. Sam's ruling 08-14 set the
+    /// 20y default (the neighbour's twin ordinal sat at 37.9y, and a far own patch simply
+    /// reappears when you walk toward it); it is a setting because a sprawling plot and a
+    /// small one want different answers. Recon keeps its own fixed 40y view on purpose.</summary>
+    public float PatchScanRadius { get; set; } = 20f;
+
     // The garden ledger: every tended bed's latest census record.
     public List<BedRecord> Ledger { get; set; } = [];
 
