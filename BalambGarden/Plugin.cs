@@ -118,6 +118,10 @@ public sealed class Plugin : IDalamudPlugin
         PluginInterface.UiBuilder.OpenMainUi -= ToggleMainUi;
         Svc.Framework.Update -= OnFrameworkUpdate;
         Game.ObtainWatch.Stop();
+#if DEBUG
+        // A watcher left registered would outlive the plugin its callback belongs to.
+        Chains.PlantFlow.StopWatching();
+#endif
 
         WindowSystem.RemoveAllWindows();
 

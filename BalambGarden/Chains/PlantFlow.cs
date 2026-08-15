@@ -3,6 +3,11 @@ using Dalamud.Memory;
 using ECommons;
 using ECommons.UIHelpers.AddonMasterImplementations;
 using FFXIVClientStructs.FFXIV.Component.GUI;
+#if DEBUG
+using Dalamud.Game.Addon.Lifecycle;
+using Dalamud.Game.Addon.Lifecycle.AddonArgTypes;
+using ECommons.DalamudServices;
+#endif
 
 namespace BalambGarden.Chains;
 
@@ -38,9 +43,10 @@ internal static unsafe partial class PlantFlow
     // capture: "Talk AtkValues[0] = 'Red Sunflowers\nThese flowers are in bloom.'"
     internal const string BloomTalkLine = "These flowers are in bloom.";
 
-    // capture: "--- HousingGardening (0 values) ---" - the soil/seed picker, and it is
-    // EMPTY. Two slots the player fills from inventory (capture F2), which is why the
-    // chain waits here instead of driving it.
+    // capture: "--- HousingGardening (0 values) ---" - the soil/seed picker, and it holds
+    // no text at all. Two slots the player fills from inventory (capture F2). The driver in
+    // PlantFill.cs works the slots as NODES for that reason: there is nothing here to read,
+    // only things to click.
     internal const string GardeningAddon = "HousingGardening";
 
     /// <summary>How long the chain will stand at an open picker waiting for the human to
@@ -61,11 +67,9 @@ internal static unsafe partial class PlantFlow
         => GenericHelpers.TryGetAddonByName("Talk", out addon)
             && GenericHelpers.IsAddonReady(addon);
 
-    /// <summary>Is the soil/seed picker up? Its contents are unreadable (zero AtkValues),
-    /// so its mere presence is the whole signal: the human's turn.</summary>
-    internal static bool GardeningOpen()
-        => GenericHelpers.TryGetAddonByName<AtkUnitBase>(GardeningAddon, out var addon)
-            && GenericHelpers.IsAddonReady(addon);
+    /// <summary>Is the soil/seed picker up? It carries no AtkValues, so its presence is the
+    /// whole signal that the sow is at the fill stage - whoever is doing the filling.</summary>
+    internal static bool GardeningOpen() => GardeningReady(out _);
 
     /// <summary>The sow confirmation, if it is up. Its text is the only place the game
     /// names what is about to be planted.</summary>
@@ -191,21 +195,69 @@ internal static unsafe partial class PlantFlow
     /// different selection).</summary>
     private static readonly System.Collections.Generic.Dictionary<string, int> lastShape = [];
 
+    /// <summary>The two addons the fill drives. Their RECEIVE-EVENT traffic is what a click
+    /// actually sends, which the AtkValue dump above cannot show at all - the picker has no
+    /// AtkValues to dump. Recording it while a human plants by hand is how the driver's own
+    /// clicks get something to be checked against.</summary>
+    private static readonly string[] EventWatchedAddons = ["HousingGardening", "ContextIconMenu"];
+
+    /// <summary>Held as one delegate instance so the unregister removes the same listener
+    /// the register added - a method group converted twice is two objects.</summary>
+    private static readonly Dalamud.Plugin.Services.IAddonLifecycle.AddonEventDelegate
+        ReceiveListener = OnReceiveEvent;
+
     internal static bool Watching { get; private set; }
 
     internal static void StartWatching()
     {
+        if (Watching)
+            return;
+
         Watching = true;
         // A fresh watch starts with no memory: whatever is already on screen deserves
         // one dump, not silence because a previous session saw the same shape.
         lastShape.Clear();
-        Plugin.Log.Information("[PlantRecon] watching plant-flow addons");
+        Svc.AddonLifecycle.RegisterListener(
+            AddonEvent.PreReceiveEvent, EventWatchedAddons, ReceiveListener);
+        Plugin.Log.Information("[PlantRecon] watching plant-flow addons (+ receive events)");
     }
 
     internal static void StopWatching()
     {
+        if (!Watching)
+            return;
+
         Watching = false;
+        Svc.AddonLifecycle.UnregisterListener(
+            AddonEvent.PreReceiveEvent, EventWatchedAddons, ReceiveListener);
         Plugin.Log.Information("[PlantRecon] stopped");
+    }
+
+    /// <summary>
+    /// One line per event the picker or its item list receives: which addon, which
+    /// AtkEventType, and the event param. That pair IS what a click carries - the driver
+    /// replays a node's own registered event, so a manual fill logged here and a driven fill
+    /// logged here should read the same, and any difference is a finding rather than a
+    /// mystery.
+    ///
+    /// <para>Strictly an observer: it never calls PreventOriginal and never touches the
+    /// event. A watcher that changed the interaction would be measuring itself.</para>
+    /// </summary>
+    private static void OnReceiveEvent(AddonEvent type, AddonArgs args)
+    {
+        try
+        {
+            if (args is not AddonReceiveEventArgs receive)
+                return;
+
+            Plugin.Log.Information(
+                $"[PlantRecon] {args.AddonName} receive {receive.AtkEventType} param={receive.EventParam}");
+        }
+        catch (Exception ex)
+        {
+            // The game is mid-event here; a throw would land inside its own UI dispatch.
+            Plugin.Log.Warning($"[PlantRecon] receive-event read failed: {ex.Message}");
+        }
     }
 
     /// <summary>
