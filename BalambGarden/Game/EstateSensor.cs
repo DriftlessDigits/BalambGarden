@@ -32,6 +32,15 @@ internal static unsafe class EstateSensor
 
         var ward = housing->GetCurrentWard();
         var plot = housing->GetCurrentPlot();
+
+        // plot=-128 indoors is the APARTMENT sentinel (probe receipt 08-15: territory=999
+        // ward=7 plot=-128 room=29 inside=True, Sam's own apartment). It used to fall into
+        // the silent plot<0 return below, which made the loud apartment refusal - and the
+        // HouseId it prints - unreachable. Route it to the loud path instead.
+        if (plot == -128 && housing->IsInside())
+            return RefuseIndoors(housing->GetCurrentIndoorHouseId(),
+                "apartment identity is unsupported (plot sentinel -128)");
+
         if (ward < 0 || plot < 0)
             return null;
 

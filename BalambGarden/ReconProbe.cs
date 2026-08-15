@@ -44,6 +44,20 @@ internal static unsafe class ReconProbe
                 $"[Probe] Housing: territory={Plugin.ClientState.TerritoryType} "
                 + $"ward={housing->GetCurrentWard()} plot={housing->GetCurrentPlot()} "
                 + $"room={housing->GetCurrentRoom()} inside={housing->IsInside()}");
+
+            // The raw indoor identity, always - the sensor's refusal warning used to be
+            // the only surface printing it, and a silent-null path (apartments: the 08-15
+            // capture showed plot=-128 short-circuits before any HouseId read) meant the
+            // one receipt we wanted most never landed in a capture.
+            if (housing->IsInside())
+            {
+                var houseId = housing->GetCurrentIndoorHouseId();
+                Plugin.Log.Information(
+                    $"[Probe] HouseId: 0x{houseId.Id:X16} territory={houseId.TerritoryTypeId} "
+                    + $"world={houseId.WorldId} ward={houseId.WardIndex} plot={houseId.PlotIndex} "
+                    + $"room={houseId.RoomNumber} isApartment={houseId.IsApartment} "
+                    + $"apartmentDivision={houseId.ApartmentDivision} isWorkshop={houseId.IsWorkshop}");
+            }
         }
         catch (Exception ex)
         {
