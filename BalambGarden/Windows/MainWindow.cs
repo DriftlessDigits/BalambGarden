@@ -77,6 +77,7 @@ public class MainWindow : Window, IDisposable
             ImGui.TextColored(Amber, $"{MapSensor.UnreadableCount} map entries here are unreadable");
 
         DrawRoster(here, now);
+        DrawTips(now);
         DrawRecon();
 
         // Anything else the player clicked disarms the hot button.
@@ -225,7 +226,8 @@ public class MainWindow : Window, IDisposable
     {
         var inReach = patches.Where(p => p.InReach).ToList();
         var totalBeds = inReach.Sum(p => p.Beds.Count);
-        using (ImRaii.Disabled(plugin.AnyChainBusy || inReach.Count == 0))
+        var blocked = plugin.AnyChainBusy || inReach.Count == 0;
+        using (ImRaii.Disabled(blocked))
         {
             if (ImGui.Button($"Tend All ({totalBeds} beds, {inReach.Count} patches)"))
             {
@@ -233,6 +235,11 @@ public class MainWindow : Window, IDisposable
                 plugin.Launched(plugin.TendChain);
             }
         }
+
+        if (blocked && ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+            ImGui.SetTooltip(plugin.AnyChainBusy
+                ? "a run is going - one chain at a time"
+                : "no patch is in reach - walk up to one");
     }
 
     // ------------------------------------------------------------------ rollups
@@ -368,7 +375,7 @@ public class MainWindow : Window, IDisposable
         ImGui.TableSetupColumn("Stage", ImGuiTableColumnFlags.WidthFixed, 90f);
         ImGui.TableSetupColumn("Water", ImGuiTableColumnFlags.WidthFixed, 110f);
         ImGui.TableSetupColumn("Ripe", ImGuiTableColumnFlags.WidthFixed, 150f);
-        ImGui.TableSetupColumn("##verbs", ImGuiTableColumnFlags.WidthFixed, 60f);
+        ImGui.TableSetupColumn("##verbs", ImGuiTableColumnFlags.WidthFixed, 150f);
         ImGui.TableHeadersRow();
 
         foreach (var bed in beds)
@@ -378,7 +385,7 @@ public class MainWindow : Window, IDisposable
 
             if (ReadsEmptyNow(bed, isHere))
             {
-                DrawDriftRow(bed);
+                DrawDriftRow(record, bed);
                 continue;
             }
 
@@ -414,7 +421,7 @@ public class MainWindow : Window, IDisposable
             DrawRipeCell(bed, crop, latest, now);
 
             ImGui.TableNextColumn();
-            DrawBedVerbs(bedObject);
+            DrawBedVerbs(record, bed, bedObject);
         }
     }
 
@@ -472,9 +479,10 @@ public class MainWindow : Window, IDisposable
             ImGui.SetTooltip(WindowFormat.MarkMeaning(window.Provenance));
     }
 
-    private void DrawBedVerbs(BedObject? bedObject)
+    private void DrawBedVerbs(EstateRecord record, ClaimedBed bed, BedObject? bedObject)
     {
-        using (ImRaii.Disabled(plugin.AnyChainBusy || bedObject is not { InReach: true }))
+        var reachable = bedObject is { InReach: true };
+        using (ImRaii.Disabled(plugin.AnyChainBusy || !reachable))
         {
             if (ImGui.SmallButton("Tend") && bedObject is { InReach: true } target)
             {
@@ -482,12 +490,32 @@ public class MainWindow : Window, IDisposable
                 plugin.Launched(plugin.TendChain);
             }
         }
+
+        if (!reachable && ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+            ImGui.SetTooltip(plugin.AnyChainBusy
+                ? "a run is going - one chain at a time"
+                : "this bed isn't in reach from here");
+
+        ImGui.SameLine();
+        DrawAbandonButton(record, bed);
+    }
+
+    /// <summary>Forgetting a bed is manual and deliberate (spec): the ledger only ever
+    /// loses a claim because a human said so, twice.</summary>
+    private void DrawAbandonButton(EstateRecord record, ClaimedBed bed)
+    {
+        var key = $"abandon:{record.Key.BindingKey(bed.PatchOrdinal)}:{bed.BedSlot}";
+        if (!ArmedButton(key, "Abandon", "Abandon - sure?", small: true))
+            return;
+
+        Plugin.Garden.Census.Abandon(bed);
+        Plugin.Garden.Save();
     }
 
     /// <summary>Drift: the ledger remembers a plant here, the map read a moment ago says
     /// the bed is empty. That is a sentence about the world, not a data point - so it
     /// replaces the row rather than corrupting it, and the only button is the honest one.</summary>
-    private static void DrawDriftRow(ClaimedBed bed)
+    private void DrawDriftRow(EstateRecord record, ClaimedBed bed)
     {
         ImGui.TableNextColumn();
         ImGui.Text($"Bed {bed.BedSlot + 1}");
@@ -497,6 +525,7 @@ public class MainWindow : Window, IDisposable
         ImGui.TableNextColumn();
         ImGui.TableNextColumn();
         ImGui.TableNextColumn();
+        DrawAbandonButton(record, bed);
     }
 
     /// <summary>True only when a fresh read of THIS estate's map shows the slot vacant.
@@ -550,13 +579,8 @@ public class MainWindow : Window, IDisposable
             }
         }
 
-        foreach (var (slot, seedId) in plan.Seeds.OrderBy(kv => kv.Key).ToList())
-        {
-            using var id = ImRaii.PushId(slot);
-            var crop = Plugin.Tables.CropBySeedId(seedId);
-            ImGui.TextDisabled(
-                $"bed {slot + 1}: {crop?.SeedName ?? $"seed {seedId}"} ({InventoryCount(seedId)} in bag)");
-        }
+        foreach (var slot in PlannableSlots(patch))
+            DrawSeedCombo(plan, slot);
 
         var anchor = plan.AnchorTendRound;
         if (ImGui.Checkbox("Anchor tend round (tend every bed after planting)", ref anchor))
@@ -580,6 +604,79 @@ public class MainWindow : Window, IDisposable
                 plugin.Launched(plugin.CycleChain);
                 cyclePatch = null;
             }
+        }
+    }
+
+    /// <summary>Every claimed bed in this patch can be planned, including one the plan
+    /// defaulted past because the ledger has no species for it - the default declines to
+    /// guess, but the player is allowed to say.</summary>
+    private static IEnumerable<int> PlannableSlots(PatchGroup patch)
+    {
+        if (EstateSensor.Current() is not { } estate)
+            return [];
+        return Plugin.Garden.Census.LedgerBeds
+            .Where(b => b.Estate == estate && !b.IsPot && b.PatchOrdinal == patch.Ordinal)
+            .Select(b => b.BedSlot)
+            .OrderBy(slot => slot)
+            .ToList();
+    }
+
+    /// <summary>What goes back into one bed. "leave empty" is a real answer: a bed with
+    /// no seed is simply not part of the cycle, harvested or not.</summary>
+    private static void DrawSeedCombo(ReplantPlan plan, int slot)
+    {
+        using var id = ImRaii.PushId(slot);
+        var chosen = plan.Seeds.GetValueOrDefault(slot);
+        var label = chosen == 0
+            ? "(leave empty)"
+            : $"{Plugin.Tables.CropBySeedId(chosen)?.SeedName ?? $"seed {chosen}"} ({InventoryCount(chosen)} in bag)";
+
+        ImGui.SetNextItemWidth(260f);
+        using var combo = ImRaii.Combo($"bed {slot + 1}", label);
+        if (!combo.Success)
+            return;
+
+        if (ImGui.Selectable("(leave empty)", chosen == 0))
+            plan.Seeds.Remove(slot);
+
+        foreach (var crop in Plugin.Tables.Crops.OrderBy(c => c.SeedName))
+        {
+            var have = InventoryCount(crop.SeedId);
+            // Seeds you do not have are not offered - the pre-flight would only refuse
+            // them a second later. The one already chosen stays visible either way.
+            if (have == 0 && crop.SeedId != chosen)
+                continue;
+            if (ImGui.Selectable($"{crop.SeedName} ({have})", crop.SeedId == chosen))
+                plan.Seeds[slot] = crop.SeedId;
+        }
+    }
+
+    // ------------------------------------------------------------------ tips
+
+    /// <summary>The pipeline reader's advisory lines. Hidden entirely when it has nothing
+    /// to say - an empty "Tips (0)" header is filler, and filler trains people to stop
+    /// reading the panel that matters.</summary>
+    private static void DrawTips(DateTimeOffset now)
+    {
+        var tips = PipelineReader.Tips(Plugin.Garden.Census.LedgerBeds, Plugin.Tables, now);
+        if (tips.Count == 0)
+            return;
+
+        ImGui.Spacing();
+        if (!ImGui.CollapsingHeader($"Tips ({tips.Count})###tips"))
+            return;
+
+        foreach (var tip in tips)
+        {
+            var tag = tip.Kind switch
+            {
+                TipKind.Stock => "[stock]",
+                TipKind.Bottleneck => "[bottleneck]",
+                _ => "[anomaly]",
+            };
+            ImGui.TextDisabled(tag);
+            ImGui.SameLine();
+            ImGui.TextWrapped(tip.Text);
         }
     }
 
