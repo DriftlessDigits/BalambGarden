@@ -1,0 +1,150 @@
+{
+  "schema": "exdschema@2:rev:83e965d091116f895d5b17573cc5d12909a5f407",
+  "version": "284bb7f44b9c0976",
+  "results": [
+    {
+      "score": 0.3181818,
+      "sheet": "Item",
+      "row_id": 7761,
+      "fields": {
+        "ItemUICategory": {
+          "value": 82,
+          "sheet": "ItemUICategory",
+          "row_id": 82,
+          "fields": {
+            "Name": "Gardening"
+          }
+        },
+        "Name": "Grade 1 Shroud Topsoil"
+      }
+    },
+    {
+      "score": 0.3181818,
+      "sheet": "Item",
+      "row_id": 7762,
+      "fields": {
+        "ItemUICategory": {
+          "value": 82,
+          "sheet": "ItemUICategory",
+          "row_id": 82,
+          "fields": {
+            "Name": "Gardening"
+          }
+        },
+        "Name": "Grade 2 Shroud Topsoil"
+      }
+    },
+    {
+      "score": 0.3181818,
+      "sheet": "Item",
+      "row_id": 7763,
+      "fields": {
+        "ItemUICategory": {
+          "value": 82,
+          "sheet": "ItemUICategory",
+          "row_id": 82,
+          "fields": {
+            "Name": "Gardening"
+          }
+        },
+        "Name": "Grade 3 Shroud Topsoil"
+      }
+    },
+    {
+      "score": 0.29166666,
+      "sheet": "Item",
+      "row_id": 7764,
+      "fields": {
+        "ItemUICategory": {
+          "value": 82,
+          "sheet": "ItemUICategory",
+          "row_id": 82,
+          "fields": {
+            "Name": "Gardening"
+          }
+        },
+        "Name": "Grade 1 Thanalan Topsoil"
+      }
+    },
+    {
+      "score": 0.29166666,
+      "sheet": "Item",
+      "row_id": 7765,
+      "fields": {
+        "ItemUICategory": {
+          "value": 82,
+          "sheet": "ItemUICategory",
+          "row_id": 82,
+          "fields": {
+            "Name": "Gardening"
+          }
+        },
+        "Name": "Grade 2 Thanalan Topsoil"
+      }
+    },
+    {
+      "score": 0.29166666,
+      "sheet": "Item",
+      "row_id": 7766,
+      "fields": {
+        "ItemUICategory": {
+          "value": 82,
+          "sheet": "ItemUICategory",
+          "row_id": 82,
+          "fields": {
+            "Name": "Gardening"
+          }
+        },
+        "Name": "Grade 3 Thanalan Topsoil"
+      }
+    },
+    {
+      "score": 0.26923078,
+      "sheet": "Item",
+      "row_id": 7758,
+      "fields": {
+        "ItemUICategory": {
+          "value": 82,
+          "sheet": "ItemUICategory",
+          "row_id": 82,
+          "fields": {
+            "Name": "Gardening"
+          }
+        },
+        "Name": "Grade 1 La Noscean Topsoil"
+      }
+    },
+    {
+      "score": 0.26923078,
+      "sheet": "Item",
+      "row_id": 7759,
+      "fields": {
+        "ItemUICategory": {
+          "value": 82,
+          "sheet": "ItemUICategory",
+          "row_id": 82,
+          "fields": {
+            "Name": "Gardening"
+          }
+        },
+        "Name": "Grade 2 La Noscean Topsoil"
+      }
+    },
+    {
+      "score": 0.26923078,
+      "sheet": "Item",
+      "row_id": 7760,
+      "fields": {
+        "ItemUICategory": {
+          "value": 82,
+          "sheet": "ItemUICategory",
+          "row_id": 82,
+          "fields": {
+            "Name": "Gardening"
+          }
+        },
+        "Name": "Grade 3 La Noscean Topsoil"
+      }
+    }
+  ]
+}

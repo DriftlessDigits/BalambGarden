@@ -1,0 +1,47 @@
+[
+  {
+    "itemId": 7758,
+    "name": "Grade 1 La Noscean Topsoil",
+    "grade": 1
+  },
+  {
+    "itemId": 7759,
+    "name": "Grade 2 La Noscean Topsoil",
+    "grade": 2
+  },
+  {
+    "itemId": 7760,
+    "name": "Grade 3 La Noscean Topsoil",
+    "grade": 3
+  },
+  {
+    "itemId": 7761,
+    "name": "Grade 1 Shroud Topsoil",
+    "grade": 1
+  },
+  {
+    "itemId": 7762,
+    "name": "Grade 2 Shroud Topsoil",
+    "grade": 2
+  },
+  {
+    "itemId": 7763,
+    "name": "Grade 3 Shroud Topsoil",
+    "grade": 3
+  },
+  {
+    "itemId": 7764,
+    "name": "Grade 1 Thanalan Topsoil",
+    "grade": 1
+  },
+  {
+    "itemId": 7765,
+    "name": "Grade 2 Thanalan Topsoil",
+    "grade": 2
+  },
+  {
+    "itemId": 7766,
+    "name": "Grade 3 Thanalan Topsoil",
+    "grade": 3
+  }
+]

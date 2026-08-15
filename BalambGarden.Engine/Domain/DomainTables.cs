@@ -12,17 +12,20 @@ public sealed class DomainTables
     private readonly Dictionary<ushort, string> nameByIndex;
     private readonly Dictionary<string, ushort> indexByName;
     private readonly Dictionary<uint, List<(uint, uint)>> pairsByResult;
+    private readonly List<Soil> soils;
 
     private DomainTables(
         Dictionary<uint, Crop> crops,
         Dictionary<ushort, uint> seedIdByIndex,
         Dictionary<ushort, string> nameByIndex,
-        Dictionary<uint, List<(uint, uint)>> pairsByResult)
+        Dictionary<uint, List<(uint, uint)>> pairsByResult,
+        List<Soil> soils)
     {
         this.cropsBySeedId = crops;
         this.seedIdByIndex = seedIdByIndex;
         this.nameByIndex = nameByIndex;
         this.pairsByResult = pairsByResult;
+        this.soils = soils;
         indexBySeedId = seedIdByIndex.ToDictionary(kv => kv.Value, kv => kv.Key);
         indexByName = nameByIndex.ToDictionary(
             kv => kv.Value, kv => kv.Key, StringComparer.OrdinalIgnoreCase);
@@ -65,7 +68,20 @@ public sealed class DomainTables
             pairs[result] = list;
         }
 
-        return new DomainTables(crops, seedIdByIndex, nameByIndex, pairs);
+        // Soils arrive already ordered by ItemId from the generator; the sort keeps the
+        // table's order a property of this code, not of whatever the file happens to hold.
+        var soils = new List<Soil>();
+        foreach (var el in ReadJson("Data.Soils.json").RootElement.EnumerateArray())
+        {
+            soils.Add(new Soil(
+                el.GetProperty("itemId").GetUInt32(),
+                el.GetProperty("name").GetString()!,
+                el.GetProperty("grade").GetInt32()));
+        }
+
+        soils.Sort((a, b) => a.ItemId.CompareTo(b.ItemId));
+
+        return new DomainTables(crops, seedIdByIndex, nameByIndex, pairs, soils);
     }
 
     private static JsonDocument ReadJson(string logicalName)
@@ -93,6 +109,12 @@ public sealed class DomainTables
     /// <summary>Receipt joins: dialogue names a plant, the map speaks species indices.</summary>
     public ushort? SpeciesIndexByName(string name)
         => indexByName.TryGetValue(name.Trim(), out var i) ? i : null;
+
+    /// <summary>Every topsoil, ascending by ItemId (Grade 1-3 x La Noscean/Shroud/Thanalan).</summary>
+    public IReadOnlyList<Soil> Soils => soils;
+
+    /// <summary>Null for anything that is not a topsoil - inventory hands us arbitrary ids.</summary>
+    public Soil? SoilByItemId(uint itemId) => soils.FirstOrDefault(s => s.ItemId == itemId);
 
     public IReadOnlyList<(uint ParentA, uint ParentB)> PairsForResult(uint resultSeedId)
         => pairsByResult.GetValueOrDefault(resultSeedId) ?? [];

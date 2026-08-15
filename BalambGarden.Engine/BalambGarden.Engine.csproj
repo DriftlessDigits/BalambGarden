@@ -10,5 +10,6 @@
     <EmbeddedResource Include="..\Data\Crops.json" LogicalName="Data.Crops.json" />
     <EmbeddedResource Include="..\Data\CrossbreedPairs.json" LogicalName="Data.CrossbreedPairs.json" />
     <EmbeddedResource Include="..\Data\SpeciesIndex.json" LogicalName="Data.SpeciesIndex.json" />
+    <EmbeddedResource Include="..\Data\Soils.json" LogicalName="Data.Soils.json" />
   </ItemGroup>
 </Project>
