@@ -35,6 +35,12 @@ internal static unsafe class ObjectSensor
     internal const float EventObjRange = 4.6f;          // field-verified 08-11
     internal const float HousingEventObjRange = 6.5f;
 
+    /// <summary>How far the working patch sweep looks. Tunable; Sam's ruling 08-14 -
+    /// the neighbour's twin ordinal sat at 37.9y, and players know where their own
+    /// plots are, so a far own-patch simply reappears when they walk toward it. Recon
+    /// keeps the wide 40y view on purpose.</summary>
+    internal const float PatchSweepRange = 20f;
+
     internal static List<BedObject> NearbyBeds(float maxDistance = 40f)
     {
         var beds = new List<BedObject>();
@@ -63,7 +69,7 @@ internal static unsafe class ObjectSensor
         return beds;
     }
 
-    internal static List<PatchGroup> Patches(float maxDistance = 40f)
+    internal static List<PatchGroup> Patches(float maxDistance = PatchSweepRange)
         => NearbyBeds(maxDistance)
             .GroupBy(b => b.Gimmick.PatchId)
             .Select(g =>

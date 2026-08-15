@@ -82,6 +82,8 @@ public class MainWindow : Window, IDisposable
         }
     }
 
+    /// <summary>The working patch list: the capped sweep only (Sam's 08-14 ruling), so
+    /// a neighbour's garden never grows a verb here. Recon keeps the full 40y view.</summary>
     private void DrawPatches()
     {
         var patches = ObjectSensor.Patches();
@@ -105,16 +107,10 @@ public class MainWindow : Window, IDisposable
         foreach (var patch in patches)
         {
             using var patchId = ImRaii.PushId(patch.PatchId);
-            // The 40y sweep reaches onto neighbouring plots, whose patch ordinals start
-            // over at 1 (08-14 bench: a foreign ordinal-0 patch 37.9y out). A twin
-            // ordinal that is farther away is almost certainly someone else's - say so
-            // rather than hiding the row or letting it pose as ours.
-            var foreign = patches.Any(p => p.Ordinal == patch.Ordinal && p.Distance < patch.Distance);
             using (ImRaii.Disabled(plugin.TendChain.Busy || !patch.InReach))
             {
                 // Ordinal is raw 0-based; +1 only here, at the surface.
-                if (ImGui.Button($"Water Patch {patch.Ordinal + 1} ({patch.Beds.Count} beds)"
-                        + (foreign ? " - not this plot?" : "")))
+                if (ImGui.Button($"Water Patch {patch.Ordinal + 1} ({patch.Beds.Count} beds)"))
                 {
                     plugin.TendChain.TendPatch(patch);
                     plugin.RunLogWindow.IsOpen = true;
