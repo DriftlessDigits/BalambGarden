@@ -253,13 +253,15 @@ internal static class CensusPump
             .ToList();
 
     /// <summary>
-    /// A pot receipt. <paramref name="diffKey"/> is the pot the chain's own map diff named -
-    /// one action, one changed entry (see PotDiff) - and when it is present it decides the
-    /// identity outright. Species uniqueness is the fallback for receipts that no chain
-    /// action bracketed; it still works for a lone plant of its kind and cannot work for
-    /// twins, which is the whole reason the diff exists.
+    /// A pot receipt. <paramref name="potKey"/> is the pot the chain identified - normally
+    /// read straight off the furniture vector, sometimes named by the chain's own map diff -
+    /// and when it is present it decides the identity outright; <paramref name="keySource"/>
+    /// is how it was arrived at, and goes in the log so a later reader knows which
+    /// instrument spoke. Species uniqueness is the fallback for receipts that carry no key
+    /// at all; it still works for a lone plant of its kind and cannot work for twins.
     /// </summary>
-    internal static string OnPotReceipt(ReceiptVerb verb, string plantName, int? diffKey = null)
+    internal static string OnPotReceipt(
+        ReceiptVerb verb, string plantName, int? potKey = null, string keySource = "map diff")
     {
         var estate = EstateSensor.Current();
         if (estate is null)
@@ -269,18 +271,18 @@ internal static class CensusPump
         var species = Plugin.Tables.SpeciesIndexByName(plantName) ?? 0;
 
         int key;
-        if (diffKey is { } diffed)
+        if (potKey is { } identified)
         {
-            key = diffed;
+            key = identified;
             // The name-variant gap (a ripe pot's Talk says "Red Sunflowers", the index says
             // "Garden Sunflower") stops a NAME resolving, but it has no say over identity
-            // here - the diff already named the pot. Fall back to what the map itself says
-            // is growing there, and record 0 (unknown) rather than guess when it says
+            // here - the pot is already named. Fall back to what the map itself says is
+            // growing there, and record 0 (unknown) rather than guess when it says
             // nothing, which is what an emptied pot correctly says after a harvest.
             if (species == 0)
                 species = LastIndoor.TryGetValue(key, out var sighted) ? sighted.SpeciesIndex : (ushort)0;
             Plugin.Log.Information(
-                $"[Census] pot bound by map diff: key {key} at {estate.DisplayLabel()}");
+                $"[Census] pot bound by {keySource}: key {key} at {estate.DisplayLabel()}");
         }
         else
         {

@@ -22,7 +22,13 @@ internal sealed record PatchGroup(
     internal bool InReach => Distance <= ObjectSensor.EventObjRange;
 }
 
-internal readonly record struct PotObject(IGameObject Object, string Name, float Distance)
+/// <summary><paramref name="MapKey"/> is this pot's entry in the gardening DataMap, read
+/// off the furniture vector (see <see cref="MapSensor.ReadFurniture"/> for the receipt).
+/// Null means the read could not name this pot - no furniture entry stands where it does,
+/// or more than one might - and every surface treats that as untracked rather than guess.
+/// </summary>
+internal readonly record struct PotObject(
+    IGameObject Object, string Name, float Distance, int? MapKey)
 {
     internal bool InReach => Distance <= ObjectSensor.HousingEventObjRange;
 }
@@ -96,12 +102,20 @@ internal static unsafe class ObjectSensor
 
     /// <summary>Indoor pots by name ("Flowerpot" models). Pots are dumb props with
     /// per-model DataIds (08-13) - the name filter is the honest v1 identifier; a
-    /// pot the filter misses simply shows no verbs, never a wrong one.</summary>
+    /// pot the filter misses simply shows no verbs, never a wrong one.
+    ///
+    /// <para>Each pot is resolved to its DataMap key here, by standing the object's
+    /// position against the furniture vector's. That is a direct READ, not a learned
+    /// pairing: nothing is remembered between frames, so nothing can go stale, and a pot
+    /// the read cannot name comes back with a null key and renders untracked.</para>
+    /// </summary>
     internal static List<PotObject> NearbyPots(float maxDistance = 20f)
     {
         var pots = new List<PotObject>();
         if (!EstateSensor.IsInside() || !Player.Available || Player.Object is not { } me)
             return pots;
+
+        var furniture = MapSensor.ReadFurniture();
 
         foreach (var obj in Svc.Objects)
         {
@@ -116,7 +130,8 @@ internal static unsafe class ObjectSensor
             var distance = Vector3.Distance(me.Position, obj.Position);
             if (distance > maxDistance)
                 continue;
-            pots.Add(new PotObject(obj, name, distance));
+            pots.Add(new PotObject(
+                obj, name, distance, FurnitureMatch.IndexAt(furniture, obj.Position)));
         }
         return pots.OrderBy(p => p.Distance).ToList();
     }

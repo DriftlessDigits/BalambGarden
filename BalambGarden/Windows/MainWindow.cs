@@ -1053,11 +1053,10 @@ public class MainWindow : Window, IDisposable
     /// on its face. A pot out of reach is a dim line, not a row of dead buttons.
     ///
     /// <para>These rows are presence first: they exist because you are standing near them.
-    /// A row can also carry identity, but only once a chain run has paired this pot object
-    /// with a map key (see <see cref="PotIdentity"/>) - a pot object has no map key written
-    /// on it, so acting on one is what settles which is which. <paramref name="untracked"/>
-    /// is how many planted pots in this room the ledger has no row for at all, counted off
-    /// the map, and it is a room-level count for the same reason.</para></summary>
+    /// A row also carries identity when the furniture read could name the pot
+    /// (<see cref="PotObject.MapKey"/>). <paramref name="untracked"/> is how many planted
+    /// pots in this room the ledger has no row for at all, counted off the map.</para>
+    /// </summary>
     private void DrawPots(EstateKey estate, List<PotObject> pots, int untracked)
     {
         if (pots.Count == 0)
@@ -1116,20 +1115,20 @@ public class MainWindow : Window, IDisposable
     }
 
     /// <summary>What this particular pot is, when that can be said honestly. It can be said
-    /// when a chain run this session paired the object with a map key AND a ledger row still
-    /// claims that key; anything else is untracked, including a pot the ledger remembers
-    /// perfectly well but cannot point at.
+    /// when the furniture read named the pot's map key AND a ledger row still claims that
+    /// key; anything else is untracked, including a pot the ledger remembers perfectly well
+    /// but cannot be pointed at from here.
     ///
-    /// <para>Fail-closed on purpose (Sam's ruling): after a plugin reload the pairings are
-    /// gone, so two claimed pots can read untracked here while the rollup above still says
-    /// one is claimed. That gap is the truth - the ledger knows the key, this surface knows
-    /// objects - and inventing a pairing to close it would eventually put somebody else's
-    /// plant on the wrong pot.</para></summary>
+    /// <para>Fail-closed on purpose (Sam's ruling), and now for a much narrower reason than
+    /// it used to be: the key is a direct read of the furniture vector, so it survives a
+    /// plugin reload, a relog and a zone hop - there is nothing to forget. What is left
+    /// untracked is a pot the ledger has never claimed, or one the position read could not
+    /// name; both of those are true statements rather than gaps.</para></summary>
     private static void DrawPotIdentity(EstateKey estate, PotObject pot)
     {
         using var indent = ImRaii.PushIndent();
 
-        var key = PotIdentity.KeyFor(estate, pot.Object.EntityId);
+        var key = pot.MapKey;
         var bed = key is null
             ? null
             : Plugin.Garden.Census.LedgerBeds.FirstOrDefault(

@@ -84,26 +84,18 @@ internal static unsafe class ReconProbe
         }
     }
 
-    /// <summary>Furniture positions/item ids. No sensor reads this - it is how the probe
-    /// answers "what furniture is even here", so it walks the vector itself.</summary>
+    /// <summary>Furniture positions/item ids. The app reads this vector too now
+    /// (<see cref="MapSensor.ReadFurniture"/> - a pot's index is its DataMap key, receipted
+    /// 08-15), but it only keeps index and position; the probe prints the item id, stain and
+    /// distance beside them, which is what turned the correspondence up in the first place.
+    /// The TERRITORY is chosen by the sensor either way, so the two cannot end up describing
+    /// different houses.</summary>
     private static void DumpFurnitureVector()
     {
-        var housing = HousingManager.Instance();
-        if (housing == null || housing->CurrentTerritory == null)
-        {
-            Plugin.Log.Information("[Probe] no housing territory");
-            return;
-        }
-
-        var outdoor = housing->OutdoorTerritory;
-        var indoor = housing->IndoorTerritory;
-        HousingFurnitureManager* furniture =
-            outdoor != null ? &outdoor->FurnitureManager
-            : indoor != null ? &indoor->FurnitureManager
-            : null;
+        var furniture = MapSensor.CurrentFurniture();
         if (furniture == null)
         {
-            Plugin.Log.Information("[Probe] no furniture manager (workshop territory?)");
+            Plugin.Log.Information("[Probe] no housing territory / furniture manager");
             return;
         }
 

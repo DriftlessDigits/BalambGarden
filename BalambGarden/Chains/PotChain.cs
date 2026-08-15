@@ -18,12 +18,17 @@ namespace BalambGarden.Chains;
 /// sunflower running seed-to-ripe), so nothing here - label, tooltip, or run-log line -
 /// may suggest a thirsty plant.</para>
 ///
-/// <para>Which pot: most of the room's pots are same-species pairs, and species uniqueness
-/// cannot tell two Allagan Melons apart. The map-changing verbs therefore bracket
-/// themselves with a before/after read of the indoor map - one action on one known pot
-/// changes exactly one entry, and that entry is this pot (see PotDiff). Watering is NOT one
-/// of them: the 08-15 receipt has a freshly watered melon and its dry twin byte-identical
-/// across all 48 bytes, so a water can never produce a diff and never tries.</para>
+/// <para>Which pot: the chain knows before it acts. A pot object resolves to its DataMap
+/// key through the furniture vector (<see cref="MapSensor.ReadFurniture"/> carries the
+/// 08-15 receipt), so identity is a read, not an inference - which is what lets WATERING
+/// bind at all. Watering writes nothing to the map (the 08-15 receipt has a freshly watered
+/// melon and its dry twin byte-identical across all 48 bytes), so it could never have been
+/// identified by evidence it does not produce.</para>
+///
+/// <para>The map-changing verbs still bracket themselves with a before/after read, and that
+/// diff is now CORROBORATION rather than identity: one action on one known pot changes
+/// exactly one entry, and if that entry is not the one the furniture vector named, the
+/// correspondence has an exception and this chain says so loudly.</para>
 /// </summary>
 internal sealed unsafe class PotChain : ChainBase
 {
@@ -34,15 +39,21 @@ internal sealed unsafe class PotChain : ChainBase
     /// The plant receipt fires the instant we press Yes and the entry can appear a beat
     /// later, so the step polls instead of reading once - but a budget that ran forever
     /// would just be a slower way to guess.</summary>
+    /// <summary>What the log calls the instrument when a receipt was bound by the pot's
+    /// furniture entry rather than by a map diff.</summary>
+    private const string FurnitureSource = "furniture index";
+
     private const int MapSettleMS = 4_000;
     private const int MapPollMS = 250;
     private const int BindStepLimitMS = MapSettleMS + 6_000;
 
     private string _plant = "";
     private string _obtained = "";
-    // The pot this run is driving, captured when the run opens it. The diff names a map
-    // key; only this remembers which object in the room the key belongs to.
-    private uint _potEntityId;
+    // Which pot this run is driving, captured when the run opens it: the sensor already
+    // resolved the object to its map key, so the identity is in hand before the first
+    // click. Null means the furniture read could not name it - the run still tends the pot,
+    // it just has nothing honest to record the receipt against.
+    private int? _potKey;
     private DateTime _armedAt;
     private DateTime _waitUntil;
     private bool _waitAnnounced;
@@ -105,7 +116,7 @@ internal sealed unsafe class PotChain : ChainBase
 
     private void Open(PotObject pot)
     {
-        _potEntityId = pot.Object.EntityId;
+        _potKey = pot.MapKey;
         TaskManager.DelayNext(ApplyJitter(Plugin.Configuration.TendPaceMS));
         TaskManager.Enqueue(() => CheckStop("the pot"), "gate");
         TaskManager.Enqueue(() => Interact(pot.Object), "interact");
@@ -178,8 +189,13 @@ internal sealed unsafe class PotChain : ChainBase
         if (PlantFlow.SelectOption(menu, PlantFlow.TendOption))
         {
             Acted();
+            // A water leaves no trace in the map, so this receipt used to have nothing but
+            // species uniqueness to go on and gave up on twins. The furniture read names
+            // the pot outright, so a water now claims like any other verb.
             var plant = _plant;
-            _pendingReceipt = () => CensusPump.OnPotReceipt(ReceiptVerb.PotWater, plant);
+            var key = _potKey;
+            _pendingReceipt = () => CensusPump.OnPotReceipt(
+                ReceiptVerb.PotWater, plant, key, FurnitureSource);
             return true;
         }
 
@@ -321,13 +337,20 @@ internal sealed unsafe class PotChain : ChainBase
     }
 
     /// <summary>
-    /// The after half, and the receipt. Exactly one changed map entry names this pot and
-    /// the receipt goes in bound; anything else is not evidence about which pot was
-    /// touched, so it says which of the two failures happened and records nothing.
+    /// The after half: the receipt, and the audit of the thing it was bound by.
     ///
-    /// <para>The map can lag the action by a beat (the plant receipt fires at Yes, the
-    /// entry appears afterwards), so zero changes keeps polling until the settle budget
-    /// runs out - and then it is a refusal, never a guess.</para>
+    /// <para>When the furniture read named this pot, that is the identity and the diff is
+    /// only asked whether it agrees. Agreement is the ordinary case and worth one word in
+    /// the log; DISAGREEMENT is a finding - it would mean the furniture index is not always
+    /// the map key - so it is warned about loudly with both numbers, and the receipt still
+    /// goes in on the read rather than the inference (the read has receipts at two estates;
+    /// a diff has whatever else moved in the room that second).</para>
+    ///
+    /// <para>Without a furniture key it is the old rule exactly: exactly one changed entry
+    /// binds, anything else says which of the two failures happened and records nothing.
+    /// The map can lag the action by a beat (the plant receipt fires at Yes, the entry
+    /// appears afterwards), so zero changes keeps polling until the settle budget runs
+    /// out - and then it is a refusal, never a guess.</para>
     /// </summary>
     private bool? AwaitPotBind(ReceiptVerb verb, string done)
     {
@@ -339,24 +362,51 @@ internal sealed unsafe class PotChain : ChainBase
         _nextPollAt = DateTime.UtcNow.AddMilliseconds(MapPollMS);
 
         var changed = PotDiff.ChangedKeys(_mapBefore, MapSensor.ReadIndoor());
+        var settled = DateTime.UtcNow > _settleUntil;
+
+        // Keep polling while the map still has time to catch up - the corroboration is
+        // worth the same beat the old identity path needed.
+        if (changed.Count == 0 && !settled)
+            return false;
+
+        if (_potKey is { } key)
+        {
+            if (changed.Count == 1 && changed[0] != key)
+            {
+                // The finding this audit exists for. Both numbers, out loud, every time.
+                Plugin.Log.Warning(
+                    $"[PotChain] POT IDENTITY MISMATCH: furniture index says key {key}, "
+                    + $"the map diff says key {changed[0]} - recorded against {key}. "
+                    + "The furniture-index-is-the-map-key correspondence has an exception.");
+                Note($"pot: identity check disagreed (furniture {key} vs diff {changed[0]})");
+            }
+            else if (changed.Count == 1)
+            {
+                Plugin.Log.Information($"[PotChain] pot identity corroborated: key {key}");
+            }
+            else
+            {
+                // Not a refusal any more: the diff was never the identity here. It simply
+                // has nothing to say, which is what a laggy map or a busy room looks like.
+                Note(changed.Count == 0
+                    ? "pot: identity uncorroborated - the map never changed"
+                    : $"pot: identity uncorroborated - the map changed in {changed.Count} places");
+            }
+
+            RecordOutcome(
+                CensusPump.OnPotReceipt(verb, _plant, key, FurnitureSource) + Obtained());
+            return true;
+        }
 
         if (changed.Count == 1)
         {
-            // Keep the pairing while we still have both halves in hand: this run held the
-            // pot object, and the diff just named its key. Nothing else in the plugin can
-            // put those two together (see PotIdentity - session-scoped, never persisted).
-            if (EstateSensor.Current() is { } estate)
-                PotIdentity.Remember(estate, _potEntityId, changed[0]);
-
-            RecordOutcome(CensusPump.OnPotReceipt(verb, _plant, changed[0]) + Obtained());
+            RecordOutcome(
+                CensusPump.OnPotReceipt(verb, _plant, changed[0], "map diff") + Obtained());
             return true;
         }
 
         if (changed.Count == 0)
         {
-            if (DateTime.UtcNow <= _settleUntil)
-                return false;
-
             RecordOutcome(
                 $"pot {done}: the map never changed - cannot tell which pot this is, "
                 + $"not recorded{Obtained()}");
