@@ -23,6 +23,15 @@ internal static class CensusPump
     private static readonly Dictionary<(EstateKey Estate, int Ordinal), List<(int Slot, ushort Species)>>
         joinEvidence = [];
 
+    /// <summary>Receipts that completed while their patch was still unbound. The engine
+    /// cannot claim without a binding, so the first beds of a run would otherwise be
+    /// spent before the evidence they contributed finished the join (08-14 bench round 2:
+    /// "1st Bed, 1st Patch" tended but unclaimed). These are REAL receipts held until
+    /// identity resolved - deferred delivery, never fabrication. Session-only, replayed
+    /// and dropped the moment the estate binds.</summary>
+    private static readonly Dictionary<(EstateKey Estate, int Ordinal), List<ReceiptEvent>>
+        pendingReceipts = [];
+
     internal static IReadOnlyDictionary<int, IReadOnlyList<BedReading>> LastOutdoor
         { get; private set; } = new Dictionary<int, IReadOnlyList<BedReading>>();
     internal static IReadOnlyDictionary<int, PotReading> LastIndoor
@@ -53,8 +62,11 @@ internal static class CensusPump
 
             announcedEstate = estate;
             // A new visit starts with no proposal evidence: a garden can be replanted
-            // between visits, and stale species would argue against the truth.
+            // between visits, and stale species would argue against the truth. Held
+            // receipts go with it - a receipt that outlived its visit has no identity
+            // to resolve to.
             joinEvidence.Clear();
+            pendingReceipts.Clear();
             Plugin.Garden.Ledger.UpsertEstate(estate, DateTimeOffset.UtcNow);
             Plugin.Garden.Save();
 
@@ -113,6 +125,7 @@ internal static class CensusPump
 
         // Bind if this patch has no key yet: shortlist from object patch-ids x map
         // keys, confirmed by THIS receipt's species at (ordinal, slot).
+        var boundHere = false;
         if (Plugin.Garden.Census.BoundKey(estate, parsed.PatchOrdinal) is null && species != 0)
         {
             // This receipt joins the evidence pile for its patch. Newest wins per slot:
@@ -134,6 +147,8 @@ internal static class CensusPump
                 Plugin.Log.Information(
                     $"[Census] receipt bound {estate.DisplayWardPlot()} on {evidence.Count} "
                     + $"constraint(s): keys {string.Join(",", confirmed)}");
+                boundHere = true;
+                ReplayHeldReceipts(estate);
                 foreach (var stale in joinEvidence.Keys.Where(k => k.Estate == estate).ToList())
                     joinEvidence.Remove(stale);
             }
@@ -154,7 +169,41 @@ internal static class CensusPump
         var receipt = new ReceiptEvent(
             estate, parsed.PatchOrdinal, parsed.BedSlot, verb, species, stage,
             DateTimeOffset.UtcNow);
+
+        // Still no binding: hold this receipt so a later one in the run can bring it
+        // home. The current receipt is never held when the bind just landed - Deliver
+        // below is its one delivery, and the replay above ran before it.
+        if (!boundHere && Plugin.Garden.Census.BoundKey(estate, parsed.PatchOrdinal) is null)
+        {
+            var pendingKey = (estate, parsed.PatchOrdinal);
+            if (!pendingReceipts.TryGetValue(pendingKey, out var held))
+                pendingReceipts[pendingKey] = held = [];
+            held.Add(receipt);
+        }
+
         return Deliver(receipt, $"{bedHeader}: {DisplayPlant(plantName)}");
+    }
+
+    /// <summary>Delivers the receipts that completed before the estate had an identity,
+    /// oldest first. Straight to the census, never through Deliver: each one already
+    /// wrote its trail line when it happened, and one interaction is one trail line.</summary>
+    private static void ReplayHeldReceipts(EstateKey estate)
+    {
+        var held = pendingReceipts
+            .Where(kv => kv.Key.Estate == estate)
+            .SelectMany(kv => kv.Value)
+            .OrderBy(r => r.At)
+            .ToList();
+
+        foreach (var stale in pendingReceipts.Keys.Where(k => k.Estate == estate).ToList())
+            pendingReceipts.Remove(stale);
+
+        if (held.Count == 0)
+            return;
+
+        foreach (var receipt in held)
+            Plugin.Garden.Census.OnReceipt(receipt);
+        Plugin.Log.Information($"[Census] replayed {held.Count} held receipt(s) after bind");
     }
 
     /// <summary>Shortlist input: the nearest patch per ordinal, in ordinal order.
