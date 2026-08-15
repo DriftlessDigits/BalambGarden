@@ -16,6 +16,13 @@ internal static class CensusPump
     private static DateTime nextTickUtc = DateTime.MinValue;
     private static EstateKey? announcedEstate;
 
+    /// <summary>Session-only join evidence: every (slot, species) a receipt has shown at
+    /// an unbound patch. One receipt rarely narrows a small estate's shortlist to one key
+    /// (08-14 bench), so constraints accumulate until they do. Proposal state, not ledger
+    /// state - never persisted, dropped on arrival and on a successful bind.</summary>
+    private static readonly Dictionary<(EstateKey Estate, int Ordinal), List<(int Slot, ushort Species)>>
+        joinEvidence = [];
+
     internal static IReadOnlyDictionary<int, IReadOnlyList<BedReading>> LastOutdoor
         { get; private set; } = new Dictionary<int, IReadOnlyList<BedReading>>();
     internal static IReadOnlyDictionary<int, PotReading> LastIndoor
@@ -45,6 +52,9 @@ internal static class CensusPump
                 return;
 
             announcedEstate = estate;
+            // A new visit starts with no proposal evidence: a garden can be replanted
+            // between visits, and stale species would argue against the truth.
+            joinEvidence.Clear();
             Plugin.Garden.Ledger.UpsertEstate(estate, DateTimeOffset.UtcNow);
             Plugin.Garden.Save();
 
@@ -105,17 +115,33 @@ internal static class CensusPump
         // keys, confirmed by THIS receipt's species at (ordinal, slot).
         if (Plugin.Garden.Census.BoundKey(estate, parsed.PatchOrdinal) is null && species != 0)
         {
-            var patchIds = ObjectSensor.Patches().Select(p => p.PatchId).ToList();
-            var candidates = JoinShortlist.Candidates(patchIds, LastOutdoor.Keys.ToList());
+            // This receipt joins the evidence pile for its patch. Newest wins per slot:
+            // a replanted bed's old species is history, not a constraint.
+            var evidenceKey = (estate, parsed.PatchOrdinal);
+            if (!joinEvidence.TryGetValue(evidenceKey, out var evidence))
+                joinEvidence[evidenceKey] = evidence = [];
+            evidence.RemoveAll(c => c.Slot == parsed.BedSlot);
+            evidence.Add((parsed.BedSlot, species));
+
+            var candidates = JoinShortlist.Candidates(ShortlistPatchIds(), LastOutdoor.Keys.ToList());
             var confirmed = JoinConfirm.Confirm(
-                candidates, parsed.PatchOrdinal, parsed.BedSlot, species,
+                candidates, parsed.PatchOrdinal, evidence,
                 key => LastOutdoor.GetValueOrDefault(key));
             if (confirmed is not null)
             {
                 for (var ordinal = 0; ordinal < confirmed.Count; ordinal++)
                     Plugin.Garden.Census.Bind(estate, ordinal, confirmed[ordinal]);
                 Plugin.Log.Information(
-                    $"[Census] receipt bound {estate.DisplayWardPlot()}: keys {string.Join(",", confirmed)}");
+                    $"[Census] receipt bound {estate.DisplayWardPlot()} on {evidence.Count} "
+                    + $"constraint(s): keys {string.Join(",", confirmed)}");
+                foreach (var stale in joinEvidence.Keys.Where(k => k.Estate == estate).ToList())
+                    joinEvidence.Remove(stale);
+            }
+            else
+            {
+                Plugin.Log.Information(
+                    $"[Census] no unique key for patch {parsed.PatchOrdinal + 1} yet - "
+                    + $"{candidates.Count} candidate(s), {evidence.Count} constraint(s)");
             }
         }
 
@@ -130,6 +156,20 @@ internal static class CensusPump
             DateTimeOffset.UtcNow);
         return Deliver(receipt, $"{bedHeader}: {DisplayPlant(plantName)}");
     }
+
+    /// <summary>Shortlist input: the nearest patch per ordinal, in ordinal order.
+    /// The 40y object sweep sees the neighbours' gardens too (08-14 bench: a foreign
+    /// patch 37.9y away also called itself ordinal 0), and a diff pattern computed
+    /// across two plots describes no estate at all. Collapsing by distance is legal
+    /// because it only shapes the PROPOSAL - the proposer may guess, the binder may
+    /// not: a key still binds only when the receipt's species match confirms it.</summary>
+    private static List<ushort> ShortlistPatchIds()
+        => ObjectSensor.Patches()
+            .GroupBy(p => p.Ordinal)
+            .Select(g => g.OrderBy(p => p.Distance).First())
+            .OrderBy(p => p.Ordinal)
+            .Select(p => p.PatchId)
+            .ToList();
 
     internal static string OnPotReceipt(ReceiptVerb verb, string plantName)
     {

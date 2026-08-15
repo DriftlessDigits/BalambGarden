@@ -53,4 +53,38 @@ public class JoinConfirmTests
         var map = new Dictionary<int, IReadOnlyList<BedReading>> { [110] = Patch(0x41) };
         Assert.Equal([110], JoinConfirm.Confirm(candidates, 0, 0, 0x41, k => map.GetValueOrDefault(k)));
     }
+
+    // Accumulating constraints (08-14 bench). Key 110 shows Kukuru (0x41) at slot 0 and
+    // an empty slot 1; key 285 shows Kukuru at slot 0 AND Curiel (0x11) at slot 1.
+    private static readonly Dictionary<int, IReadOnlyList<BedReading>> TwoKeyMap = new()
+    {
+        [110] = Patch(0x41, 0),
+        [285] = Patch(0x41, 0x11),
+    };
+
+    private static readonly IReadOnlyList<int>[] TwoKeyCandidates = [new[] { 110 }, new[] { 285 }];
+
+    [Fact] // one receipt is not enough evidence when both keys agree with it
+    public void OneConstraintAmbiguousBindsNothing()
+    {
+        Assert.Null(JoinConfirm.Confirm(
+            TwoKeyCandidates, 0, [(0, (ushort)0x41)], k => TwoKeyMap.GetValueOrDefault(k)));
+    }
+
+    [Fact] // a second receipt at another slot collapses the shortlist to one survivor
+    public void SecondConstraintCollapsesToOneBinding()
+    {
+        var confirmed = JoinConfirm.Confirm(
+            TwoKeyCandidates, 0, [(0, (ushort)0x41), (1, (ushort)0x11)],
+            k => TwoKeyMap.GetValueOrDefault(k));
+        Assert.Equal([285], confirmed);
+    }
+
+    [Fact] // constraints no single key satisfies bind nothing, never the closest fit
+    public void ContradictoryConstraintsBindNothing()
+    {
+        Assert.Null(JoinConfirm.Confirm(
+            TwoKeyCandidates, 0, [(0, (ushort)0x41), (1, (ushort)0x99)],
+            k => TwoKeyMap.GetValueOrDefault(k)));
+    }
 }
