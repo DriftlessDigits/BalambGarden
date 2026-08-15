@@ -388,7 +388,7 @@ public class MainWindow : Window, IDisposable
                 b => b.Estate == record.Key && b.IsPot && b.MapKey == key))
             : 0;
 
-        DrawPots(pots, untracked);
+        DrawPots(record.Key, pots, untracked);
     }
 
     private static void DrawUnclaimedLine(List<PatchGroup> patches, List<ClaimedBed> beds)
@@ -1048,13 +1048,13 @@ public class MainWindow : Window, IDisposable
     /// a drink - pot flowers have never been seen to wilt (08-15) - so the verb says so
     /// on its face. A pot out of reach is a dim line, not a row of dead buttons.
     ///
-    /// <para>These rows are presence, never tracking: they exist because you are standing
-    /// near them. <paramref name="untracked"/> is how many planted pots in this room the
-    /// ledger has no row for, and while there is one the block carries the same invitation
-    /// every other untracked surface carries. Which of these pots it is cannot be said from
-    /// here - a pot object has no map key on it - so the note is about the room, and
-    /// planting or harvesting one through the chain is what settles it.</para></summary>
-    private void DrawPots(List<PotObject> pots, int untracked)
+    /// <para>These rows are presence first: they exist because you are standing near them.
+    /// A row can also carry identity, but only once a chain run has paired this pot object
+    /// with a map key (see <see cref="PotIdentity"/>) - a pot object has no map key written
+    /// on it, so acting on one is what settles which is which. <paramref name="untracked"/>
+    /// is how many planted pots in this room the ledger has no row for at all, counted off
+    /// the map, and it is a room-level count for the same reason.</para></summary>
+    private void DrawPots(EstateKey estate, List<PotObject> pots, int untracked)
     {
         if (pots.Count == 0)
             return;
@@ -1074,6 +1074,7 @@ public class MainWindow : Window, IDisposable
             if (!pot.InReach)
             {
                 ImGui.TextDisabled($"{pot.Name} · {pot.Distance:F1}y away - walk closer");
+                DrawPotIdentity(estate, pot);
                 continue;
             }
 
@@ -1105,13 +1106,52 @@ public class MainWindow : Window, IDisposable
 
             ImGui.SameLine();
             ImGui.TextColored(Green, $"{pot.Name} - {pot.Distance:F1}y");
+            DrawPotIdentity(estate, pot);
         }
     }
 
-    /// <summary>What Plant will hold the confirmation to. "Whatever I pick in game" is the
-    /// default on purpose: the chain never fills the picker, and the flowerpot flowers most
-    /// pots hold are absent from the crop table entirely, so demanding a table seed here
-    /// would refuse the most common pot planting there is.</summary>
+    /// <summary>What this particular pot is, when that can be said honestly. It can be said
+    /// when a chain run this session paired the object with a map key AND a ledger row still
+    /// claims that key; anything else is untracked, including a pot the ledger remembers
+    /// perfectly well but cannot point at.
+    ///
+    /// <para>Fail-closed on purpose (Sam's ruling): after a plugin reload the pairings are
+    /// gone, so two claimed pots can read untracked here while the rollup above still says
+    /// one is claimed. That gap is the truth - the ledger knows the key, this surface knows
+    /// objects - and inventing a pairing to close it would eventually put somebody else's
+    /// plant on the wrong pot.</para></summary>
+    private static void DrawPotIdentity(EstateKey estate, PotObject pot)
+    {
+        using var indent = ImRaii.PushIndent();
+
+        var key = PotIdentity.KeyFor(estate, pot.Object.EntityId);
+        var bed = key is null
+            ? null
+            : Plugin.Garden.Census.LedgerBeds.FirstOrDefault(
+                b => b.Estate == estate && b.IsPot && b.MapKey == key.Value);
+        if (bed is null)
+        {
+            ImGui.TextDisabled(UntrackedTag);
+            return;
+        }
+
+        // The map is the fresher of the two when it has something to say; an emptied pot
+        // reads unoccupied there and the ledger's last observation is the honest fallback.
+        var sighted = CensusPump.LastIndoor.GetValueOrDefault(bed.MapKey);
+        var species = sighted is { Occupied: true }
+            ? sighted.SpeciesIndex : bed.Latest?.SpeciesIndex ?? (ushort)0;
+        var stage = sighted is { Occupied: true }
+            ? sighted.Stage : bed.Latest?.Stage ?? (byte)0;
+
+        ImGui.TextDisabled($"{Plugin.Tables.SpeciesName(species)} · stage {stage} · claimed");
+    }
+
+    /// <summary>What Plant will hold the confirmation to. This is a check, never an autofill
+    /// - the label says "Verify" because picking here does not put anything in the game's
+    /// picker, it only tells the chain what the confirmation is allowed to say. "Whatever I
+    /// pick in game" is the default on purpose: the flowerpot flowers most pots hold are
+    /// absent from the crop table entirely, so demanding a table seed here would refuse the
+    /// most common pot planting there is.</summary>
     private void DrawPotSeedPicker()
     {
         var label = potSeedId == 0
@@ -1119,7 +1159,12 @@ public class MainWindow : Window, IDisposable
             : Plugin.Tables.CropBySeedId(potSeedId)?.SeedName ?? $"seed {potSeedId}";
 
         ImGui.SetNextItemWidth(260f);
-        using var combo = ImRaii.Combo("Expected seed", label);
+        using var combo = ImRaii.Combo("Verify seed", label);
+        if (ImGui.IsItemHovered())
+            ImGui.SetTooltip(
+                "The chain can't fill the picker for you - you pick the soil and the seed "
+                + "in game.\nThis is what it checks the confirmation against before it "
+                + "presses Yes.");
         if (!combo.Success)
             return;
 

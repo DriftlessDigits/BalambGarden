@@ -40,6 +40,9 @@ internal sealed unsafe class PotChain : ChainBase
 
     private string _plant = "";
     private string _obtained = "";
+    // The pot this run is driving, captured when the run opens it. The diff names a map
+    // key; only this remembers which object in the room the key belongs to.
+    private uint _potEntityId;
     private DateTime _armedAt;
     private DateTime _waitUntil;
     private bool _waitAnnounced;
@@ -96,6 +99,7 @@ internal sealed unsafe class PotChain : ChainBase
 
     private void Open(PotObject pot)
     {
+        _potEntityId = pot.Object.EntityId;
         TaskManager.DelayNext(ApplyJitter(Plugin.Configuration.TendPaceMS));
         TaskManager.Enqueue(() => CheckStop("the pot"), "gate");
         TaskManager.Enqueue(() => Interact(pot.Object), "interact");
@@ -313,6 +317,12 @@ internal sealed unsafe class PotChain : ChainBase
 
         if (changed.Count == 1)
         {
+            // Keep the pairing while we still have both halves in hand: this run held the
+            // pot object, and the diff just named its key. Nothing else in the plugin can
+            // put those two together (see PotIdentity - session-scoped, never persisted).
+            if (EstateSensor.Current() is { } estate)
+                PotIdentity.Remember(estate, _potEntityId, changed[0]);
+
             RecordOutcome(CensusPump.OnPotReceipt(verb, _plant, changed[0]) + Obtained());
             return true;
         }
