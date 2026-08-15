@@ -28,6 +28,13 @@ internal sealed unsafe class TendChain : ChainBase
     // never the object's position (the POC's positional ledger is gone).
     private string _currentPlant = "";
 
+    // The tend receipt, held between the menu selection and the end of the bed's
+    // dialogue. Selecting "Tend Crop" is the FIRE; the conversation going quiet is the
+    // CONFIRMATION (spec: a status surface never claims what did not complete). A bed
+    // whose dialogue never finishes leaves this unfired, so nothing reaches the ledger
+    // and the ETA anchors at the true bed boundary.
+    private Func<string>? _pendingReceipt;
+
     internal void TendOne(BedObject bed) => Tend([bed]);
     internal void TendPatch(PatchGroup patch) => Tend(patch.Beds);
     internal void TendAll(IEnumerable<PatchGroup> patches)
@@ -90,6 +97,9 @@ internal sealed unsafe class TendChain : ChainBase
             return false;
 
         _currentPlant = "";
+        // A receipt never survives into the next bed: an unfired one belongs to a
+        // conversation that did not finish, and dropping it is the honest outcome.
+        _pendingReceipt = null;
 
         targets->Target = native;
         targets->InteractWithObject(native, false);
@@ -129,7 +139,8 @@ internal sealed unsafe class TendChain : ChainBase
             _currentPlant = plant;
     }
 
-    /// <summary>Clicks through whatever dialogue follows the action; done when quiet.</summary>
+    /// <summary>Clicks through whatever dialogue follows the action; done when quiet.
+    /// Quiet is the confirmation: the pending receipt routes HERE, not at selection.</summary>
     private bool? FinishDialogue()
     {
         if (GenericHelpers.TryGetAddonByName<AtkUnitBase>("Talk", out var talk)
@@ -143,6 +154,12 @@ internal sealed unsafe class TendChain : ChainBase
             }
 
             return false;
+        }
+
+        if (_pendingReceipt is { } receipt)
+        {
+            _pendingReceipt = null;
+            RecordOutcome(receipt());
         }
 
         return true;
@@ -172,8 +189,10 @@ internal sealed unsafe class TendChain : ChainBase
                 entry.Select();
                 Acted();
                 // The receipt IS the census event: header + plant route through the pump,
-                // which binds the patch (if unbound) and claims the bed.
-                RecordOutcome(CensusPump.OnBedReceipt(ReceiptVerb.Tend, header, _currentPlant));
+                // which binds the patch (if unbound) and claims the bed. Held until the
+                // dialogue goes quiet - selecting is firing, not finishing.
+                var plant = _currentPlant;
+                _pendingReceipt = () => CensusPump.OnBedReceipt(ReceiptVerb.Tend, header, plant);
                 return true;
             }
 

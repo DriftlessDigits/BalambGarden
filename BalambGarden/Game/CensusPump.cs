@@ -86,12 +86,14 @@ internal static class CensusPump
     internal static string OnBedReceipt(
         ReceiptVerb verb, string bedHeader, string plantName, byte? stageOverride = null)
     {
+        // These two gates write nowhere - not the ledger, not the trail - so the line
+        // says exactly that instead of implying a log that never happened.
         var estate = EstateSensor.Current();
         if (estate is null)
-            return "no estate identity - receipt logged only";
+            return "no estate identity - not recorded";
 
         if (ReceiptParser.ParseBedHeader(bedHeader) is not { } parsed)
-            return $"unparseable bed header '{bedHeader}' - receipt logged only";
+            return $"unparseable bed header '{bedHeader}' - not recorded";
 
         SightNow();   // acting is censusing: fresh map before the receipt lands
 
@@ -133,12 +135,12 @@ internal static class CensusPump
     {
         var estate = EstateSensor.Current();
         if (estate is null)
-            return "no estate identity - receipt logged only";
+            return "no estate identity - not recorded";
 
         SightNow();
         var species = Plugin.Tables.SpeciesIndexByName(plantName) ?? 0;
         if (species == 0)
-            return $"pot plant '{plantName}' unknown - cannot bind, receipt logged only";
+            return $"pot plant '{plantName}' unknown - cannot bind, not recorded";
 
         var key = PotBind.UniqueSpeciesKey(species, LastIndoor);
         if (key is null)
