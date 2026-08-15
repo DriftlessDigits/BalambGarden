@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using System.Numerics;
+using BalambGarden.Chains;
 using BalambGarden.Engine.Census;
 using BalambGarden.Game;
 using Dalamud.Bindings.ImGui;
@@ -21,6 +22,16 @@ public class MainWindow : Window, IDisposable
     private static readonly Vector4 Red = new(1f, 0.4f, 0.4f, 1f);
 
     private readonly Plugin plugin;
+
+    // Cycle launcher state: which patch's panel is open, its editable plan, and whether
+    // the launch button is on its second press (relabel-not-modal, no undo).
+    private ushort? cyclePatchId;
+    private ReplantPlan? cyclePlan;
+    private bool cycleArmed;
+
+    // 0 = no expectation; the pot chain then reports what the confirmation named instead
+    // of judging it.
+    private uint potSeedId;
 
     public MainWindow(Plugin plugin)
         : base("Balamb Garden##BalambGardenMain")
@@ -48,6 +59,7 @@ public class MainWindow : Window, IDisposable
         DrawHeader(estate);
         DrawClaimToggle();
         DrawPatches();
+        DrawPots();
         DrawClaimedBeds(estate);
         DrawRecon();
     }
@@ -95,25 +107,42 @@ public class MainWindow : Window, IDisposable
 
         var inReach = patches.Where(p => p.InReach).ToList();
         var totalBeds = inReach.Sum(p => p.Beds.Count);
-        using (ImRaii.Disabled(plugin.TendChain.Busy || inReach.Count == 0))
+        using (ImRaii.Disabled(plugin.AnyChainBusy || inReach.Count == 0))
         {
             if (ImGui.Button($"Tend All ({totalBeds} beds, {inReach.Count} patches)"))
             {
                 plugin.TendChain.TendAll(inReach);
-                plugin.RunLogWindow.IsOpen = true;
+                plugin.Launched(plugin.TendChain);
             }
         }
 
         foreach (var patch in patches)
         {
             using var patchId = ImRaii.PushId(patch.PatchId);
-            using (ImRaii.Disabled(plugin.TendChain.Busy || !patch.InReach))
+            using (ImRaii.Disabled(plugin.AnyChainBusy || !patch.InReach))
             {
                 // Ordinal is raw 0-based; +1 only here, at the surface.
                 if (ImGui.Button($"Water Patch {patch.Ordinal + 1} ({patch.Beds.Count} beds)"))
                 {
                     plugin.TendChain.TendPatch(patch);
-                    plugin.RunLogWindow.IsOpen = true;
+                    plugin.Launched(plugin.TendChain);
+                }
+
+                ImGui.SameLine();
+                if (ImGui.Button(cyclePatchId == patch.PatchId ? "Cycle (close)" : "Cycle..."))
+                {
+                    if (cyclePatchId == patch.PatchId)
+                    {
+                        cyclePatchId = null;
+                    }
+                    else
+                    {
+                        cyclePatchId = patch.PatchId;
+                        cyclePlan = EstateSensor.Current() is { } here
+                            ? ReplantPlan.DefaultFor(here, patch.Ordinal)
+                            : new ReplantPlan();
+                        cycleArmed = false;
+                    }
                 }
             }
 
@@ -121,7 +150,174 @@ public class MainWindow : Window, IDisposable
             ImGui.TextColored(
                 patch.InReach ? Green : Red,
                 $"{patch.Distance:F1}y {(patch.InReach ? "- in reach" : "- walk closer")}");
+
+            if (cyclePatchId == patch.PatchId)
+                DrawCyclePanel(patch);
         }
+    }
+
+    /// <summary>
+    /// The cycle launcher: what will be replanted where, and a pre-flight line re-checked
+    /// every frame. Nothing here is a modal - the launch button relabels itself and wants a
+    /// second press, because a cycle spends seeds and a growth cycle and cannot be undone.
+    ///
+    /// <para>Planting is hybrid by design (Sam's ruling): the chain opens the soil/seed
+    /// picker and waits while you fill it, then checks the confirmation against this plan
+    /// before answering. The seed column is what it will hold you to, not what it fills.</para>
+    /// </summary>
+    private void DrawCyclePanel(PatchGroup patch)
+    {
+        if (cyclePlan is not { } plan)
+            return;
+
+        // The pre-flight reads stages off the map; keep that read fresh while the panel
+        // is open (throttled inside), or the line would answer with arrival-time data.
+        CycleChain.RefreshForPlanning();
+
+        using var indent = ImRaii.PushIndent();
+
+        var soilName = Plugin.Tables.SoilByItemId(plan.SoilItemId)?.Name ?? "(none chosen)";
+        ImGui.SetNextItemWidth(260f);
+        using (var combo = ImRaii.Combo("Soil", soilName))
+        {
+            if (combo.Success)
+            {
+                foreach (var soil in Plugin.Tables.Soils)
+                {
+                    var have = InventoryCount(soil.ItemId);
+                    if (have == 0 && soil.ItemId != plan.SoilItemId)
+                        continue;
+                    if (ImGui.Selectable($"{soil.Name} ({have})", soil.ItemId == plan.SoilItemId))
+                        plan.SoilItemId = soil.ItemId;
+                }
+            }
+        }
+
+        foreach (var (slot, seedId) in plan.Seeds.OrderBy(kv => kv.Key).ToList())
+        {
+            using var id = ImRaii.PushId(slot);
+            var crop = Plugin.Tables.CropBySeedId(seedId);
+            ImGui.TextDisabled(
+                $"bed {slot + 1}: {crop?.SeedName ?? $"seed {seedId}"} ({InventoryCount(seedId)} in bag)");
+        }
+
+        var anchor = plan.AnchorTendRound;
+        if (ImGui.Checkbox("Anchor tend round (tend every bed after planting)", ref anchor))
+            plan.AnchorTendRound = anchor;
+
+        var refusal = CycleChain.PreflightError(patch, plan);
+        if (refusal is not null)
+        {
+            ImGui.TextColored(Red, refusal);
+            cycleArmed = false;
+        }
+
+        using (ImRaii.Disabled(plugin.AnyChainBusy || refusal is not null))
+        {
+            var label = cycleArmed
+                ? $"Run cycle: {plan.Seeds.Count} beds - sure?"
+                : $"Run cycle ({plan.Seeds.Count} beds)";
+            if (ImGui.Button(label))
+            {
+                if (cycleArmed)
+                {
+                    plugin.CycleChain.Run(patch, plan);
+                    plugin.Launched(plugin.CycleChain);
+                    cycleArmed = false;
+                    cyclePatchId = null;
+                }
+                else
+                {
+                    cycleArmed = true;
+                }
+            }
+        }
+    }
+
+    /// <summary>Indoor pots. Watering a pot is the PIGMENT mechanic, not a drink -
+    /// flowerpots cannot wilt (08-15) - so the verb says so on its face.</summary>
+    private void DrawPots()
+    {
+        if (!EstateSensor.IsInside())
+            return;
+
+        var pots = ObjectSensor.NearbyPots();
+        if (pots.Count == 0)
+            return;
+
+        ImGui.Spacing();
+        ImGui.Text($"Pots ({pots.Count} nearby)");
+
+        DrawPotSeedPicker();
+
+        foreach (var pot in pots)
+        {
+            using var id = ImRaii.PushId((int)pot.Object.EntityId);
+            using (ImRaii.Disabled(plugin.AnyChainBusy || !pot.InReach))
+            {
+                if (ImGui.Button("Water (pigment)"))
+                {
+                    plugin.PotChain.Water(pot);
+                    plugin.Launched(plugin.PotChain);
+                }
+
+                if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+                    ImGui.SetTooltip("Applies pigment. Flowerpots never wilt - this is colour, not water.");
+
+                ImGui.SameLine();
+                if (ImGui.Button("Harvest"))
+                {
+                    plugin.PotChain.Harvest(pot);
+                    plugin.Launched(plugin.PotChain);
+                }
+
+                ImGui.SameLine();
+                if (ImGui.Button("Plant"))
+                {
+                    plugin.PotChain.Plant(pot, potSeedId);
+                    plugin.Launched(plugin.PotChain);
+                }
+            }
+
+            ImGui.SameLine();
+            ImGui.TextColored(
+                pot.InReach ? Green : Red,
+                $"{pot.Name} - {pot.Distance:F1}y{(pot.InReach ? "" : " - walk closer")}");
+        }
+    }
+
+    /// <summary>What Plant will hold the confirmation to. "Whatever I pick in game" is the
+    /// default on purpose: the chain never fills the picker, and the flowerpot flowers most
+    /// pots hold are absent from the crop table entirely, so demanding a table seed here
+    /// would refuse the most common pot planting there is.</summary>
+    private void DrawPotSeedPicker()
+    {
+        var label = potSeedId == 0
+            ? "Whatever I pick in game"
+            : Plugin.Tables.CropBySeedId(potSeedId)?.SeedName ?? $"seed {potSeedId}";
+
+        ImGui.SetNextItemWidth(260f);
+        using var combo = ImRaii.Combo("Expected seed", label);
+        if (!combo.Success)
+            return;
+
+        if (ImGui.Selectable("Whatever I pick in game", potSeedId == 0))
+            potSeedId = 0;
+
+        foreach (var crop in Plugin.Tables.Crops)
+        {
+            var have = InventoryCount(crop.SeedId);
+            if (have == 0)
+                continue;
+            if (ImGui.Selectable($"{crop.SeedName} ({have})", crop.SeedId == potSeedId))
+                potSeedId = crop.SeedId;
+        }
+    }
+
+    private static unsafe int InventoryCount(uint itemId)
+    {
+        var inventory = FFXIVClientStructs.FFXIV.Client.Game.InventoryManager.Instance();
+        return inventory == null ? 0 : inventory->GetInventoryItemCount(itemId);
     }
 
     /// <summary>What this estate has claimed. Water reads "?" whenever the crop or the
@@ -261,12 +457,12 @@ public class MainWindow : Window, IDisposable
             ImGui.TextColored(b.InReach ? Green : Red, b.InReach ? "yes" : "no");
             ImGui.TableNextColumn();
             using var id = ImRaii.PushId((int)b.Object.EntityId);
-            using (ImRaii.Disabled(plugin.TendChain.Busy || !b.InReach))
+            using (ImRaii.Disabled(plugin.AnyChainBusy || !b.InReach))
             {
                 if (ImGui.Button("Tend"))
                 {
                     plugin.TendChain.TendOne(b);
-                    plugin.RunLogWindow.IsOpen = true;
+                    plugin.Launched(plugin.TendChain);
                 }
             }
         }

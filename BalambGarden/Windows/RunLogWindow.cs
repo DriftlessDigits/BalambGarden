@@ -32,11 +32,12 @@ public class RunLogWindow : Window, IDisposable
 
     public override void Draw()
     {
-        var chain = plugin.TendChain;
+        // Three chains share this window; whichever one is running (or last ran) owns it.
+        var chain = plugin.ActiveChain;
 
         if (chain.Busy)
         {
-            var line = $"Watering... {chain.Report.Count}/{chain.TotalUnits} | elapsed {chain.Elapsed:mm\\:ss}";
+            var line = $"{chain.LastOutcome} {chain.UnitsDone}/{chain.TotalUnits} | elapsed {chain.Elapsed:mm\\:ss}";
             if (chain.Eta is { } eta)
                 line += $" | ETA {eta:mm\\:ss}";
             ImGui.Text(line);

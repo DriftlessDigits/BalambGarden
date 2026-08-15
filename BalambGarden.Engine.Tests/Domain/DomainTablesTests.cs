@@ -17,6 +17,15 @@ public class DomainTablesTests
         Assert.Equal("Curiel Root", T.SpeciesName(0x2C));
     }
 
+    [Fact] // the seed pickers enumerate this; order must not wander between sessions
+    public void CropsEnumerateNameOrdered()
+    {
+        var crops = T.Crops;
+        Assert.NotEmpty(crops);
+        Assert.Equal(crops.OrderBy(c => c.Name, StringComparer.Ordinal), crops);
+        Assert.Contains(crops, c => c.Name == "Krakka Root");
+    }
+
     [Fact] // 08-13: id 108 exists in-game but is newer than the index snapshot
     public void UnknownSpeciesFallsBackHonestly()
         => Assert.Equal("Unknown (0x6C)", T.SpeciesName(0x6C));

@@ -93,6 +93,12 @@ public sealed class DomainTables
 
     public Crop? CropBySeedId(uint seedId) => cropsBySeedId.GetValueOrDefault(seedId);
 
+    /// <summary>Every crop the table knows, name-ordered so a picker built from it is
+    /// stable between sessions. Note the tail this does NOT contain: flowerpot flowers
+    /// have no clocks and never made it into Crops.json (08-15 finding).</summary>
+    public IReadOnlyList<Crop> Crops
+        => cropsBySeedId.Values.OrderBy(c => c.Name, StringComparer.Ordinal).ToList();
+
     public uint? SeedIdBySpeciesIndex(ushort index)
         => seedIdByIndex.TryGetValue(index, out var s) ? s : null;
 

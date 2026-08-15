@@ -29,6 +29,30 @@ public sealed class Plugin : IDalamudPlugin
     public static GardenService Garden { get; private set; } = null!;
 
     internal Chains.TendChain TendChain { get; init; }
+    internal Chains.CycleChain CycleChain { get; init; }
+    internal Chains.PotChain PotChain { get; init; }
+
+    /// <summary>One chain at a time. They all drive the same menus through the same
+    /// character - two running at once would interleave clicks into a conversation
+    /// neither of them is having.</summary>
+    internal bool AnyChainBusy => TendChain.Busy || CycleChain.Busy || PotChain.Busy;
+
+    /// <summary>Whichever chain the run log should be showing: the one that is running,
+    /// or the last one launched once it finishes (its outcome is the thing to read).</summary>
+    internal Chains.ChainBase ActiveChain
+        => TendChain.Busy ? TendChain
+            : CycleChain.Busy ? CycleChain
+            : PotChain.Busy ? PotChain
+            : lastLaunched ?? TendChain;
+
+    private Chains.ChainBase? lastLaunched;
+
+    /// <summary>Call at every launch site, so the run log follows the player's last press.</summary>
+    internal void Launched(Chains.ChainBase chain)
+    {
+        lastLaunched = chain;
+        RunLogWindow.IsOpen = true;
+    }
 
     public readonly WindowSystem WindowSystem = new("BalambGarden");
     private ConfigWindow ConfigWindow { get; init; }
@@ -47,6 +71,8 @@ public sealed class Plugin : IDalamudPlugin
         Garden = GardenService.Load(PluginInterface.GetPluginConfigDirectory());
 
         TendChain = new Chains.TendChain();
+        CycleChain = new Chains.CycleChain();
+        PotChain = new Chains.PotChain();
 
         ConfigWindow = new ConfigWindow(this);
         MainWindow = new MainWindow(this);
@@ -101,6 +127,8 @@ public sealed class Plugin : IDalamudPlugin
         CommandManager.RemoveHandler(CommandName);
 
         TendChain.Dispose();
+        CycleChain.Dispose();
+        PotChain.Dispose();
 
         Garden.Save();
         ECommonsMain.Dispose();
