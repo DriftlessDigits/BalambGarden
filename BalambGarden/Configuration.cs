@@ -23,7 +23,7 @@ public class BedRecord
 [Serializable]
 public class Configuration : IPluginConfiguration
 {
-    public int Version { get; set; } = 0;
+    public int Version { get; set; } = 1;
 
     public bool IsConfigWindowMovable { get; set; } = true;
 
@@ -38,6 +38,11 @@ public class Configuration : IPluginConfiguration
     // 2026-08-11: 8s +/- 1s).
     public int PostTendDelayMS { get; set; } = 8000;
     public int PostTendJitterMS { get; set; } = 1000;
+
+    // v2 census behavior (spec: claim-on-action, arrival nudge, debug trail).
+    public bool ClaimOnAction { get; set; } = true;
+    public bool NudgeEnabled { get; set; } = true;
+    public bool TrailEnabled { get; set; } = true;
 
     // The garden ledger: every tended bed's latest census record.
     public List<BedRecord> Ledger { get; set; } = [];

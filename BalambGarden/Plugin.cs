@@ -24,6 +24,9 @@ public sealed class Plugin : IDalamudPlugin
 
     public static BalambGarden.Engine.Domain.DomainTables Tables { get; private set; } = null!;
 
+    /// <summary>The v2 spine (ledger file + census brain + trail), loaded at startup.</summary>
+    public static GardenService Garden { get; private set; } = null!;
+
     internal TendChain TendChain { get; init; }
 
     public readonly WindowSystem WindowSystem = new("BalambGarden");
@@ -39,6 +42,8 @@ public sealed class Plugin : IDalamudPlugin
 
         Tables = BalambGarden.Engine.Domain.DomainTables.Load();
         Log.Information($"[Engine] domain tables loaded: sunflower check = {Tables.SpeciesName(103)}");
+
+        Garden = GardenService.Load(PluginInterface.GetPluginConfigDirectory());
 
         TendChain = new TendChain();
 
@@ -86,6 +91,8 @@ public sealed class Plugin : IDalamudPlugin
         CommandManager.RemoveHandler(CommandName);
 
         TendChain.Dispose();
+
+        Garden.Save();
         ECommonsMain.Dispose();
     }
 
