@@ -39,6 +39,15 @@ internal static class CensusPump
 
     internal static void Tick()
     {
+#if DEBUG
+        // Deliberately ABOVE the 2-second gate below: the plant-flow dialogs open and
+        // close inside a couple of seconds, so a sampler that only ran on census tempo
+        // would miss whole addons. The watcher's own per-addon shape hash keeps the log
+        // quiet - it dumps once per open, not once per frame.
+        if (Chains.PlantFlow.Watching)
+            Chains.PlantFlow.Tick();
+#endif
+
         if (DateTime.UtcNow < nextTickUtc)
             return;
         nextTickUtc = DateTime.UtcNow.AddSeconds(2);

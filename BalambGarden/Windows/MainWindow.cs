@@ -213,6 +213,19 @@ public class MainWindow : Window, IDisposable
         ImGui.SameLine();
         ImGui.TextDisabled($"{beds.Count} beds within 40y");
 
+#if DEBUG
+        // Sow-flow recon: Sam plants by hand with this on, the log records what the
+        // addons actually held. Debug-only - it ships with no plugin.
+        var watching = Chains.PlantFlow.Watching;
+        if (ImGui.Checkbox("Watch plant flow", ref watching))
+        {
+            if (watching)
+                Chains.PlantFlow.StartWatching();
+            else
+                Chains.PlantFlow.StopWatching();
+        }
+#endif
+
         using var table = ImRaii.Table("sightings", 5,
             ImGuiTableFlags.RowBg | ImGuiTableFlags.Borders | ImGuiTableFlags.ScrollY,
             new Vector2(0, 0));
