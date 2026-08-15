@@ -1,5 +1,6 @@
 using Dalamud.Game.Command;
 using ECommons;
+using ECommons.DalamudServices;
 using Dalamud.IoC;
 using Dalamud.Plugin;
 using Dalamud.Interface.Windowing;
@@ -70,6 +71,9 @@ public sealed class Plugin : IDalamudPlugin
         // Adds another button doing the same but for the main ui of the plugin
         PluginInterface.UiBuilder.OpenMainUi += ToggleMainUi;
 
+        // The census heartbeat rides the framework tick (self-throttled inside).
+        Svc.Framework.Update += OnFrameworkUpdate;
+
         // Add a simple message to the log with level set to information
         // Use /xllog to open the log window in-game
         // Example Output: 00:57:54.959 | INF | [BalambGarden] ===A cool log message from Balamb Garden===
@@ -82,7 +86,8 @@ public sealed class Plugin : IDalamudPlugin
         PluginInterface.UiBuilder.Draw -= WindowSystem.Draw;
         PluginInterface.UiBuilder.OpenConfigUi -= ToggleConfigUi;
         PluginInterface.UiBuilder.OpenMainUi -= ToggleMainUi;
-        
+        Svc.Framework.Update -= OnFrameworkUpdate;
+
         WindowSystem.RemoveAllWindows();
 
         ConfigWindow.Dispose();
@@ -94,6 +99,15 @@ public sealed class Plugin : IDalamudPlugin
 
         Garden.Save();
         ECommonsMain.Dispose();
+    }
+
+    /// <summary>Nothing sensed before the player exists: no character, no estate,
+    /// no census. The pump throttles itself past this gate.</summary>
+    private void OnFrameworkUpdate(IFramework framework)
+    {
+        if (!PlayerState.IsLoaded)
+            return;
+        Game.CensusPump.Tick();
     }
 
     private void OnCommand(string command, string args)

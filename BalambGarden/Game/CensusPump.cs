@@ -1,0 +1,191 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using BalambGarden.Engine.Census;
+using BalambGarden.Engine.Derivations;
+using BalambGarden.Engine.Ledger;
+using BalambGarden.Engine.Sensing;
+using ECommons.DalamudServices;
+
+namespace BalambGarden.Game;
+
+/// <summary>The census heartbeat. Sensors read, receipts route, the ledger learns.
+/// Acting IS censusing: every chain completion lands here.</summary>
+internal static class CensusPump
+{
+    private static DateTime nextTickUtc = DateTime.MinValue;
+    private static EstateKey? announcedEstate;
+
+    internal static IReadOnlyDictionary<int, IReadOnlyList<BedReading>> LastOutdoor
+        { get; private set; } = new Dictionary<int, IReadOnlyList<BedReading>>();
+    internal static IReadOnlyDictionary<int, PotReading> LastIndoor
+        { get; private set; } = new Dictionary<int, PotReading>();
+
+    internal static void Tick()
+    {
+        if (DateTime.UtcNow < nextTickUtc)
+            return;
+        nextTickUtc = DateTime.UtcNow.AddSeconds(2);
+
+        var estate = EstateSensor.Current();
+        if (estate is null)
+        {
+            announcedEstate = null;
+            return;
+        }
+
+        // First tick at a new estate: visit + sight + (maybe) the one chat line.
+        if (announcedEstate != estate)
+        {
+            SightNow();
+            // The map can populate a beat after zone-in; an empty read means try
+            // again next tick rather than announcing a garden we haven't seen.
+            if (LastOutdoor.Count == 0 && LastIndoor.Count == 0
+                && Plugin.Garden.Ledger.Beds.Any(b => b.Estate == estate))
+                return;
+
+            announcedEstate = estate;
+            Plugin.Garden.Ledger.UpsertEstate(estate, DateTimeOffset.UtcNow);
+            Plugin.Garden.Save();
+
+            if (Plugin.Configuration.NudgeEnabled)
+            {
+                var rollups = Rollups.ForEstate(
+                    estate, Plugin.Garden.Census.LedgerBeds, Plugin.Tables,
+                    Plugin.Garden.Wilt, DateTimeOffset.UtcNow);
+                if (Rollups.ArrivalNudge(estate, rollups) is { } line)
+                    Svc.Chat.Print(line);
+            }
+        }
+    }
+
+    internal static void SightNow()
+    {
+        var estate = EstateSensor.Current();
+        if (estate is null)
+            return;
+
+        var now = DateTimeOffset.UtcNow;
+        if (EstateSensor.IsInside())
+        {
+            LastIndoor = MapSensor.ReadIndoor();
+            foreach (var (key, pot) in LastIndoor)
+            {
+                Plugin.Garden.Census.OnMapSighting(estate, key,
+                    [new BedReading(0, pot.SpeciesIndex, pot.Stage, pot.Extra, pot.Occupied)], now);
+            }
+        }
+        else
+        {
+            LastOutdoor = MapSensor.ReadOutdoor();
+            foreach (var (key, beds) in LastOutdoor)
+                Plugin.Garden.Census.OnMapSighting(estate, key, beds, now);
+        }
+    }
+
+    internal static string OnBedReceipt(
+        ReceiptVerb verb, string bedHeader, string plantName, byte? stageOverride = null)
+    {
+        var estate = EstateSensor.Current();
+        if (estate is null)
+            return "no estate identity - receipt logged only";
+
+        if (ReceiptParser.ParseBedHeader(bedHeader) is not { } parsed)
+            return $"unparseable bed header '{bedHeader}' - receipt logged only";
+
+        SightNow();   // acting is censusing: fresh map before the receipt lands
+
+        var species = Plugin.Tables.SpeciesIndexByName(plantName) ?? 0;
+        if (species == 0 && plantName.Length > 0)
+            Plugin.Log.Warning($"[Census] unknown plant name '{plantName}' - observing as unknown");
+
+        // Bind if this patch has no key yet: shortlist from object patch-ids x map
+        // keys, confirmed by THIS receipt's species at (ordinal, slot).
+        if (Plugin.Garden.Census.BoundKey(estate, parsed.PatchOrdinal) is null && species != 0)
+        {
+            var patchIds = ObjectSensor.Patches().Select(p => p.PatchId).ToList();
+            var candidates = JoinShortlist.Candidates(patchIds, LastOutdoor.Keys.ToList());
+            var confirmed = JoinConfirm.Confirm(
+                candidates, parsed.PatchOrdinal, parsed.BedSlot, species,
+                key => LastOutdoor.GetValueOrDefault(key));
+            if (confirmed is not null)
+            {
+                for (var ordinal = 0; ordinal < confirmed.Count; ordinal++)
+                    Plugin.Garden.Census.Bind(estate, ordinal, confirmed[ordinal]);
+                Plugin.Log.Information(
+                    $"[Census] receipt bound {estate.DisplayWardPlot()}: keys {string.Join(",", confirmed)}");
+            }
+        }
+
+        var stage = stageOverride
+            ?? (Plugin.Garden.Census.BoundKey(estate, parsed.PatchOrdinal) is { } key
+                && LastOutdoor.TryGetValue(key, out var beds)
+                && parsed.BedSlot < beds.Count
+                ? beds[parsed.BedSlot].Stage : (byte)0);
+
+        var receipt = new ReceiptEvent(
+            estate, parsed.PatchOrdinal, parsed.BedSlot, verb, species, stage,
+            DateTimeOffset.UtcNow);
+        return Deliver(receipt, $"{bedHeader}: {DisplayPlant(plantName)}");
+    }
+
+    internal static string OnPotReceipt(ReceiptVerb verb, string plantName)
+    {
+        var estate = EstateSensor.Current();
+        if (estate is null)
+            return "no estate identity - receipt logged only";
+
+        SightNow();
+        var species = Plugin.Tables.SpeciesIndexByName(plantName) ?? 0;
+        if (species == 0)
+            return $"pot plant '{plantName}' unknown - cannot bind, receipt logged only";
+
+        var key = PotBind.UniqueSpeciesKey(species, LastIndoor);
+        if (key is null)
+            return $"pot with {plantName} is ambiguous (several or none in map) - unbound";
+
+        // A pot is its own one-bed patch: ordinal = map key, slot 0.
+        Plugin.Garden.Census.Bind(estate, key.Value, key.Value);
+        var stage = LastIndoor.TryGetValue(key.Value, out var pot) ? pot.Stage : (byte)0;
+        var receipt = new ReceiptEvent(
+            estate, key.Value, 0, verb, species, stage, DateTimeOffset.UtcNow, IsPot: true);
+        return Deliver(receipt, $"pot (key {key}): {DisplayPlant(plantName)}");
+    }
+
+    internal static string OnRipeSkip(string bedHeader, string plantName)
+    {
+        // A ripe bed offers no tend - the skip itself is a stage-4 sighting (spec).
+        var estate = EstateSensor.Current();
+        if (estate is null || ReceiptParser.ParseBedHeader(bedHeader) is not { } parsed)
+            return $"{bedHeader}: skipped (ripe?) - not recorded";
+
+        var species = Plugin.Tables.SpeciesIndexByName(plantName) ?? 0;
+        var bed = Plugin.Garden.Census.LedgerBeds.FirstOrDefault(b =>
+            b.Estate == estate && b.PatchOrdinal == parsed.PatchOrdinal
+            && b.BedSlot == parsed.BedSlot && !b.IsPot);
+        if (bed is null)
+            return $"{bedHeader}: skipped (ripe, unclaimed - tend won't claim a bed it can't touch)";
+
+        bed.Observe(new Observation(
+            DateTimeOffset.UtcNow,
+            species != 0 ? species : bed.Latest?.SpeciesIndex ?? 0,
+            4, ObservationSource.RipeSkip));
+        Plugin.Garden.Save();
+        return $"{bedHeader}: {DisplayPlant(plantName)} - ripe, skipped (recorded)";
+    }
+
+    private static string Deliver(ReceiptEvent receipt, string label)
+    {
+        if (Plugin.Configuration.TrailEnabled)
+            Plugin.Garden.Trail.Append(receipt);
+
+        var bed = Plugin.Garden.Census.OnReceipt(receipt);
+        Plugin.Garden.Save();
+        return bed is null
+            ? $"{label} - done (not claimed: {(Plugin.Configuration.ClaimOnAction ? "patch unbound" : "claim-as-I-go off")})"
+            : $"{label} - done";
+    }
+
+    private static string DisplayPlant(string plantName)
+        => plantName.Length > 0 ? plantName : "?";
+}
