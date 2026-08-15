@@ -53,11 +53,14 @@ internal sealed class ReplantPlan
 /// patch of empty holes. Batch order (harvest everything, then plant everything) is not
 /// expressible here on purpose.
 ///
-/// <para>The plant step is HYBRID (Sam's ruling, 2026-08-15). The chain drives the menus up
-/// to "Plant Seeds" and then stops: the picker addon has no readable contents and no
-/// clickable slots (capture: "HousingGardening (0 values)") - the player fills soil and seed
-/// from inventory. The chain waits, reads the confirmation prompt the game builds from what
-/// they filled, checks it against the plan, and answers Yes only when it matches.</para>
+/// <para>The plant step fills the picker itself when it can (see <see cref="GardeningFill"/>):
+/// the soil and seed columns above are the order form, and the chain clicks the two slots,
+/// picks those two items and presses Confirm. When any of that does not look like the picker
+/// it was written against, it stops clicking and the step is the HYBRID one it has always
+/// been (Sam's ruling, 2026-08-15) - picker open, "waiting" in the feed, the player fills it.
+/// Either way the chain then reads the confirmation prompt the game builds from the filled
+/// slots, checks it against the plan, and answers Yes only when it matches. That check is now
+/// guarding our own fill as well as a human's, which is exactly why it stays.</para>
 /// </summary>
 internal sealed unsafe class CycleChain : ChainBase
 {
@@ -76,6 +79,14 @@ internal sealed unsafe class CycleChain : ChainBase
     private DateTime _waitUntil;
     private bool _waitAnnounced;
     private Func<string>? _pendingReceipt;
+
+    /// <summary>This bed's picker driver, made when the plant option is selected. Null once
+    /// the fill is over one way or the other.</summary>
+    private GardeningFill? _fill;
+
+    /// <summary>What actually filled the picker, for the run log's plant line: the driver's
+    /// "soil + seed" when it did the fill, empty when the player did.</summary>
+    private string _filledBy = "";
 
     /// <summary>Freshest map read for planning, throttled: the dashboard's live pre-flight
     /// line asks every frame, and a map read every frame is a sensor, not a UI.</summary>
@@ -230,7 +241,7 @@ internal sealed unsafe class CycleChain : ChainBase
 
             TaskManager.Enqueue(() => Interact(bedObject.Object), $"interact-p {slot}");
             TaskManager.Enqueue(AdvanceToMenu, $"advance-p {slot}");
-            TaskManager.Enqueue(() => SelectPlant(label), $"plant {slot}");
+            TaskManager.Enqueue(() => SelectPlant(label, plan.SoilItemId, seedId), $"plant {slot}");
             TaskManager.Enqueue(
                 () => AwaitSow(label, plan.SoilItemId, seedId), HumanStepLimitMS, $"sow {slot}");
         }
@@ -281,8 +292,11 @@ internal sealed unsafe class CycleChain : ChainBase
         _plant = "";
         _header = "";
         // A receipt never survives into the next step: an unfired one belongs to a
-        // conversation that did not finish, and dropping it is the honest outcome.
+        // conversation that did not finish, and dropping it is the honest outcome. The
+        // picker driver goes the same way - it belongs to one bed's picker.
         _pendingReceipt = null;
+        _fill = null;
+        _filledBy = "";
 
         targets->Target = native;
         targets->InteractWithObject(native, false);
@@ -340,7 +354,7 @@ internal sealed unsafe class CycleChain : ChainBase
         return true;
     }
 
-    private bool? SelectPlant(string label)
+    private bool? SelectPlant(string label, uint soilId, uint seedId)
     {
         if (!PaceReady() || !PlantFlow.MenuReady(out var menu))
             return false;
@@ -355,17 +369,37 @@ internal sealed unsafe class CycleChain : ChainBase
 
         _waitUntil = DateTime.UtcNow.AddMilliseconds(PlantFlow.HumanFillTimeoutMS);
         _waitAnnounced = false;
+        _filledBy = "";
+        _fill = new GardeningFill(soilId, seedId);
         Acted();
         return true;
     }
 
-    /// <summary>The hybrid step: the picker is the player's, the confirmation is ours.</summary>
+    /// <summary>The sow step. The driver fills the picker when it can and the player fills
+    /// it when the driver cannot - either way this step ends at the same confirmation, read
+    /// and checked the same way. The waiting line is only spoken once the fill has actually
+    /// stood down, so the run log never asks for hands that were not needed.</summary>
     private bool? AwaitSow(string label, uint soilId, uint seedId)
     {
         if (PlantFlow.SowPromptReady(out var prompt))
             return ConfirmSow(label, prompt, soilId, seedId);
 
-        if (!_waitAnnounced && PlantFlow.GardeningOpen())
+        if (_fill is { } fill)
+        {
+            fill.Tick();
+            if (fill.Filled)
+            {
+                _filledBy = fill.What;
+                Note($"{label}: filled {fill.What}");
+                _fill = null;
+            }
+            else if (fill.GaveUp is not null)
+            {
+                _fill = null;
+            }
+        }
+
+        if (!_waitAnnounced && _fill is null && _filledBy.Length == 0 && PlantFlow.GardeningOpen())
         {
             _waitAnnounced = true;
             var seedName = Plugin.Tables.CropBySeedId(seedId)?.SeedName ?? $"seed {seedId}";

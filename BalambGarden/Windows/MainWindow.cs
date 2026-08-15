@@ -66,8 +66,10 @@ public class MainWindow : Window, IDisposable
     private bool armedTouchedThisFrame;
 
     // 0 = no expectation; the pot chain then reports what the confirmation named instead
-    // of judging it.
+    // of judging it. Both are also the auto-fill's order form: a 0 here means there is
+    // nothing to fill that slot with and the picker stays the player's.
     private uint potSeedId;
+    private uint potSoilId;
 
     // Arrival selection. lastHere is where we were on the previous frame; when it changes,
     // the new estate's tab takes the selection for exactly one frame. Selecting every
@@ -903,9 +905,11 @@ public class MainWindow : Window, IDisposable
     /// every frame. Nothing here is a modal - the launch button relabels itself and wants a
     /// second press, because a cycle spends seeds and a growth cycle and cannot be undone.
     ///
-    /// <para>Planting is hybrid by design (Sam's ruling): the chain opens the soil/seed
-    /// picker and waits while you fill it, then checks the confirmation against this plan
-    /// before answering. The seed column is what it will hold you to, not what it fills.</para>
+    /// <para>The soil and seed columns are the order form: the chain fills the game's picker
+    /// with them and presses Confirm. When the picker isn't what the driver expects it stops
+    /// clicking and you fill it by hand, exactly as before - the run does not end over it.
+    /// Either way the confirmation is checked against this plan before anything is planted,
+    /// which is now the check on our own fill as much as on yours.</para>
     /// </summary>
     private void DrawCyclePanel(PatchGroup patch)
     {
@@ -1065,6 +1069,7 @@ public class MainWindow : Window, IDisposable
             ImGui.TextDisabled(UntrackedTag);
 
         using var indent = ImRaii.PushIndent();
+        DrawPotSoilPicker();
         DrawPotSeedPicker();
 
         foreach (var pot in pots)
@@ -1099,7 +1104,7 @@ public class MainWindow : Window, IDisposable
                 ImGui.SameLine();
                 if (ImGui.Button("Plant"))
                 {
-                    plugin.PotChain.Plant(pot, potSeedId);
+                    plugin.PotChain.Plant(pot, potSoilId, potSeedId);
                     plugin.Launched(plugin.PotChain);
                 }
             }
@@ -1146,12 +1151,92 @@ public class MainWindow : Window, IDisposable
         ImGui.TextDisabled($"{Plugin.Tables.SpeciesName(species)} · stage {stage} · claimed");
     }
 
-    /// <summary>What Plant will hold the confirmation to. This is a check, never an autofill
-    /// - the label says "Verify" because picking here does not put anything in the game's
-    /// picker, it only tells the chain what the confirmation is allowed to say. "Whatever I
-    /// pick in game" is the default on purpose: the flowerpot flowers most pots hold are
-    /// absent from the crop table entirely, so demanding a table seed here would refuse the
-    /// most common pot planting there is.</summary>
+    /// <summary>
+    /// Which soil Plant should put in the left slot. There is NO soil table to draw this
+    /// from - the shipped Soils.json is the nine outdoor topsoils, and "Potting Soil", which
+    /// is what a flowerpot actually takes, is not a topsoil and is nowhere in our data. So
+    /// this is not a table at all: it is what is in the bags right now whose name the GAME
+    /// says ends in "soil". Nothing invented, nothing hardcoded, and a soil we have never
+    /// heard of shows up the moment the player buys one.
+    ///
+    /// <para>"Whatever's in the picker" stays the default. Naming a soil is what lets the
+    /// chain fill the slot; declining to name one is a real answer that costs two clicks,
+    /// and the sow check keeps its null soil expectation either way (a prompt naming potting
+    /// soil must never be refused for not being a topsoil).</para>
+    /// </summary>
+    private void DrawPotSoilPicker()
+    {
+        var soils = SoilsInBag();
+        var chosen = soils.FirstOrDefault(s => s.ItemId == potSoilId);
+        var label = potSoilId == 0 || chosen.ItemId == 0
+            ? "Whatever's in the picker"
+            : $"{chosen.Name} ({chosen.Count})";
+
+        ImGui.SetNextItemWidth(260f);
+        using var combo = ImRaii.Combo("Soil", label);
+        if (ImGui.IsItemHovered())
+            ImGui.SetTooltip(
+                "Name a soil and the chain fills that slot for you.\n"
+                + "Leave it on \"whatever's in the picker\" and you fill it by hand,\n"
+                + "same as before. Either way the confirmation is read before it's answered.");
+        if (!combo.Success)
+            return;
+
+        if (ImGui.Selectable("Whatever's in the picker", potSoilId == 0))
+            potSoilId = 0;
+
+        foreach (var soil in soils)
+        {
+            if (ImGui.Selectable($"{soil.Name} ({soil.Count})", soil.ItemId == potSoilId))
+                potSoilId = soil.ItemId;
+        }
+    }
+
+    /// <summary>Every soil the bags hold, by the game's own item names. Read live rather
+    /// than tabled on purpose - see <see cref="DrawPotSoilPicker"/>.</summary>
+    private static unsafe List<(uint ItemId, string Name, int Count)> SoilsInBag()
+    {
+        var found = new List<(uint, string, int)>();
+        var inventory = FFXIVClientStructs.FFXIV.Client.Game.InventoryManager.Instance();
+        if (inventory == null)
+            return found;
+
+        var seen = new HashSet<uint>();
+        foreach (var bag in new[]
+                 {
+                     FFXIVClientStructs.FFXIV.Client.Game.InventoryType.Inventory1,
+                     FFXIVClientStructs.FFXIV.Client.Game.InventoryType.Inventory2,
+                     FFXIVClientStructs.FFXIV.Client.Game.InventoryType.Inventory3,
+                     FFXIVClientStructs.FFXIV.Client.Game.InventoryType.Inventory4,
+                 })
+        {
+            var container = inventory->GetInventoryContainer(bag);
+            if (container == null)
+                continue;
+
+            for (var i = 0; i < container->Size; i++)
+            {
+                var slot = container->GetInventorySlot(i);
+                if (slot == null || slot->ItemId == 0 || !seen.Add(slot->ItemId))
+                    continue;
+
+                var name = PlantFlow.ItemName(slot->ItemId);
+                if (!name.EndsWith("soil", StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                found.Add((slot->ItemId, name, inventory->GetInventoryItemCount(slot->ItemId)));
+            }
+        }
+
+        found.Sort(static (a, b) => string.CompareOrdinal(a.Item2, b.Item2));
+        return found;
+    }
+
+    /// <summary>What Plant will hold the confirmation to, and - when it names a seed the
+    /// chain can find in the bags - what it fills the right-hand slot with. "Whatever I pick
+    /// in game" is the default on purpose: the flowerpot flowers most pots hold are absent
+    /// from the crop table entirely, so demanding a table seed here would refuse the most
+    /// common pot planting there is; it just means those two clicks stay yours.</summary>
     private void DrawPotSeedPicker()
     {
         var label = potSeedId == 0
@@ -1162,8 +1247,8 @@ public class MainWindow : Window, IDisposable
         using var combo = ImRaii.Combo("Verify seed", label);
         if (ImGui.IsItemHovered())
             ImGui.SetTooltip(
-                "The chain can't fill the picker for you - you pick the soil and the seed "
-                + "in game.\nThis is what it checks the confirmation against before it "
+                "Name a seed and the chain picks it for you; leave it and you pick in game.\n"
+                + "Either way this is what it checks the confirmation against before it "
                 + "presses Yes.");
         if (!combo.Success)
             return;

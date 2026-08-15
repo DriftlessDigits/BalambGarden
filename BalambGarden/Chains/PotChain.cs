@@ -48,6 +48,11 @@ internal sealed unsafe class PotChain : ChainBase
     private bool _waitAnnounced;
     private Func<string>? _pendingReceipt;
 
+    /// <summary>This planting's picker driver, and what it managed to fill. Both belong to
+    /// one pot's picker and are cleared when the run opens another.</summary>
+    private GardeningFill? _fill;
+    private string _filledBy = "";
+
     // The before half of the diff join, plus the settle budget for the after half.
     // _settleUntil == MinValue means "the bind step has not started its clock yet".
     private Dictionary<int, PotReading> _mapBefore = [];
@@ -79,18 +84,19 @@ internal sealed unsafe class PotChain : ChainBase
         Close("pot harvested");
     }
 
-    /// <summary>Hybrid, exactly as beds: the chain opens the picker and waits while the
-    /// player fills soil and seed, then checks the confirmation before answering.
-    /// <paramref name="expectedSeedId"/> may be 0 - flowerpot flowers are absent from the
-    /// crop table entirely, so "whatever you put in" is a legitimate plan, and the prompt
-    /// is then reported rather than judged.</summary>
-    internal void Plant(PotObject pot, uint expectedSeedId)
+    /// <summary>Exactly as beds: the chain fills the picker when it has been told what to
+    /// fill it with, and waits for the player when it has not, then checks the confirmation
+    /// before answering. Either id may be 0 - flowerpot flowers are absent from the crop
+    /// table entirely and pot soils are absent from the topsoil table, so "whatever you put
+    /// in" is a legitimate plan; it simply cannot be auto-filled, and the prompt is then
+    /// reported rather than judged.</summary>
+    internal void Plant(PotObject pot, uint soilItemId, uint expectedSeedId)
     {
         if (!BeginRun(1, "planting pot..."))
             return;
 
         Open(pot);
-        TaskManager.Enqueue(SelectPlant, "plant");
+        TaskManager.Enqueue(() => SelectPlant(soilItemId, expectedSeedId), "plant");
         TaskManager.Enqueue(() => AwaitSow(expectedSeedId), HumanStepLimitMS, "sow");
         TaskManager.Enqueue(() => AwaitPotBind(ReceiptVerb.Plant, "planted"),
             BindStepLimitMS, "identify");
@@ -135,6 +141,8 @@ internal sealed unsafe class PotChain : ChainBase
         _plant = "";
         _obtained = "";
         _pendingReceipt = null;
+        _fill = null;
+        _filledBy = "";
         targets->Target = native;
         targets->InteractWithObject(native, false);
         return true;
@@ -217,7 +225,7 @@ internal sealed unsafe class PotChain : ChainBase
         return true;
     }
 
-    private bool? SelectPlant()
+    private bool? SelectPlant(uint soilItemId, uint expectedSeedId)
     {
         if (!PaceReady() || !PlantFlow.MenuReady(out var menu))
             return false;
@@ -232,6 +240,8 @@ internal sealed unsafe class PotChain : ChainBase
 
         _waitUntil = DateTime.UtcNow.AddMilliseconds(PlantFlow.HumanFillTimeoutMS);
         _waitAnnounced = false;
+        _filledBy = "";
+        _fill = new GardeningFill(soilItemId, expectedSeedId);
         Acted();
         return true;
     }
@@ -241,7 +251,22 @@ internal sealed unsafe class PotChain : ChainBase
         if (PlantFlow.SowPromptReady(out var prompt))
             return ConfirmSow(prompt, expectedSeedId);
 
-        if (!_waitAnnounced && PlantFlow.GardeningOpen())
+        if (_fill is { } fill)
+        {
+            fill.Tick();
+            if (fill.Filled)
+            {
+                _filledBy = fill.What;
+                Note($"pot: filled {fill.What}");
+                _fill = null;
+            }
+            else if (fill.GaveUp is not null)
+            {
+                _fill = null;
+            }
+        }
+
+        if (!_waitAnnounced && _fill is null && _filledBy.Length == 0 && PlantFlow.GardeningOpen())
         {
             _waitAnnounced = true;
             var seedName = Plugin.Tables.CropBySeedId(expectedSeedId)?.SeedName ?? "your seed";

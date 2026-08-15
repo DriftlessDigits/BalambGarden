@@ -48,6 +48,12 @@ public class Configuration : IPluginConfiguration
     /// room; the name we speak under in it is theirs to set.</summary>
     public string NudgeLabel { get; set; } = "Balamb";
 
+    /// <summary>Whether the chain fills the planting picker's soil and seed slots itself
+    /// instead of standing there while you do it by hand. It is a switch and not a promise:
+    /// a fill that cannot proceed stops driving and the step becomes the hand-filled one it
+    /// has always been, so turning this off costs nothing but the convenience.</summary>
+    public bool AutoFillPicker { get; set; } = true;
+
     /// <summary>How far the working patch sweep looks, in yalms. Sam's ruling 08-14 set the
     /// 20y default (the neighbour's twin ordinal sat at 37.9y, and a far own patch simply
     /// reappears when you walk toward it); it is a setting because a sprawling plot and a

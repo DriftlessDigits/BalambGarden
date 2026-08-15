@@ -122,6 +122,20 @@ public class ConfigWindow : Window, IDisposable
             configuration.Save();
         }
 
+        var autoFill = configuration.AutoFillPicker;
+        if (ImGui.Checkbox("Fill the planting picker for me - soil, seed, Confirm", ref autoFill))
+        {
+            configuration.AutoFillPicker = autoFill;
+            configuration.Save();
+        }
+
+        if (ImGui.IsItemHovered())
+            ImGui.SetTooltip(
+                "The chain clicks the two slots and picks the soil and seed you chose.\n"
+                + "If anything about the picker isn't what it expects, it stops clicking and\n"
+                + "waits for you exactly like it used to - the run keeps going either way.\n"
+                + "The sow confirmation is still read and checked before anything is planted.");
+
         var claim = configuration.ClaimOnAction;
         if (ImGui.Checkbox("Claim as I go - a completed action claims the bed", ref claim))
         {
