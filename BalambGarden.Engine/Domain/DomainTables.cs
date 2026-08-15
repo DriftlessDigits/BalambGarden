@@ -10,6 +10,7 @@ public sealed class DomainTables
     private readonly Dictionary<ushort, uint> seedIdByIndex;
     private readonly Dictionary<uint, ushort> indexBySeedId;
     private readonly Dictionary<ushort, string> nameByIndex;
+    private readonly Dictionary<string, ushort> indexByName;
     private readonly Dictionary<uint, List<(uint, uint)>> pairsByResult;
 
     private DomainTables(
@@ -23,6 +24,8 @@ public sealed class DomainTables
         this.nameByIndex = nameByIndex;
         this.pairsByResult = pairsByResult;
         indexBySeedId = seedIdByIndex.ToDictionary(kv => kv.Value, kv => kv.Key);
+        indexByName = nameByIndex.ToDictionary(
+            kv => kv.Value, kv => kv.Key, StringComparer.OrdinalIgnoreCase);
     }
 
     public static DomainTables Load()
@@ -86,6 +89,10 @@ public sealed class DomainTables
     /// <summary>Honest fallback: unknown ids display as unknown, never guessed.</summary>
     public string SpeciesName(ushort index)
         => nameByIndex.GetValueOrDefault(index) ?? $"Unknown (0x{index:X2})";
+
+    /// <summary>Receipt joins: dialogue names a plant, the map speaks species indices.</summary>
+    public ushort? SpeciesIndexByName(string name)
+        => indexByName.TryGetValue(name.Trim(), out var i) ? i : null;
 
     public IReadOnlyList<(uint ParentA, uint ParentB)> PairsForResult(uint resultSeedId)
         => pairsByResult.GetValueOrDefault(resultSeedId) ?? [];
