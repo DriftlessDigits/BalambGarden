@@ -105,6 +105,23 @@ public class RollupTests
         Assert.Null(Rollups.ArrivalNudge(Chelsea, rollups));
     }
 
+    [Fact] // an estate's pots are ONE group, whatever per-pot ordinals the ledger rows hold
+    public void PotsRollUpAsOneGroupPerEstate()
+    {
+        // Two pots with different patch ordinals (real shape: pot ordinals differ per pot).
+        var beds = new List<ClaimedBed>
+        {
+            Pot(180, stage: 2, tendedHoursAgo: 1),
+            Pot(181, stage: 2, tendedHoursAgo: 1),
+        };
+
+        var rollups = Rollups.ForEstate(Chelsea, beds, T, new ClockWiltSource(), Now);
+
+        var pots = Assert.Single(rollups, r => r.IsPots);
+        Assert.Equal(2, pots.Claimed);
+        Assert.Equal(Rollups.PotsOrdinal, pots.PatchOrdinal);
+    }
+
     [Fact] // but a ripe pot still speaks: pots ripen, they just never die
     public void RipePotStillCounts()
     {

@@ -11,13 +11,17 @@ public sealed record PatchRollup(
 
 public static class Rollups
 {
+    /// <summary>The ordinal every pot rollup carries: an estate's pots are ONE group
+    /// (UI ruling 2026-08-15), whatever per-pot ordinals the ledger rows hold.</summary>
+    public const int PotsOrdinal = -1;
+
     public static IReadOnlyList<PatchRollup> ForEstate(
         EstateKey estate, IReadOnlyList<ClaimedBed> beds, DomainTables tables,
         IWiltSource wilt, DateTimeOffset now)
     {
         return beds
             .Where(b => b.Estate == estate)
-            .GroupBy(b => (b.PatchOrdinal, b.IsPot))
+            .GroupBy(b => (PatchOrdinal: b.IsPot ? PotsOrdinal : b.PatchOrdinal, IsPot: b.IsPot))
             .Select(g =>
             {
                 int ripe = 0, due = 0, overdue = 0, danger = 0, unknown = 0;
