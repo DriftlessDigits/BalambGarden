@@ -133,11 +133,16 @@ for (const [resultName, pairs] of Object.entries(crossbreeding)) {
 // it "Red Sunflowers" - so a name-keyed receipt join misses and the honest "cannot bind"
 // path runs. Deliberately NOT aliased: how variants should be learned is a design
 // question waiting on bench evidence, not something to guess into the generator.
+// Colorless BASE names (08-16 receipt: color is pot pigment - b2 high nibble - not
+// species; Sam's blue lupins were wearing "Red"). 82/93 receipted in his pots, item
+// names xivapi-verified 08-16 (17999 "Yellow Daisies", 30371 "Purple Cosmos").
 const SPECIES_NAME_OVERRIDES = {
-  100: 'Red Morning Glories',
-  102: 'Red Lupins',
-  103: 'Garden Sunflower',
-  107: 'Red Tea Flowers',
+  82: 'Daisies',
+  93: 'Cosmos',
+  100: 'Morning Glories',
+  102: 'Lupins',
+  103: 'Sunflowers',
+  107: 'Tea Flowers',
 };
 
 const lotlab = JSON.parse(readFileSync(src("lotlab_seeds.json"), "utf8"));

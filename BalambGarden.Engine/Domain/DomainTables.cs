@@ -79,12 +79,11 @@ public sealed class DomainTables
         // a null seedId means "this species exists, we have no join for it", and the
         // lookups below answer null rather than inventing seed 0.
         //
-        // KNOWN GAP (08-15, ledgered): a species' index name and the name the game speaks
-        // in dialogue are not always the same string. Species 103 is "Garden Sunflower"
-        // here, but a ripe pot's Talk calls it "Red Sunflowers" - so SpeciesIndexByName
-        // misses on that receipt and the honest "cannot bind" path runs. Deliberately NOT
-        // papered over with an alias table: how variants should be learned (receipt-fed?
-        // generated?) is a design question that waits for bench evidence.
+        // The 08-15 name-variant gap CLOSED 08-16: bench evidence arrived. Color is pot
+        // PIGMENT (b2 high nibble), not species - so species names here are the colorless
+        // base plant ("Lupins"), Talk speaks colored ITEM names ("Blue Lupins"), and
+        // SpeciesIndexByName strips one leading color word when the remainder is a real
+        // species. Not an alias table: it can only ever land on a name already listed.
         foreach (var prop in ReadJson("Data.SpeciesIndex.json").RootElement.EnumerateObject())
         {
             var index = ushort.Parse(prop.Name);
@@ -153,9 +152,27 @@ public sealed class DomainTables
     /// them, and whoever loaded the tables should say so rather than pretend otherwise.</summary>
     public IReadOnlyList<string> SpeciesNameCollisions => nameCollisions;
 
-    /// <summary>Receipt joins: dialogue names a plant, the map speaks species indices.</summary>
+    /// <summary>The game's pigment color vocabulary - the words a harvested flower's item
+    /// name can lead with. Only used to STRIP: a match still requires the remainder to be
+    /// a listed species, so this list can only reveal names, never invent them.</summary>
+    private static readonly string[] PigmentWords =
+        ["Red", "Orange", "Yellow", "Blue", "Purple", "White", "Pink", "Green", "Black", "Rainbow"];
+
+    /// <summary>Receipt joins: dialogue names a plant, the map speaks species indices.
+    /// Exact match first; else one leading pigment word strips ("Blue Lupins" -> Lupins,
+    /// 08-16: color is pigment, not species).</summary>
     public ushort? SpeciesIndexByName(string name)
-        => indexByName.TryGetValue(name.Trim(), out var i) ? i : null;
+    {
+        var trimmed = name.Trim();
+        if (indexByName.TryGetValue(trimmed, out var i))
+            return i;
+
+        foreach (var color in PigmentWords)
+            if (trimmed.StartsWith(color + " ", StringComparison.OrdinalIgnoreCase)
+                && indexByName.TryGetValue(trimmed[(color.Length + 1)..], out var stripped))
+                return stripped;
+        return null;
+    }
 
     /// <summary>Every topsoil, ascending by ItemId (Grade 1-3 x La Noscean/Shroud/Thanalan).</summary>
     public IReadOnlyList<Soil> Soils => soils;

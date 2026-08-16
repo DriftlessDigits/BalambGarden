@@ -9,7 +9,7 @@ namespace BalambGarden.Engine.Tests.Census;
 /// sunflower morning capture), watering changes nothing at all.</summary>
 public class PotDiffTests
 {
-    private static PotReading Melon(byte stage = 1) => new(0x67, stage, 0, true, true);
+    private static PotReading Melon(byte stage = 1) => new(0x67, stage, 0, 0, true, true);
 
     [Fact] // planting: an entry APPEARS at exactly one key -> that key is this pot
     public void AppearedEntryIsThePot()
@@ -65,3 +65,4 @@ public class PotDiffTests
         => Assert.Null(PotDiff.Join(
             new Dictionary<int, PotReading>(), new Dictionary<int, PotReading>()));
 }
+

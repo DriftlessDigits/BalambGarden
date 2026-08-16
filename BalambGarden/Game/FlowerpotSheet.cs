@@ -15,31 +15,33 @@ namespace BalambGarden.Game;
 /// one ever ship, walks in through the name scan.</para></summary>
 internal static class FlowerpotSheet
 {
-    private static readonly uint[] Receipted = [65979, 65980, 65981];
+    // Riviera 197051, Glade 197052, Oasis 197053 - all receipted in Sam's pots. The same
+    // rows appear as GameObject.BaseId on a placed pot's object (08-16, four FC pots all
+    // read 0x301BD = Oasis), which is what the object sensor gates on.
+    private static readonly uint[] Receipted = [197051, 197052, 197053];
 
-    private static IReadOnlyCollection<uint>? ids;
+    private static IReadOnlyCollection<uint>? rows;
 
-    internal static IReadOnlyCollection<uint> Ids => ids ??= Derive();
+    internal static IReadOnlyCollection<uint> Rows => rows ??= Derive();
 
     private static IReadOnlyCollection<uint> Derive()
     {
         var derived = new HashSet<uint>();
         foreach (var row in Plugin.DataManager.GetExcelSheet<HousingFurniture>())
         {
-            if (row.RowId >= 0x20000
-                && row.Item.ValueNullable?.Name.ExtractText().EndsWith("Flowerpot") == true)
-                derived.Add(row.RowId - 0x20000);
+            if (row.Item.ValueNullable?.Name.ExtractText().EndsWith("Flowerpot") == true)
+                derived.Add(row.RowId);
         }
 
         var missing = Receipted.Where(id => !derived.Contains(id)).ToList();
         if (missing.Count > 0)
             Plugin.Log.Warning(
-                $"[PotGate] sheet scan missed receipted flowerpot id(s) {string.Join(",", missing)}"
+                $"[PotGate] sheet scan missed receipted flowerpot row(s) {string.Join(",", missing)}"
                 + " - keeping them anyway; the sheet or the name drifted, look at it");
         derived.UnionWith(Receipted);
 
         Plugin.Log.Information(
-            $"[PotGate] flowerpot ids: {string.Join(",", derived.OrderBy(i => i))}");
+            $"[PotGate] flowerpot rows: {string.Join(",", derived.OrderBy(i => i))}");
         return derived;
     }
 }

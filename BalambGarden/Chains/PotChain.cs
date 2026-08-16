@@ -19,10 +19,10 @@ namespace BalambGarden.Chains;
 /// that is a pot mechanic or a flower oddity. Until they report, nothing here asserts
 /// either way.</para>
 ///
-/// <para>Which pot: the chain knows before it acts. A pot object resolves to its DataMap
-/// key through the furniture vector (<see cref="MapSensor.ReadFurniture"/> carries the
-/// 08-15 receipt), so identity is a read, not an inference - which is what lets WATERING
-/// bind at all. Watering writes nothing to the map (the 08-15 receipt has a freshly watered
+/// <para>Which pot: the chain knows before it acts. A pot object carries its own DataMap
+/// key (HousingObject.HousingFurnitureIndex, the 08-16 receipt - via
+/// <see cref="Game.ObjectSensor.AllPots"/>), so identity is a read, not an inference -
+/// which is what lets WATERING bind at all. Watering writes nothing to the map (the 08-15 receipt has a freshly watered
 /// melon and its dry twin byte-identical across all 48 bytes), so it could never have been
 /// identified by evidence it does not produce.</para>
 ///

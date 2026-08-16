@@ -102,13 +102,29 @@ public class DomainTablesTests
         Assert.Equal(forward, reversed);   // same results, same (sorted) order
     }
 
-    [Fact] // xivapi-verified 2026-08-13; 103 receipt-bound in-game (sunflower pot, key=129)
-    public void IndoorTailSpeciesAreNamed()
+    [Fact] // 08-16 receipt (Sam's blue lupins wearing "Red"): color is pot PIGMENT, not
+    // species - species names are the colorless base plant. 82/93 receipted in Sam's pots
+    // (Yellow Daisies item 17999, Purple Cosmos item 30371, xivapi 08-16).
+    public void FlowerSpeciesNamesAreColorless()
     {
-        Assert.Equal("Red Morning Glories", T.SpeciesName(100));
-        Assert.Equal("Red Lupins", T.SpeciesName(102));
-        Assert.Equal("Garden Sunflower", T.SpeciesName(103));
-        Assert.Equal("Red Tea Flowers", T.SpeciesName(107));
+        Assert.Equal("Daisies", T.SpeciesName(82));
+        Assert.Equal("Cosmos", T.SpeciesName(93));
+        Assert.Equal("Morning Glories", T.SpeciesName(100));
+        Assert.Equal("Lupins", T.SpeciesName(102));
+        Assert.Equal("Sunflowers", T.SpeciesName(103));
+        Assert.Equal("Tea Flowers", T.SpeciesName(107));
+    }
+
+    [Fact] // the name-variant gap closes: Talk speaks colored ITEM names ("Red Sunflowers"
+    // for a red-pigment harvest); a leading color word strips to the base species. The
+    // bench evidence the 08-15 ledger note waited for arrived 08-16 (pigment nibble).
+    public void ColoredItemNamesResolveToBaseSpecies()
+    {
+        Assert.Equal((ushort)103, T.SpeciesIndexByName("Red Sunflowers"));
+        Assert.Equal((ushort)102, T.SpeciesIndexByName("Blue Lupins"));
+        Assert.Equal((ushort)82, T.SpeciesIndexByName("Yellow Daisies"));
+        Assert.Equal((ushort)102, T.SpeciesIndexByName("Lupins"));   // exact still first
+        Assert.Null(T.SpeciesIndexByName("Blue Nonsense"));          // strip never invents
     }
 
     [Fact]

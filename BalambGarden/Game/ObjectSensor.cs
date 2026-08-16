@@ -23,10 +23,11 @@ internal sealed record PatchGroup(
 }
 
 /// <summary><paramref name="MapKey"/> is this pot's entry in the gardening DataMap, read
-/// off the furniture vector (see <see cref="MapSensor.ReadFurniture"/> for the receipt).
-/// Null means the read could not name this pot - no furniture entry stands where it does,
-/// or more than one might - and every surface treats that as untracked rather than guess.
-/// </summary>
+/// off the pot object ITSELF: HousingObject.HousingFurnitureIndex is the game's own name
+/// for the key (08-16 receipt - four FC pots read 208/227/392/393, exactly the four
+/// pot-data entries, at a house where the furniture VECTOR index diverged; control
+/// partitions read their known keys 122/144). Null only for a negative index - and every
+/// surface treats that as untracked rather than guess.</summary>
 internal readonly record struct PotObject(
     IGameObject Object, string Name, float Distance, int? MapKey)
 {
@@ -100,49 +101,58 @@ internal static unsafe class ObjectSensor
             .OrderBy(p => p.Ordinal)
             .ToList();
 
-    /// <summary>Indoor pots by name ("Flowerpot" models). Pots are dumb props with
-    /// per-model DataIds (08-13) - the name filter is the honest v1 identifier; a
-    /// pot the filter misses simply shows no verbs, never a wrong one.
-    ///
-    /// <para>Each pot is resolved to its DataMap key here, by standing the object's
-    /// position against the furniture vector's. That is a direct READ, not a learned
-    /// pairing: nothing is remembered between frames, so nothing can go stale, and a pot
-    /// the read cannot name comes back with a null key and renders untracked.</para>
-    /// </summary>
-    internal static List<PotObject> NearbyPots(float maxDistance = 20f)
+    /// <summary>Whether the last <see cref="AllPots"/> walk saw ANY housing object at all.
+    /// False means the object table has not settled (zone-in beat) - the census must not
+    /// gate or prune on an answer the world has not given yet.</summary>
+    internal static bool SawHousingObjects { get; private set; }
+
+    /// <summary>Every flowerpot in the house - the census scope. A pot IS a flowerpot by
+    /// the game's own word: BaseId = its HousingFurniture row, one of the three Flowerpot
+    /// rows (08-16, replaces the v1 name filter - receipts over patterns). Its DataMap key
+    /// comes off the object itself (<see cref="PotObject.MapKey"/> carries the receipt).
+    /// No reach or targetable filter here: a far pot is still a real pot, and a census
+    /// that could not see it would prune rows it has no verdict on.</summary>
+    internal static List<PotObject> AllPots()
     {
         var pots = new List<PotObject>();
+        SawHousingObjects = false;
         if (!EstateSensor.IsInside() || !Player.Available || Player.Object is not { } me)
             return pots;
 
-        var furniture = MapSensor.ReadFurniture();
-
         foreach (var obj in Svc.Objects)
         {
-            if (obj is null || !obj.IsValid() || !obj.IsTargetable)
+            if (obj is null || !obj.IsValid())
                 continue;
             if (obj.ObjectKind != ObjectKind.HousingEventObject)
                 continue;
-            var name = obj.Name.TextValue;
-            if (!name.Contains("Flowerpot", StringComparison.OrdinalIgnoreCase))
+            SawHousingObjects = true;
+
+            var native = (FFXIVClientStructs.FFXIV.Client.Game.Object.GameObject*)obj.Address;
+            if (native == null || !FlowerpotSheet.Rows.Contains(native->BaseId))
                 continue;
 
-            var distance = Vector3.Distance(me.Position, obj.Position);
-            if (distance > maxDistance)
-                continue;
+            var housing = (FFXIVClientStructs.FFXIV.Client.Game.Object.HousingObject*)obj.Address;
+            var key = (int)housing->HousingFurnitureIndex;
             pots.Add(new PotObject(
-                obj, name, distance, FurnitureMatch.IndexAt(furniture, obj.Position)));
+                obj, obj.Name.TextValue, Vector3.Distance(me.Position, obj.Position),
+                key >= 0 ? key : null));
         }
-        // Stable order: furniture key first (matches the ledger's own ordering), then
-        // position as the tiebreaker. Distance ties are common (08-15: two pots both at
-        // 3.6y flipped rows between loads - object-table order is load-dependent) and a
-        // list that reshuffles between visits reads as two different rooms.
+        // Stable order: map key first (matches the ledger's own ordering), then position
+        // as the tiebreaker. Distance ties are common (08-15: two pots both at 3.6y
+        // flipped rows between loads - object-table order is load-dependent) and a list
+        // that reshuffles between visits reads as two different rooms.
         return pots
             .OrderBy(p => p.MapKey ?? int.MaxValue)
             .ThenBy(p => p.Object.Position.X)
             .ThenBy(p => p.Object.Position.Z)
             .ToList();
     }
+
+    /// <summary>The verb surface: pots you can actually act on right now.</summary>
+    internal static List<PotObject> NearbyPots(float maxDistance = 20f)
+        => AllPots()
+            .Where(p => p.Object.IsTargetable && p.Distance <= maxDistance)
+            .ToList();
 
 #if DEBUG
     /// <summary>Recon sweep (debug builds only): beds by DataId plus ANY close housing

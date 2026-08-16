@@ -40,17 +40,13 @@ internal static unsafe class MapSensor
     /// <summary>
     /// Every placed piece of furniture: where it stands and which vector slot it is.
     ///
-    /// <para>RECEIPT (2026-08-15, two estates, four pots): a flowerpot's furniture vector
-    /// INDEX is its DataMap key. Papa's Place 15:47 - idx=180 and idx=181 (id 65979) among
-    /// 182 entries, against DataMap keys 180 and 181, the Krakka twins whose keys were
-    /// established independently by decode. Apartment 16:25 through 16:37 - idx=0 and idx=1
-    /// (id 65981) against keys 0 and 1, established by appearance diff at planting. Both
-    /// sites also show the furniture entry's position matching the game object's exactly as
-    /// printed (object 'Oasis Flowerpot' &lt;-1.5,-0.0,-1.3&gt; == furniture idx=0).</para>
-    ///
-    /// <para>POTS ONLY. There are no receipts for beds, and beds do not need any: they bind
-    /// through the receipt-confirmed diff-pattern join and have done since 08-12. Nothing
-    /// here may be extended to them on the strength of an indoor coincidence.</para>
+    /// <para>DEMOTED from identity duty (08-16): the 08-15 "vector index == DataMap key"
+    /// receipts (Papa's 180/181, apartment 0/1) were the special case of a house whose
+    /// furniture slots were never recycled. The redecorated FC estate is the
+    /// counterexample - pot data at keys 208/227/392/393 against pot vector entries at
+    /// idx 378/379, two pots not in the vector at all. Identity now reads
+    /// HousingObject.HousingFurnitureIndex off the pot object itself
+    /// (<see cref="ObjectSensor.AllPots"/>); this walk remains for the debug probe.</para>
     /// </summary>
     internal static List<FurniturePlacement> ReadFurniture()
     {
@@ -120,13 +116,16 @@ internal static unsafe class MapSensor
 
     /// <summary>DataMap keys seen on the last indoor read that the pot-gate turned away -
     /// furniture holding plant-shaped bytes without being a flowerpot (vases, aquariums,
-    /// canvases; seven of them at the pot house, 08-16). The census prunes any ledger row
-    /// still wearing one of these keys.</summary>
+    /// canvases, partitions; 18 of them at the FC estate, 08-16). The census prunes any
+    /// ledger row still wearing one of these keys.</summary>
     internal static IReadOnlyList<int> LastPhantomKeys { get; private set; } = [];
 
-    /// <summary>Indoor: flowerpot entries only. The pot-gate decides membership by
-    /// furniture id (08-16 receipt - decor vases and aquariums DECODE pot-shaped, so the
-    /// decoder cannot be the gate); the decoder then reads what the gated pots hold.</summary>
+    /// <summary>Indoor: flowerpot entries only. The pot-gate decides membership off the pot
+    /// OBJECTS (BaseId = Flowerpot sheet row, key = the object's own HousingFurnitureIndex -
+    /// 08-16 receipts; decor vases and aquariums DECODE pot-shaped, so the decoder cannot be
+    /// the gate, and the furniture VECTOR index diverges from the key at recycled-slot
+    /// houses, so the vector cannot be either). When the object table has not settled yet
+    /// this answers empty and flags no phantoms - never a verdict the world has not given.</summary>
     internal static Dictionary<int, PotReading> ReadIndoor()
     {
         var result = new Dictionary<int, PotReading>();
@@ -136,7 +135,11 @@ internal static unsafe class MapSensor
             return result;
 
         var raw = ReadRawEntries();
-        var potKeys = PotGate.Keys(ReadFurniture(), FlowerpotSheet.Ids);
+        var pots = ObjectSensor.AllPots();
+        if (!ObjectSensor.SawHousingObjects)
+            return result;
+
+        var potKeys = pots.Where(p => p.MapKey is not null).Select(p => p.MapKey!.Value).ToHashSet();
         LastPhantomKeys = raw.Keys.Where(k => !potKeys.Contains(k)).ToList();
 
         foreach (var (key, bytes) in raw)

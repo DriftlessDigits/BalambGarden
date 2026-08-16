@@ -407,7 +407,7 @@
   "82": {
     "seedId": 17996,
     "itemId": 17999,
-    "name": null
+    "name": "Daisies"
   },
   "83": {
     "seedId": 20795,
@@ -462,7 +462,7 @@
   "93": {
     "seedId": 30365,
     "itemId": 30371,
-    "name": null
+    "name": "Cosmos"
   },
   "94": {
     "seedId": 30364,
@@ -497,7 +497,7 @@
   "100": {
     "seedId": 39460,
     "itemId": 39461,
-    "name": "Red Morning Glories"
+    "name": "Morning Glories"
   },
   "101": {
     "seedId": 40686,
@@ -507,12 +507,12 @@
   "102": {
     "seedId": 41160,
     "itemId": 41161,
-    "name": "Red Lupins"
+    "name": "Lupins"
   },
   "103": {
     "seedId": 43962,
     "itemId": 43963,
-    "name": "Garden Sunflower"
+    "name": "Sunflowers"
   },
   "104": {
     "seedId": 44832,
@@ -532,7 +532,7 @@
   "107": {
     "seedId": 49773,
     "itemId": 49774,
-    "name": "Red Tea Flowers"
+    "name": "Tea Flowers"
   },
   "108": {
     "seedId": null,

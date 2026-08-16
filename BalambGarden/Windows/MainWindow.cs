@@ -6,6 +6,7 @@ using BalambGarden.Chains;
 using BalambGarden.Engine.Census;
 using BalambGarden.Engine.Derivations;
 using BalambGarden.Engine.Ledger;
+using BalambGarden.Engine.Sensing;
 using BalambGarden.Game;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Utility.Raii;
@@ -678,6 +679,21 @@ public class MainWindow : Window, IDisposable
         _ => null,
     };
 
+    /// <summary>A pot's pigment lives in the live map read (b2 high nibble, 08-16), never
+    /// the ledger: a pot in front of us can say "Blue Lupins"; a remembered one says
+    /// "Lupins". Only receipted pigment names render - an unnamed nibble is no prefix,
+    /// not a guess.</summary>
+    private static string PlantLabel(ClaimedBed bed, Observation latest)
+    {
+        var name = Plugin.Tables.SpeciesName(latest.SpeciesIndex);
+        return bed.IsPot
+               && CensusPump.LastIndoor.TryGetValue(bed.MapKey, out var live)
+               && live.SpeciesIndex == latest.SpeciesIndex
+               && PotPigment.Name(live.Color) is { } color
+            ? $"{color} {name}"
+            : name;
+    }
+
     /// <summary>The bed's whole line, on hover. The strip is a picture; this is the
     /// sentence behind it, and it says the same thing the grid row says.</summary>
     private static string CellTooltip(
@@ -882,7 +898,7 @@ public class MainWindow : Window, IDisposable
             }
 
             ImGui.TableNextColumn();
-            ImGui.Text(latest is null ? "?" : Plugin.Tables.SpeciesName(latest.SpeciesIndex));
+            ImGui.Text(latest is null ? "?" : PlantLabel(bed, latest));
 
             // Staleness rides beside the numbers it qualifies: a stage read two days ago
             // is a different sentence from the same stage read a minute ago.

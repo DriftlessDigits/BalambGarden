@@ -12,8 +12,8 @@ public class PotBindTests
     {
         var map = new Dictionary<int, PotReading>
         {
-            [126] = new(0x64, 1, 0, true, true),
-            [129] = new(0x67, 1, 0, true, true),
+            [126] = new(0x64, 1, 0, 0, true, true),
+            [129] = new(0x67, 1, 0, 0, true, true),
         };
         Assert.Equal(129, PotBind.UniqueSpeciesKey(0x67, map));
     }
@@ -23,8 +23,8 @@ public class PotBindTests
     {
         var map = new Dictionary<int, PotReading>
         {
-            [129] = new(0x67, 1, 0, true, true),
-            [130] = new(0x67, 2, 0, true, true),
+            [129] = new(0x67, 1, 0, 0, true, true),
+            [130] = new(0x67, 2, 0, 0, true, true),
         };
         Assert.Null(PotBind.UniqueSpeciesKey(0x67, map));
     }
@@ -33,3 +33,4 @@ public class PotBindTests
     public void AbsentSpeciesBindsNothing()
         => Assert.Null(PotBind.UniqueSpeciesKey(0x67, new Dictionary<int, PotReading>()));
 }
+
