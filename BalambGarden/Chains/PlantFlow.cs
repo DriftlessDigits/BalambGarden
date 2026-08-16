@@ -295,7 +295,9 @@ internal static unsafe partial class PlantFlow
     /// <summary>The picker's REAL component tree, once per open. The fill driver's premise
     /// failed live (08-16: two full 3s budgets scanned 0 visible DragDrop components), so
     /// whatever the two item slots actually are, this dump is the receipt the rewritten
-    /// ClickGardeningSlot gets written against - never another guessed component type.</summary>
+    /// the fill was rewritten against (it settled two things: component nodes are Type
+    /// >= 1000, and the slots register no MouseClick - which is why the fill now goes
+    /// through UseItem instead of clicking slots at all).</summary>
     private static void DumpNodeTree(AtkUnitBase* addon)
     {
         try

@@ -2,66 +2,51 @@ using System;
 using System.Collections.Generic;
 using ECommons;
 using ECommons.DalamudServices;
+using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 
 namespace BalambGarden.Chains;
 
 /// <summary>
-/// The picker-driving half of the sow flow: the primitives that fill
-/// <c>HousingGardening</c>'s two slots and press its Confirm, so a cycle stops asking the
-/// player to type the order twice (once in our dropdown, once in the game's picker).
+/// The picker-driving half of the sow flow: fills <c>HousingGardening</c>'s two slots and
+/// presses its Confirm, so a cycle stops asking the player to type the order twice (once
+/// in our dropdown, once in the game's picker).
 ///
-/// <para>EVIDENCE DISCIPLINE. Nothing in here fires an invented callback number. The
-/// captures establish the flow's SHAPE only - "HousingGardening (0 values)" and
-/// "ContextIconMenu fires per slot with the chosen item NAME at AtkValues[13]" - and
-/// neither they nor Scrooge nor the FFXIVClientStructs headers say which callback case
-/// opens a gardening slot. So this drives the addons the way a mouse does: it finds the
-/// node the player would click and REPLAYS THAT NODE'S OWN REGISTERED AtkEvent, taking the
-/// event type and param from the game's own event manager. There is no constant to be
-/// wrong about; the worst case is a node that carries no click event, which is a refusal,
-/// not a misfire. The replay itself is ECommons' proven pattern
-/// (ECommons/Automation/UIInput/ClickHelper.cs:129-146, the same call AddonMaster's
-/// ClickButtonIfEnabled uses everywhere Scrooge clicks a dialogue).</para>
+/// <para>MECHANISM (Sam's lateral, 08-16): with the picker open, right-click an item in
+/// the inventory and pick Use - the game routes it into the matching slot itself. That
+/// context-menu Use is <c>AgentInventoryContext.UseItem</c>, a real game entry point, so
+/// the slots never need a synthetic click at all. (The slot components register no
+/// MouseClick - the 08-16 tree dump receipt - and their DragDrop event dialect stays
+/// unmapped on purpose: there is nothing left that needs it.)</para>
 ///
-/// <para>Everything here is READ-AND-CLICK. It never presses Yes on a sow: the prompt
-/// verification in <see cref="CycleChain.ConfirmSow"/> / <see cref="PotChain"/> still
-/// stands between the filled picker and a spent seed, and it now guards our own fill.</para>
+/// <para>FAIL-CLOSED, structurally: Confirm only enables once the game itself accepted
+/// both items into their slots. A Use that landed nothing leaves Confirm disabled, the
+/// budget runs out, and the picker is handed to the player - who was getting it anyway.
+/// Nothing here presses Yes on a sow: the prompt verification in
+/// <see cref="CycleChain"/> / <see cref="PotChain"/> still stands between a filled
+/// picker and a spent seed.</para>
 /// </summary>
 internal static unsafe partial class PlantFlow
 {
-    /// <summary>The picker's OK button. Not from a capture - the recon watcher only ever
-    /// dumped AtkValues, and this addon has none - so it is matched as TEXT against the
-    /// button's own label and a miss is a refusal, never a guess at a node id.</summary>
+    /// <summary>The picker's OK button. Matched as TEXT against the button's own label -
+    /// a miss is a refusal, never a guess at a node id.</summary>
     internal const string ConfirmLabel = "Confirm";
 
-    /// <summary>Between two synthetic clicks. The same human-tempo argument the chains make:
-    /// a fill that lands three clicks in one frame is not a person using a menu.</summary>
+    /// <summary>Between two driven actions. The same human-tempo argument the chains
+    /// make: a fill that lands its items in one frame is not a person using a menu.</summary>
     internal const int FillPaceMS = 400;
 
-    /// <summary>How long one fill step gets before the driver hands the picker back. Short
-    /// on purpose: the fallback is the player, who is already standing there.</summary>
+    /// <summary>How long one fill step gets before the driver hands the picker back.
+    /// Short on purpose: the fallback is the player, who is already standing there.</summary>
     internal const int FillStepBudgetMS = 3_000;
-
-    /// <summary>The item-selection list a slot click raises. Capture (apartment recon,
-    /// 2026-08-15): "ContextIconMenu fires per slot with the chosen item NAME at
-    /// AtkValues[13] ('Potting Soil' / 'Allagan Melon Seeds'; AtkValues[5] int = -1)."</summary>
-    internal const string IconMenuAddon = "ContextIconMenu";
 
     internal static bool GardeningReady(out AtkUnitBase* addon)
         => GenericHelpers.TryGetAddonByName(GardeningAddon, out addon)
             && GenericHelpers.IsAddonReady(addon);
 
-    internal static bool IconMenuReady(out AtkUnitBase* addon)
-        => GenericHelpers.TryGetAddonByName(IconMenuAddon, out addon)
-            && GenericHelpers.IsAddonReady(addon);
-
-    internal static bool IconMenuOpen() => IconMenuReady(out _);
-
-    /// <summary>The item name the game itself prints for an item id - the exact string the
-    /// picker's list will show. Read off the Item sheet rather than our own tables on
-    /// purpose: the tables carry OUR names for things (and pot soils are not in them at
-    /// all), and what has to match here is the game's. Sheet read is Scrooge's precedent
-    /// (Scrooge/AutoPinch.cs:333, 840).</summary>
+    /// <summary>The item name the game itself prints for an item id. Read off the Item
+    /// sheet rather than our own tables on purpose: the tables carry OUR names for things
+    /// (and pot soils are not in them at all). Sheet read is Scrooge's precedent.</summary>
     internal static string ItemName(uint itemId)
     {
         if (itemId == 0)
@@ -80,115 +65,25 @@ internal static unsafe partial class PlantFlow
         }
     }
 
-    /// <summary>
-    /// Opens one of the picker's two item slots. Slot order is the capture's:
-    /// "TWO EMPTY SLOTS (soil left, seed right) the player fills FROM INVENTORY"
-    /// (captures/2026-08-15-plant-flow.log F2) - so the slots are sorted by screen X and
-    /// index 0 is soil.
-    ///
-    /// <para>An item slot in an FFXIV addon is a DragDrop component; that is what is being
-    /// matched, not a node id. Exactly two visible ones must be present or the shape is not
-    /// the shape this was written against and the driver stands down.</para>
-    /// </summary>
-    internal static bool ClickGardeningSlot(AtkUnitBase* picker, int index, out string why)
+    /// <summary>The context menu's Use, without the context menu (Sam's receipt: Use on a
+    /// soil/seed while the picker is open fills its slot). True only means the call was
+    /// made - whether an item actually landed is answered by Confirm enabling, which is
+    /// the game's own word for it.</summary>
+    internal static bool UseFromInventory(uint itemId)
     {
-        var slots = new List<nint>();
-        CollectComponents(picker, ComponentType.DragDrop, slots, visibleOnly: true);
-
-        if (slots.Count != 2)
+        try
         {
-            why = $"the picker showed {slots.Count} item slots, not 2";
+            var agent = AgentInventoryContext.Instance();
+            if (agent == null)
+                return false;
+            agent->UseItem(itemId);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Plugin.Log.Warning($"[Fill] UseItem({itemId}) failed: {ex.Message}");
             return false;
         }
-
-        // Left slot first. Two entries, so an explicit swap beats a comparer.
-        if (ScreenX(slots[0]) > ScreenX(slots[1]))
-            (slots[0], slots[1]) = (slots[1], slots[0]);
-
-        if (index < 0 || index >= slots.Count)
-        {
-            why = $"no slot {index} in the picker";
-            return false;
-        }
-
-        if (!ClickComponentNode(picker, (AtkComponentNode*)slots[index]))
-        {
-            why = $"slot {index + 1} carries no click event";
-            return false;
-        }
-
-        why = "";
-        return true;
-    }
-
-    /// <summary>
-    /// Picks the named item out of the slot's inventory list. Matched by the item's own
-    /// name, read off the list's rendered rows - the one thing about this addon the capture
-    /// does establish is that the item NAME is what identifies an entry.
-    ///
-    /// <para>Fails closed when the name is not among the rendered rows. A list long enough
-    /// to scroll can hide its tail from this read, and "I could not see it" is the honest
-    /// answer there; the player fills that slot instead.</para>
-    /// </summary>
-    internal static bool ClickIconMenuItem(AtkUnitBase* menu, string itemName, out string why)
-    {
-        var lists = new List<nint>();
-        CollectComponents(menu, ComponentType.List, lists, visibleOnly: false);
-        if (lists.Count == 0)
-        {
-            why = "the item list had no rows to read";
-            return false;
-        }
-
-        // Read the whole list first, then decide. A row's label can carry SeString payloads
-        // (quality marks and the like) around the name, so an exact hit is preferred and a
-        // single unambiguous partial is accepted; two partials are not a match at all.
-        var rows = new List<(nint Renderer, string Text)>();
-        foreach (var listNode in lists)
-        {
-            var list = (AtkComponentList*)((AtkComponentNode*)listNode)->Component;
-            if (list == null)
-                continue;
-
-            var count = list->GetItemCount();
-            for (var i = 0; i < count; i++)
-            {
-                var renderer = list->GetItemRenderer(i);
-                if (renderer == null)
-                    continue;
-
-                var text = TextOf(renderer->AtkComponentButton.ButtonTextNode);
-                if (text.Length > 0)
-                    rows.Add(((nint)renderer, text));
-            }
-        }
-
-        if (rows.Count == 0)
-        {
-            why = $"could not read the picker's list to find '{itemName}'";
-            return false;
-        }
-
-        var hits = rows.FindAll(r => r.Text.Equals(itemName, StringComparison.OrdinalIgnoreCase));
-        if (hits.Count == 0)
-            hits = rows.FindAll(r => r.Text.Contains(itemName, StringComparison.OrdinalIgnoreCase));
-
-        if (hits.Count != 1)
-        {
-            why = hits.Count == 0
-                ? $"'{itemName}' is not in the picker's list ({string.Join(", ", rows.ConvertAll(r => r.Text))})"
-                : $"'{itemName}' matched {hits.Count} rows in the picker's list";
-            return false;
-        }
-
-        if (!ClickComponentNode(menu, ((AtkComponentListItemRenderer*)hits[0].Renderer)->OwnerNode))
-        {
-            why = $"'{itemName}' is listed but carries no click event";
-            return false;
-        }
-
-        why = "";
-        return true;
     }
 
     /// <summary>Presses the picker's Confirm once the game has enabled it. A disabled
@@ -230,9 +125,9 @@ internal static unsafe partial class PlantFlow
 
     // ------------------------------------------------------------------ node plumbing
 
-    /// <summary>Every component node of one kind in an addon's node list, as raw addresses
-    /// (a pointer cannot ride in a generic list). Read-only walk; a null or wrong-typed
-    /// entry is simply skipped.</summary>
+    /// <summary>Every component node of one kind in an addon's node list, as raw
+    /// addresses (a pointer cannot ride in a generic list). Read-only walk; a null or
+    /// wrong-typed entry is simply skipped.</summary>
     private static void CollectComponents(
         AtkUnitBase* addon, ComponentType kind, List<nint> into, bool visibleOnly)
     {
@@ -242,10 +137,9 @@ internal static unsafe partial class PlantFlow
             for (var i = 0; i < uld.NodeListCount; i++)
             {
                 var node = uld.NodeList[i];
-                // A component node's Type is 1000 + a variant (the 08-16 tree receipt:
-                // the picker's slots are 1007, its buttons 1001), so equality against
-                // NodeType.Component matched NOTHING - this scan had never seen a
-                // component in any addon. >= 1000 is the ECommons-established test.
+                // A component node's Type is 1000 + a variant (08-16 tree receipt: the
+                // picker's buttons are 1001, its slots 1007) - equality against
+                // NodeType.Component matches NOTHING. >= 1000 is the ECommons test.
                 if (node == null || (ushort)node->Type < 1000)
                     continue;
                 if (visibleOnly && !node->IsVisible())
@@ -266,16 +160,13 @@ internal static unsafe partial class PlantFlow
         }
     }
 
-    private static float ScreenX(nint componentNode)
-        => ((AtkComponentNode*)componentNode)->AtkResNode.ScreenX;
-
     /// <summary>
     /// Clicks a component node by replaying the node's OWN registered MouseClick event
-    /// through the addon - event type and param both come from the game's event manager, so
-    /// there is no magic number here to be wrong about. This is ECommons'
-    /// <c>ClickAddonButton</c> pattern (ClickHelper.cs:129-146) with the event-type walk
-    /// kept, so a node whose first event is a hover does not get fired as if it were a
-    /// click. False = this node has no click to replay; the caller fails closed.
+    /// through the addon - event type and param both come from the game's event manager,
+    /// so there is no magic number here to be wrong about. This is ECommons'
+    /// <c>ClickAddonButton</c> pattern with the event-type walk kept, so a node whose
+    /// first event is a hover does not get fired as if it were a click. False = this node
+    /// has no click to replay; the caller fails closed.
     /// </summary>
     private static bool ClickComponentNode(AtkUnitBase* addon, AtkComponentNode* node)
     {
@@ -288,9 +179,8 @@ internal static unsafe partial class PlantFlow
             if (Replay(addon, resNode))
                 return true;
 
-            // Item slots and list rows register their click on a collision child rather
-            // than on the component node itself, so the component's own node list is the
-            // second place to look. Still the node's own event, still no constants.
+            // Buttons can register their click on a collision child rather than on the
+            // component node itself. Still the node's own event, still no constants.
             var component = node->Component;
             if (component == null)
                 return false;
@@ -347,30 +237,22 @@ internal static unsafe partial class PlantFlow
 /// wait-for-the-human step. It is an ACCELERATOR, not a gate: the chain's sow step polls
 /// this while it waits, and the instant this gives up the step is exactly the hybrid step
 /// it has always been - picker open, note posted, player fills it and presses Confirm.
-///
-/// <para>That is the whole fail-closed story, and it is structural rather than procedural:
-/// giving up means "stop clicking", and the thing that was going to happen anyway happens.
-/// An auto-fill failure cannot abort a run a person standing at the bed could finish.</para>
 /// </summary>
 internal sealed unsafe class GardeningFill
 {
     private enum Step
     {
-        OpenSoilSlot,
-        AwaitSoilList,
-        PickSoil,
-        AwaitSoilListGone,
-        OpenSeedSlot,
-        AwaitSeedList,
-        PickSeed,
-        AwaitSeedListGone,
+        UseSoil,
+        UseSeed,
         PressConfirm,
         Done,
     }
 
+    private readonly uint soilItemId;
+    private readonly uint seedItemId;
     private readonly string soilName;
     private readonly string seedName;
-    private Step step = Step.OpenSoilSlot;
+    private Step step = Step.UseSoil;
     private DateTime nextActionAt = DateTime.MinValue;
     private DateTime stepDeadline = DateTime.MaxValue;
 
@@ -387,6 +269,8 @@ internal sealed unsafe class GardeningFill
 
     internal GardeningFill(uint soilItemId, uint seedItemId)
     {
+        this.soilItemId = soilItemId;
+        this.seedItemId = seedItemId;
         soilName = PlantFlow.ItemName(soilItemId);
         seedName = PlantFlow.ItemName(seedItemId);
 
@@ -397,7 +281,9 @@ internal sealed unsafe class GardeningFill
     }
 
     /// <summary>One pass. Safe to call every frame from the moment the plant option is
-    /// selected: it does nothing at all until the picker is actually up.</summary>
+    /// selected: it does nothing at all until the picker is actually up. The picker-open
+    /// guard is also what scopes UseItem - a soil never gets Used into a world with no
+    /// slot waiting for it.</summary>
     internal void Tick()
     {
         if (GaveUp is not null || step == Step.Done)
@@ -409,61 +295,22 @@ internal sealed unsafe class GardeningFill
         if (!PlantFlow.GardeningReady(out var picker))
             return;
 
-        // Arm the first step's budget the moment the picker exists. Live receipt (19:04:10,
-        // FC room): the addon reports ready in the same millisecond it opens, BEFORE its
-        // component tree is populated - the first slot scan saw 0 slots and a hard stop
-        // ended the attempt. Failures inside a step are retried until this deadline; only
-        // a budget's worth of empty reads hands the picker over.
         if (stepDeadline == DateTime.MaxValue)
             stepDeadline = DateTime.UtcNow.AddMilliseconds(PlantFlow.FillStepBudgetMS);
 
         switch (step)
         {
-            case Step.OpenSoilSlot:
-                OpenSlot(picker, 0, Step.AwaitSoilList);
+            case Step.UseSoil:
+                Use(soilItemId, soilName, Step.UseSeed);
                 break;
 
-            case Step.AwaitSoilList:
-                if (PlantFlow.IconMenuOpen())
-                    Advance(Step.PickSoil);
-                else
-                    Expire("the soil slot did not open its list");
-                break;
-
-            case Step.PickSoil:
-                Pick(soilName, Step.AwaitSoilListGone);
-                break;
-
-            case Step.AwaitSoilListGone:
-                if (!PlantFlow.IconMenuOpen())
-                    Advance(Step.OpenSeedSlot);
-                else
-                    Expire($"the list stayed open after picking {soilName}");
-                break;
-
-            case Step.OpenSeedSlot:
-                OpenSlot(picker, 1, Step.AwaitSeedList);
-                break;
-
-            case Step.AwaitSeedList:
-                if (PlantFlow.IconMenuOpen())
-                    Advance(Step.PickSeed);
-                else
-                    Expire("the seed slot did not open its list");
-                break;
-
-            case Step.PickSeed:
-                Pick(seedName, Step.AwaitSeedListGone);
-                break;
-
-            case Step.AwaitSeedListGone:
-                if (!PlantFlow.IconMenuOpen())
-                    Advance(Step.PressConfirm);
-                else
-                    Expire($"the list stayed open after picking {seedName}");
+            case Step.UseSeed:
+                Use(seedItemId, seedName, Step.PressConfirm);
                 break;
 
             case Step.PressConfirm:
+                // Confirm enabling IS the receipt that both Uses landed; until the budget
+                // runs out, "not enabled yet" just means keep waiting.
                 if (PlantFlow.PressGardeningConfirm(picker, out var confirmWhy))
                 {
                     step = Step.Done;
@@ -471,7 +318,6 @@ internal sealed unsafe class GardeningFill
                 }
                 else
                 {
-                    // A not-yet-enabled Confirm is the expected reading for a frame or two.
                     Expire(confirmWhy);
                 }
 
@@ -479,31 +325,12 @@ internal sealed unsafe class GardeningFill
         }
     }
 
-    private void OpenSlot(AtkUnitBase* picker, int index, Step next)
+    private void Use(uint itemId, string itemName, Step next)
     {
-        // Retry inside the budget, never hard-stop: an addon that just opened can read as
-        // ready with an empty component tree for a few frames (live receipt 19:04:10 - the
-        // first scan of a same-millisecond-old picker counted 0 slots).
-        if (PlantFlow.ClickGardeningSlot(picker, index, out var why))
+        if (PlantFlow.UseFromInventory(itemId))
             Advance(next);
         else
-            Expire(why);
-    }
-
-    private void Pick(string itemName, Step next)
-    {
-        if (!PlantFlow.IconMenuReady(out var menu))
-        {
-            Expire("the item list went away");
-            return;
-        }
-
-        // Same budgeted retry: a just-opened list can render its rows a frame late, and an
-        // item genuinely absent still hands over within the budget.
-        if (PlantFlow.ClickIconMenuItem(menu, itemName, out var why))
-            Advance(next);
-        else
-            Expire(why);
+            Expire($"could not Use {itemName} from the bags");
     }
 
     private void Advance(Step next)

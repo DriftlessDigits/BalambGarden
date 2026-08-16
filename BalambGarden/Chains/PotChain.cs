@@ -269,6 +269,15 @@ internal sealed unsafe class PotChain : ChainBase
         if (PlantFlow.SowPromptReady(out var prompt))
             return ConfirmSow(prompt, expectedSeedId);
 
+        // Waiting on the player is a safe stop point (08-16: a one-unit pot run has no
+        // next boundary, so Stop sat armed for the whole wait doing nothing visible).
+        if (StopRequested)
+        {
+            RecordOutcome("pot: stopped while waiting - picker is yours");
+            Abort("stopped by user during the wait");
+            return true;
+        }
+
         if (_fill is { } fill)
         {
             fill.Tick();

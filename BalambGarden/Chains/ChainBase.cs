@@ -133,6 +133,12 @@ internal abstract class ChainBase : IDisposable
     /// CheckStop() as the first step of every unit.</summary>
     internal void RequestStop() => stopRequested = true;
 
+    /// <summary>For a chain's long WAITING states (the human-fill wait can sit for
+    /// minutes and a one-unit run has no next boundary - 08-16, Sam's stop did nothing).
+    /// Waiting on the player is not mid-dialogue, so stopping there is always clean;
+    /// wait steps poll this and abort themselves.</summary>
+    protected bool StopRequested => stopRequested;
+
     /// <summary>The run on the floor right now - for the few things outside a chain that
     /// legitimately have something to tell its feed, namely the census when a late bind
     /// claims beds whose lines have already been printed.</summary>

@@ -384,6 +384,14 @@ internal sealed unsafe class CycleChain : ChainBase
         if (PlantFlow.SowPromptReady(out var prompt))
             return ConfirmSow(label, prompt, soilId, seedId);
 
+        // Waiting on the player is a safe stop point (08-16 stop-does-nothing finding).
+        if (StopRequested)
+        {
+            RecordOutcome($"{label}: stopped while waiting - picker is yours");
+            Abort("stopped by user during the wait");
+            return true;
+        }
+
         if (_fill is { } fill)
         {
             fill.Tick();
