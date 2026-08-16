@@ -42,8 +42,9 @@ public class MainWindow : Window, IDisposable
     /// everywhere it applies, so it is learned once and then recognised. Presence and
     /// tracking are two different signals: "in reach" means you can act on this right now
     /// and never means it is yours, and a row with no ledger behind it carries no data at
-    /// all, only this invitation.</summary>
-    private const string UntrackedTag = "not tracked - act on it through Balamb and it joins the ledger";
+    /// all. On rostered ground a sighting records it (08-15), so what is left untracked is
+    /// a thing whose identity has not been matched, not a thing awaiting permission.</summary>
+    private const string UntrackedTag = "not identified yet - Balamb hasn't matched this to the game's own records";
 
     // Strip geometry. Cells are one text line tall so a strip sits on the row it labels.
     private const float CellGap = 3f;
@@ -134,15 +135,16 @@ public class MainWindow : Window, IDisposable
         {
             if (bar.Success)
             {
-                // A tab means "my garden", not "somewhere I once stood" (Sam's ruling
-                // 08-15, emphatic). Visits are still recorded underneath - the tab
-                // appears the moment a first claim lands here. The one exception is the
-                // estate we are standing AT: its tab must exist unclaimed, because it is
-                // where the act-to-claim invitations live; walk away without claiming
-                // and it vanishes behind you.
-                foreach (var record in estates
-                             .Where(e => e.Key == here
-                                 || Plugin.Garden.Census.LedgerBeds.Any(b => b.Estate == e.Key))
+                // A tab is an estate the GAME grants (spec 2026-08-15: the roster is the tab set),
+                // plus wherever we are standing - the one place that must explain itself even when
+                // it is nobody's. Never-visited grants still tab: "access granted" is real state.
+                var roster = Game.RosterSensor.Current();
+                var records = estates
+                    .Where(e => e.Key == here || roster.Covers(e.Key))
+                    .ToList();
+                foreach (var granted in roster.Estates.Where(g => records.All(r => r.Key != g.Key)))
+                    records.Add(new EstateRecord { Key = granted.Key });
+                foreach (var record in records
                              .OrderByDescending(e => e.Key == here)
                              .ThenByDescending(e => e.LastVisited))
                     DrawEstateTab(record, here, now);
@@ -191,10 +193,13 @@ public class MainWindow : Window, IDisposable
     private static void DrawLocatorNotes(List<EstateRecord> estates, EstateKey? here)
     {
         if (estates.Count == 0)
-            ImGui.TextDisabled("No estates visited yet - walk onto one and it joins the roster.");
-        else if (here is { } key && estates.All(e => e.Key != key))
-            // The ledger writes an estate on arrival. If that write has not landed yet,
-            // say where we are rather than inventing a tab for it.
+            // "Roster" now names the game's own grant list (08-15), so this line says
+            // what it actually means: nothing has been written down yet.
+            ImGui.TextDisabled("No estates recorded yet - stand in a garden the game grants you and it fills in.");
+        else if (here is { } key && estates.All(e => e.Key != key) && CensusPump.CoveredHere)
+            // The ledger writes an estate on arrival, but only where the roster covers us
+            // (08-15). Unrostered ground never gets that write, so promising one here would
+            // be a wait that never ends - its tab carries the display-only banner instead.
             ImGui.TextDisabled($"{key.DisplayLabel()} - reading the estate...");
 
         if (MapSensor.UnreadableCount > 0)
@@ -229,6 +234,14 @@ public class MainWindow : Window, IDisposable
             ImGui.SetTooltip("a run is going - one chain at a time");
     }
 
+    /// <summary>The one tooltip a verb owes when it is dead because the ground under it is
+    /// not on the game's roster. Same sentence everywhere, like the untracked tag.</summary>
+    private static void UnrosteredTip(bool actionable)
+    {
+        if (!actionable && ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+            ImGui.SetTooltip("Balamb doesn't act here - not on your teleport list");
+    }
+
     // ------------------------------------------------------------------ estate tabs
 
     /// <summary>One place, one tab. Verbs only exist where the player is standing - objects
@@ -251,9 +264,20 @@ public class MainWindow : Window, IDisposable
 
         var beds = Plugin.Garden.Census.LedgerBeds.Where(b => b.Estate == record.Key).ToList();
 
+        // Verbs only ever exist on the tab we are standing on, and standing somewhere the
+        // game does not grant us is display-only (spec 2026-08-15): Balamb can SEE a
+        // stranger's garden, it does not act in it and it does not keep it.
+        var actionable = !isHere || CensusPump.CoveredHere;
+
         ImGui.Spacing();
+        if (!actionable)
+        {
+            ImGui.TextColored(Amber, "not on your teleport list - Balamb doesn't track here");
+            ImGui.TextDisabled("what you can see below is live sensing only; nothing is recorded");
+        }
+
         DrawEstateHeader(record, beds, isHere, now);
-        DrawEstateSections(record, beds, isHere, now);
+        DrawEstateSections(record, beds, isHere, actionable, now);
     }
 
     private void DrawEstateHeader(
@@ -261,11 +285,15 @@ public class MainWindow : Window, IDisposable
     {
         if (isHere)
             ImGui.TextDisabled("you are here");
+        else if (record.LastVisited == default)
+            // A rostered estate we have never stood on: the grant is the whole content of
+            // the tab, and an age computed off a default timestamp would be a lie in days.
+            ImGui.TextDisabled("access granted - not visited yet");
         else
             // Memory says how old it is, every time. A count with no age is a count
             // pretending to be current.
             ImGui.TextDisabled(
-                $"{beds.Count} claimed · last visited {WindowFormat.Ago(record.LastVisited, now)}");
+                $"{beds.Count} recorded · last visited {WindowFormat.Ago(record.LastVisited, now)}");
 
         ImGui.SameLine();
         DrawRenameControl(record);
@@ -299,7 +327,8 @@ public class MainWindow : Window, IDisposable
     /// a yard you have walked and a living room you never have shows one section, not one
     /// section and an empty promise.</summary>
     private void DrawEstateSections(
-        EstateRecord record, List<ClaimedBed> beds, bool isHere, DateTimeOffset now)
+        EstateRecord record, List<ClaimedBed> beds, bool isHere, bool actionable,
+        DateTimeOffset now)
     {
         var rollups = Rollups.ForEstate(
             record.Key, Plugin.Garden.Census.LedgerBeds, Plugin.Tables, Plugin.Garden.Wilt, now);
@@ -326,13 +355,13 @@ public class MainWindow : Window, IDisposable
         if (hasOutdoor)
         {
             SectionHeader("Outdoor");
-            DrawOutdoorSection(record, outdoorRollups, patches, beds, isHere, now);
+            DrawOutdoorSection(record, outdoorRollups, patches, beds, isHere, actionable, now);
         }
 
         if (hasIndoor)
         {
             SectionHeader("Indoor");
-            DrawIndoorSection(record, potRollups, pots, isHere, now);
+            DrawIndoorSection(record, potRollups, pots, isHere, actionable, now);
         }
 
         if (hasOutdoor || hasIndoor)
@@ -341,7 +370,7 @@ public class MainWindow : Window, IDisposable
         // A place you are standing in with nothing to show gets an invitation, not a row
         // of dead controls.
         ImGui.TextDisabled(isHere
-            ? "Nothing claimed here yet - tend a bed and it appears."
+            ? "Nothing recorded here yet - garden here once (or just stand near a known patch) and it appears."
             : "Nothing remembered here yet.");
     }
 
@@ -355,19 +384,19 @@ public class MainWindow : Window, IDisposable
 
     private void DrawOutdoorSection(
         EstateRecord record, List<PatchRollup> rollups, List<PatchGroup> patches,
-        List<ClaimedBed> beds, bool isHere, DateTimeOffset now)
+        List<ClaimedBed> beds, bool isHere, bool actionable, DateTimeOffset now)
     {
         DrawUnclaimedLine(patches, beds);
-        DrawTendAll(patches);
+        DrawTendAll(patches, actionable);
 
         foreach (var rollup in rollups)
-            DrawRollupRow(record, rollup, patches, isHere, now);
+            DrawRollupRow(record, rollup, patches, isHere, actionable, now);
 
         // A patch standing right there that the ledger has nothing for at all: it still
-        // needs a row, or a fresh ledger could never be bootstrapped (tending is the only
-        // thing that claims).
+        // needs a row, or a patch whose identity has not been matched yet would be
+        // unreachable from the window.
         foreach (var patch in patches.Where(p => rollups.All(r => r.PatchOrdinal != p.Ordinal)))
-            DrawUnclaimedPatchRow(patch);
+            DrawUnclaimedPatchRow(patch, actionable);
     }
 
     /// <summary>Tracked pots first, from the ledger, and they render whether or not you are
@@ -375,10 +404,10 @@ public class MainWindow : Window, IDisposable
     /// pure sensor: what is within arm's reach right now.</summary>
     private void DrawIndoorSection(
         EstateRecord record, List<PatchRollup> rollups, List<PotObject> pots,
-        bool isHere, DateTimeOffset now)
+        bool isHere, bool actionable, DateTimeOffset now)
     {
         foreach (var rollup in rollups)
-            DrawRollupRow(record, rollup, [], isHere, now);
+            DrawRollupRow(record, rollup, [], isHere, actionable, now);
 
         // How many planted pots in this room no ledger row claims. Counted off the MAP, not
         // off the pot objects: a pot object cannot be matched back to a map key (that is the
@@ -390,7 +419,7 @@ public class MainWindow : Window, IDisposable
                 b => b.Estate == record.Key && b.IsPot && b.MapKey == key))
             : 0;
 
-        DrawPots(record.Key, pots, untracked);
+        DrawPots(record.Key, pots, untracked, actionable);
     }
 
     private static void DrawUnclaimedLine(List<PatchGroup> patches, List<ClaimedBed> beds)
@@ -407,7 +436,7 @@ public class MainWindow : Window, IDisposable
     /// <summary>Tend All, or - when nothing is in reach - the sentence that says what to
     /// do about it. A greyed-out "Tend All (0 beds, 0 patches)" is a dead control taking
     /// the best seat in the window; prose in its place actually helps.</summary>
-    private void DrawTendAll(List<PatchGroup> patches)
+    private void DrawTendAll(List<PatchGroup> patches, bool actionable)
     {
         if (patches.Count == 0)
             return;
@@ -420,7 +449,7 @@ public class MainWindow : Window, IDisposable
         }
 
         var totalBeds = inReach.Sum(p => p.Beds.Count);
-        using (ImRaii.Disabled(plugin.AnyChainBusy))
+        using (ImRaii.Disabled(plugin.AnyChainBusy || !actionable))
         {
             if (ImGui.Button($"Tend All ({totalBeds} beds, {inReach.Count} patches)"))
             {
@@ -430,6 +459,7 @@ public class MainWindow : Window, IDisposable
         }
 
         BusyTip();
+        UnrosteredTip(actionable);
     }
 
     // ------------------------------------------------------------------ rollups
@@ -439,7 +469,7 @@ public class MainWindow : Window, IDisposable
     /// which is the copy that carries the claim.</summary>
     private void DrawRollupRow(
         EstateRecord record, PatchRollup rollup, List<PatchGroup> patches,
-        bool isHere, DateTimeOffset now)
+        bool isHere, bool actionable, DateTimeOffset now)
     {
         using var id = ImRaii.PushId($"{(rollup.IsPots ? "pots" : "patch")}{rollup.PatchOrdinal}");
 
@@ -466,11 +496,11 @@ public class MainWindow : Window, IDisposable
         DrawRollupSummary(rollup);
 
         if (patch is not null)
-            DrawPatchVerbs(record, patch);
+            DrawPatchVerbs(record, patch, actionable);
 
         if (open)
         {
-            DrawBedGrid(record, rollup, beds, patch, isHere, now);
+            DrawBedGrid(record, rollup, beds, patch, isHere, actionable, now);
             ImGui.TreePop();
         }
 
@@ -494,7 +524,7 @@ public class MainWindow : Window, IDisposable
     private static void DrawRollupSummary(PatchRollup rollup)
     {
         ImGui.TextDisabled(rollup.IsPots
-            ? $"{rollup.Claimed} claimed"
+            ? $"{rollup.Claimed} recorded"
             : $"{rollup.Claimed}/{PatchStrip.Slots}");
 
         var thirsty = rollup.Due + rollup.Overdue + rollup.Danger;
@@ -623,7 +653,7 @@ public class MainWindow : Window, IDisposable
 
         var latest = bed.Latest;
         if (latest is null)
-            return $"Bed {cell.Slot + 1}: claimed, nothing seen in it yet";
+            return $"Bed {cell.Slot + 1}: recorded, nothing seen in it yet";
 
         var line = $"Bed {cell.Slot + 1}: {Plugin.Tables.SpeciesName(latest.SpeciesIndex)}"
                    + $"\nstage {latest.Stage} · seen {WindowFormat.Ago(latest.At, now)}"
@@ -647,7 +677,7 @@ public class MainWindow : Window, IDisposable
     /// <summary>The verbs for a patch, on their own indented line under it. Out of reach
     /// there are no buttons at all - the distance and what to do about it is the whole
     /// content of that line.</summary>
-    private void DrawPatchVerbs(EstateRecord record, PatchGroup patch)
+    private void DrawPatchVerbs(EstateRecord record, PatchGroup patch, bool actionable)
     {
         using var indent = ImRaii.PushIndent();
 
@@ -657,7 +687,7 @@ public class MainWindow : Window, IDisposable
             return;
         }
 
-        using (ImRaii.Disabled(plugin.AnyChainBusy))
+        using (ImRaii.Disabled(plugin.AnyChainBusy || !actionable))
         {
             if (ImGui.SmallButton("Water Patch"))
             {
@@ -682,11 +712,12 @@ public class MainWindow : Window, IDisposable
         }
 
         BusyTip();
+        UnrosteredTip(actionable);
     }
 
-    /// <summary>A patch in front of you with nothing claimed in it. No rollup can exist
+    /// <summary>A patch in front of you with nothing recorded in it. No rollup can exist
     /// for it (rollups read the ledger), but a verb has to, or nothing here is reachable.</summary>
-    private void DrawUnclaimedPatchRow(PatchGroup patch)
+    private void DrawUnclaimedPatchRow(PatchGroup patch, bool actionable)
     {
         using var id = ImRaii.PushId($"unclaimed{patch.PatchId}");
 
@@ -701,9 +732,9 @@ public class MainWindow : Window, IDisposable
             return;
         }
 
-        using (ImRaii.Disabled(plugin.AnyChainBusy))
+        using (ImRaii.Disabled(plugin.AnyChainBusy || !actionable))
         {
-            if (ImGui.SmallButton("Tend to claim"))
+            if (ImGui.SmallButton("Water Patch"))
             {
                 plugin.TendChain.TendPatch(patch);
                 plugin.Launched(plugin.TendChain);
@@ -711,13 +742,14 @@ public class MainWindow : Window, IDisposable
         }
 
         BusyTip();
+        UnrosteredTip(actionable);
     }
 
     // ------------------------------------------------------------------ bed grid
 
     private void DrawBedGrid(
         EstateRecord record, PatchRollup rollup, List<ClaimedBed> beds, PatchGroup? patch,
-        bool isHere, DateTimeOffset now)
+        bool isHere, bool actionable, DateTimeOffset now)
     {
         if (beds.Count == 0)
             return;
@@ -778,7 +810,7 @@ public class MainWindow : Window, IDisposable
             DrawRipeCell(bed, crop, latest, now);
 
             ImGui.TableNextColumn();
-            DrawBedVerbs(record, bed, bedObject);
+            DrawBedVerbs(record, bed, bedObject, actionable);
         }
     }
 
@@ -838,11 +870,12 @@ public class MainWindow : Window, IDisposable
 
     /// <summary>Tend appears only for a bed that is actually in reach. Abandon is always
     /// there: forgetting a claim is a ledger act, and the ledger is readable from anywhere.</summary>
-    private void DrawBedVerbs(EstateRecord record, ClaimedBed bed, BedObject? bedObject)
+    private void DrawBedVerbs(
+        EstateRecord record, ClaimedBed bed, BedObject? bedObject, bool actionable)
     {
         if (bedObject is { InReach: true } target)
         {
-            using (ImRaii.Disabled(plugin.AnyChainBusy))
+            using (ImRaii.Disabled(plugin.AnyChainBusy || !actionable))
             {
                 if (ImGui.SmallButton("Tend"))
                 {
@@ -852,6 +885,7 @@ public class MainWindow : Window, IDisposable
             }
 
             BusyTip();
+            UnrosteredTip(actionable);
             ImGui.SameLine();
         }
 
@@ -1057,7 +1091,7 @@ public class MainWindow : Window, IDisposable
     /// (<see cref="PotObject.MapKey"/>). <paramref name="untracked"/> is how many planted
     /// pots in this room the ledger has no row for at all, counted off the map.</para>
     /// </summary>
-    private void DrawPots(EstateKey estate, List<PotObject> pots, int untracked)
+    private void DrawPots(EstateKey estate, List<PotObject> pots, int untracked, bool actionable)
     {
         if (pots.Count == 0)
             return;
@@ -1082,7 +1116,7 @@ public class MainWindow : Window, IDisposable
                 continue;
             }
 
-            using (ImRaii.Disabled(plugin.AnyChainBusy))
+            using (ImRaii.Disabled(plugin.AnyChainBusy || !actionable))
             {
                 if (ImGui.Button("Water (pigment)"))
                 {
@@ -1090,8 +1124,11 @@ public class MainWindow : Window, IDisposable
                     plugin.Launched(plugin.PotChain);
                 }
 
-                if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+                // A dead button explains why it is dead first; what it would have done is
+                // the second question.
+                if (actionable && ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
                     ImGui.SetTooltip("Applies pigment. Pot flowers never wilt - this is colour, not water.");
+                UnrosteredTip(actionable);
 
                 ImGui.SameLine();
                 if (ImGui.Button("Harvest"))
@@ -1100,12 +1137,16 @@ public class MainWindow : Window, IDisposable
                     plugin.Launched(plugin.PotChain);
                 }
 
+                UnrosteredTip(actionable);
+
                 ImGui.SameLine();
                 if (ImGui.Button("Plant"))
                 {
                     plugin.PotChain.Plant(pot, potSoilId, potSeedId);
                     plugin.Launched(plugin.PotChain);
                 }
+
+                UnrosteredTip(actionable);
             }
 
             ImGui.SameLine();
@@ -1147,7 +1188,7 @@ public class MainWindow : Window, IDisposable
         var stage = sighted is { Occupied: true }
             ? sighted.Stage : bed.Latest?.Stage ?? (byte)0;
 
-        ImGui.TextDisabled($"{Plugin.Tables.SpeciesName(species)} · stage {stage} · claimed");
+        ImGui.TextDisabled($"{Plugin.Tables.SpeciesName(species)} · stage {stage} · recorded");
     }
 
     /// <summary>

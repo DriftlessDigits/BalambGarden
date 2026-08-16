@@ -63,7 +63,10 @@ internal static class CensusPump
         var estate = EstateSensor.Current();
         if (estate is null)
         {
+            // No ground under us is not "the last ground was fine": the flag gates every
+            // write path below, so it never holds an answer about somewhere we have left.
             announcedEstate = null;
+            CoveredHere = false;
             return;
         }
 

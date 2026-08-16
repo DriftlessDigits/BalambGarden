@@ -90,8 +90,9 @@ public class ConfigWindow : Window, IDisposable
         }
     }
 
-    /// <summary>The three switches that decide when the plugin speaks, what it writes
-    /// down, and whether acting claims.</summary>
+    /// <summary>The switches that decide when the plugin speaks, what it writes down, and
+    /// how much of the planting picker it fills. What gets recorded is not among them
+    /// (08-15): the game-granted roster decides that, not a checkbox.</summary>
     private void DrawBehaviour()
     {
         var nudge = configuration.NudgeEnabled;
@@ -135,14 +136,5 @@ public class ConfigWindow : Window, IDisposable
                 + "If anything about the picker isn't what it expects, it stops clicking and\n"
                 + "waits for you exactly like it used to - the run keeps going either way.\n"
                 + "The sow confirmation is still read and checked before anything is planted.");
-
-        var claim = configuration.ClaimOnAction;
-        if (ImGui.Checkbox("Claim as I go - a completed action claims the bed", ref claim))
-        {
-            configuration.ClaimOnAction = claim;
-            // One flag, two homes: the engine decides claims, the config remembers.
-            Plugin.Garden.Census.ClaimOnAction = claim;
-            configuration.Save();
-        }
     }
 }
