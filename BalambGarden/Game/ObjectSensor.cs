@@ -133,7 +133,15 @@ internal static unsafe class ObjectSensor
             pots.Add(new PotObject(
                 obj, name, distance, FurnitureMatch.IndexAt(furniture, obj.Position)));
         }
-        return pots.OrderBy(p => p.Distance).ToList();
+        // Stable order: furniture key first (matches the ledger's own ordering), then
+        // position as the tiebreaker. Distance ties are common (08-15: two pots both at
+        // 3.6y flipped rows between loads - object-table order is load-dependent) and a
+        // list that reshuffles between visits reads as two different rooms.
+        return pots
+            .OrderBy(p => p.MapKey ?? int.MaxValue)
+            .ThenBy(p => p.Object.Position.X)
+            .ThenBy(p => p.Object.Position.Z)
+            .ToList();
     }
 
 #if DEBUG
