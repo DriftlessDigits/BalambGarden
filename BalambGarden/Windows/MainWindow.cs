@@ -843,13 +843,21 @@ public class MainWindow : Window, IDisposable
             ? ObjectSensor.NearbyPots()
             : [];
 
+        // The verbs column only exists when some row will actually put a button in it -
+        // out of reach, a declared-but-empty fifth column reads as a ghost stripe down
+        // the table's edge (08-16 Sam: "why is there a weird empty column"). Drift rows
+        // always carry Forget, so any drift forces the column too.
+        var hasVerbs = beds.Any(b => ReadsEmptyNow(b, isHere))
+            || pots.Any(p => p.InReach)
+            || (patch?.Beds.Any(b => b.InReach) ?? false);
+
         // SizingFixedFit: every column hugs its own content and the table is exactly as
         // wide as its data - no stretch arithmetic to blow a column past the window edge
         // (08-15: one stretch column ate an ultrawide and shoved Stage/Ripe offscreen).
         // A wider window is quiet space on the right, and nothing ever clips.
         // NoHostExtendX: without it the OUTER width still fills the window, so the last
         // column drags every row's stripe to the far edge as one long empty tail.
-        using (var table = ImRaii.Table($"beds{rollup.PatchOrdinal}", 5,
+        using (var table = ImRaii.Table($"beds{rollup.PatchOrdinal}", hasVerbs ? 5 : 4,
                    ImGuiTableFlags.RowBg | ImGuiTableFlags.Borders | ImGuiTableFlags.SizingFixedFit
                    | ImGuiTableFlags.NoHostExtendX))
         {
@@ -860,10 +868,11 @@ public class MainWindow : Window, IDisposable
             ImGui.TableSetupColumn("Plant");
             ImGui.TableSetupColumn("Stage");
             ImGui.TableSetupColumn("Ripe");
-            ImGui.TableSetupColumn("##verbs");
+            if (hasVerbs)
+                ImGui.TableSetupColumn("##verbs");
             ImGui.TableHeadersRow();
 
-            DrawBedRows(record, beds, pots, patch, isHere, actionable, now);
+            DrawBedRows(record, beds, pots, patch, isHere, actionable, hasVerbs, now);
         }
 
         // The Plant panel is a pair of 260f combos; a 150f verbs cell cannot hold it, so it
@@ -884,7 +893,7 @@ public class MainWindow : Window, IDisposable
     /// <summary>The rows themselves, inside the caller's table scope.</summary>
     private void DrawBedRows(
         EstateRecord record, List<ClaimedBed> beds, List<PotObject> pots, PatchGroup? patch,
-        bool isHere, bool actionable, DateTimeOffset now)
+        bool isHere, bool actionable, bool hasVerbs, DateTimeOffset now)
     {
         foreach (var bed in beds)
         {
@@ -960,11 +969,14 @@ public class MainWindow : Window, IDisposable
             ImGui.TableNextColumn();
             DrawRipeCell(bed, crop, latest, now);
 
-            ImGui.TableNextColumn();
-            if (bed.IsPot)
-                DrawPotRowVerbs(bed, pots, actionable);
-            else
-                DrawBedVerbs(bedObject, actionable);
+            if (hasVerbs)
+            {
+                ImGui.TableNextColumn();
+                if (bed.IsPot)
+                    DrawPotRowVerbs(bed, pots, actionable);
+                else
+                    DrawBedVerbs(bedObject, actionable);
+            }
         }
     }
 
@@ -988,11 +1000,11 @@ public class MainWindow : Window, IDisposable
             return;
         }
 
-        ImGui.Text(WindowFormat.Coarse(window.Earliest.ToLocalTime(), window.Latest.ToLocalTime()));
-        if (ImGui.IsItemHovered())
-            ImGui.SetTooltip(WindowTooltip(window));
-        ImGui.SameLine();
-        ImGui.TextDisabled(WindowFormat.Mark(window.Provenance));
+        // Quiet steady state: a forecast repeated down eight rows is texture, not news -
+        // it reads disabled, and only "ripe now" (above) is bright. No per-row provenance
+        // marker either: the rollup line carries the claim once per species, and the
+        // hover here keeps the exact hours plus what kind of claim it is.
+        ImGui.TextDisabled(WindowFormat.Coarse(window.Earliest.ToLocalTime(), window.Latest.ToLocalTime()));
         if (ImGui.IsItemHovered())
             ImGui.SetTooltip(WindowTooltip(window));
     }

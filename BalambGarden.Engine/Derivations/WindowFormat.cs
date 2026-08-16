@@ -65,18 +65,21 @@ public static class WindowFormat
     /// same-day drops the second day name.</summary>
     public static string Coarse(DateTimeOffset earliest, DateTimeOffset latest)
     {
-        var lo = $"{earliest.ToString("ddd", CultureInfo.InvariantCulture)} {DayPart(earliest)}";
+        var loDay = earliest.ToString("ddd", CultureInfo.InvariantCulture);
+        var loPart = DayPart(earliest);
         if (latest <= earliest)
-            return lo;
+            return $"{loDay} {loPart}";
 
-        var samePart = earliest.Date == latest.Date && DayPart(earliest) == DayPart(latest);
-        if (samePart)
-            return lo;
+        var hiDay = latest.ToString("ddd", CultureInfo.InvariantCulture);
+        var hiPart = DayPart(latest);
 
-        var hi = earliest.Date == latest.Date
-            ? DayPart(latest)
-            : $"{latest.ToString("ddd", CultureInfo.InvariantCulture)} {DayPart(latest)}";
-        return $"{lo}-{hi}";
+        if (earliest.Date == latest.Date)
+            return loPart == hiPart ? $"{loDay} {loPart}" : $"{loDay} {loPart}-{hiPart}";
+
+        // Shared part across days says the part once: "Tue-Thu afternoon".
+        return loPart == hiPart
+            ? $"{loDay}-{hiDay} {loPart}"
+            : $"{loDay} {loPart}-{hiDay} {hiPart}";
     }
 
     /// <summary>The small hours are "early morning", never a "night" that reads as the

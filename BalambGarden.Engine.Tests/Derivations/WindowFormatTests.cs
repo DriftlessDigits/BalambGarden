@@ -66,7 +66,15 @@ public class WindowFormatTests
     {
         var lo = DateTimeOffset.Parse("2026-08-18T13:47:00-05:00"); // Tue
         var hi = DateTimeOffset.Parse("2026-08-20T13:46:00-05:00"); // Thu
-        Assert.Equal("Tue afternoon-Thu afternoon", WindowFormat.Coarse(lo, hi));
+        Assert.Equal("Tue-Thu afternoon", WindowFormat.Coarse(lo, hi));
+    }
+
+    [Fact] // different parts across days spell both out - nothing collapses that isn't equal
+    public void CoarseCrossDayDifferentPartsSpellsBoth()
+    {
+        var lo = DateTimeOffset.Parse("2026-08-16T13:47:00-05:00"); // Sun afternoon
+        var hi = DateTimeOffset.Parse("2026-08-18T05:46:00-05:00"); // Tue morning
+        Assert.Equal("Sun afternoon-Tue morning", WindowFormat.Coarse(lo, hi));
     }
 
     [Fact] // same day, same part: one phrase, no range pretending to have two ends
