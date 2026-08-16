@@ -61,6 +61,41 @@ public class WindowFormatTests
         Assert.Equal("Fri 18:00-Sat 06:00", WindowFormat.Range(lo, lo.AddHours(12)));
     }
 
+    [Fact] // the surface speaks in day-parts, never minute-precision it doesn't have
+    public void CoarseSpeaksInDayParts()
+    {
+        var lo = DateTimeOffset.Parse("2026-08-18T13:47:00-05:00"); // Tue
+        var hi = DateTimeOffset.Parse("2026-08-20T13:46:00-05:00"); // Thu
+        Assert.Equal("Tue afternoon-Thu afternoon", WindowFormat.Coarse(lo, hi));
+    }
+
+    [Fact] // same day, same part: one phrase, no range pretending to have two ends
+    public void CoarseCollapsesSameDaySamePart()
+    {
+        var lo = DateTimeOffset.Parse("2026-08-16T13:47:00-05:00"); // Sun
+        Assert.Equal("Sun afternoon", WindowFormat.Coarse(lo, lo.AddHours(2)));
+        Assert.Equal("Sun afternoon", WindowFormat.Coarse(lo, lo));
+        Assert.Equal("Sun afternoon", WindowFormat.Coarse(lo, lo.AddHours(-3)));
+    }
+
+    [Fact] // same day, different part drops the second day name
+    public void CoarseSameDayDifferentPartsDropsSecondDay()
+    {
+        var lo = DateTimeOffset.Parse("2026-08-16T13:47:00-05:00"); // Sun
+        Assert.Equal("Sun afternoon-evening", WindowFormat.Coarse(lo, lo.AddHours(5)));
+    }
+
+    [Fact] // the small hours are "early morning", not a misleading "night" of the same date
+    public void CoarseDayPartBoundaries()
+    {
+        var sun = DateTimeOffset.Parse("2026-08-16T02:00:00-05:00");
+        Assert.Equal("Sun early morning", WindowFormat.Coarse(sun, sun));
+        Assert.Equal("Sun morning", WindowFormat.Coarse(sun.AddHours(3), sun.AddHours(3)));    // 05:00
+        Assert.Equal("Sun afternoon", WindowFormat.Coarse(sun.AddHours(10), sun.AddHours(10))); // 12:00
+        Assert.Equal("Sun evening", WindowFormat.Coarse(sun.AddHours(15), sun.AddHours(15)));   // 17:00
+        Assert.Equal("Sun night", WindowFormat.Coarse(sun.AddHours(19), sun.AddHours(19)));     // 21:00
+    }
+
     [Fact] // clock skew must never print an age from the future
     public void AgeClampsAtJustNow()
     {

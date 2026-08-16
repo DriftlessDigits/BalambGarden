@@ -60,4 +60,28 @@ public static class PatchStrip
 
         return cells;
     }
+
+    /// <summary>Cells for an estate's pots: one per pot in map-key order (Slot carries the
+    /// map key - the one number a pot has), no Unclaimed holes because a pot row only
+    /// exists once recorded. Pot wilt is OBSERVED, never predicted: the live map's b4=1
+    /// (the wiltingKeys set) is the only water claim a pot cell can make - Danger, because
+    /// the game itself says water now. Everything else is NotApplicable.</summary>
+    public static IReadOnlyList<StripCell> ForPots(
+        IReadOnlyList<ClaimedBed> pots, IReadOnlySet<int> wiltingKeys)
+    {
+        return pots
+            .OrderBy(p => p.MapKey)
+            .Select(pot =>
+            {
+                var latest = pot.Latest;
+                var fill = latest is null ? CellFill.Unknown
+                    : latest.Stage >= 4 ? CellFill.Ripe
+                    : CellFill.Growing;
+                var water = wiltingKeys.Contains(pot.MapKey)
+                    ? WaterState.Danger
+                    : WaterState.NotApplicable;
+                return new StripCell(pot.MapKey, fill, latest?.Stage ?? 0, water);
+            })
+            .ToList();
+    }
 }

@@ -176,7 +176,7 @@ public class MainWindow : Window, IDisposable
     {
         var verdict = Verdicts.ForGarden(
             estates, Plugin.Garden.Census.LedgerBeds, Plugin.Tables, Plugin.Garden.Wilt, now,
-            w => WindowFormat.Range(w.Earliest.ToLocalTime(), w.Latest.ToLocalTime()));
+            w => WindowFormat.Coarse(w.Earliest.ToLocalTime(), w.Latest.ToLocalTime()));
 
         ImGui.Text(verdict.Text);
 
@@ -186,8 +186,15 @@ public class MainWindow : Window, IDisposable
         ImGui.SameLine();
         ImGui.TextDisabled(WindowFormat.Mark(window.Provenance));
         if (ImGui.IsItemHovered())
-            ImGui.SetTooltip(WindowFormat.MarkMeaning(window.Provenance));
+            ImGui.SetTooltip(WindowTooltip(window));
     }
+
+    /// <summary>The hover behind every day-part window: the exact range the model holds
+    /// (precision ruling 2026-08-16 - the surface speaks in day-parts, the hover keeps
+    /// the hours) plus what kind of claim the marker is making.</summary>
+    private static string WindowTooltip(EtaWindow window)
+        => WindowFormat.Range(window.Earliest.ToLocalTime(), window.Latest.ToLocalTime())
+           + $"\n{WindowFormat.MarkMeaning(window.Provenance)}";
 
     /// <summary>The two things the verdict cannot say: that no estate has a tab yet, and
     /// that we are standing somewhere the ledger has not finished writing down. Both are
@@ -509,12 +516,12 @@ public class MainWindow : Window, IDisposable
         var title = rollup.IsPots ? "Pots" : $"Patch {rollup.PatchOrdinal + 1}";
         var open = ImGui.TreeNodeEx($"{title}###row");
 
-        // Pots have no eight-slot shape (they are keyed by map key, one plant apiece), so
-        // there is no strip to draw for them - only outdoor patches get one.
-        if (!rollup.IsPots)
+        // Pots have no eight-slot shape (keyed by map key, one plant apiece), so their
+        // strip is one cell per recorded pot rather than eight fixed slots.
+        if (beds.Count > 0 || !rollup.IsPots)
         {
             ImGui.SameLine();
-            DrawStrip(beds, isHere, now);
+            DrawStrip(beds, rollup.IsPots, isHere, now);
         }
 
         ImGui.SameLine();
@@ -588,13 +595,15 @@ public class MainWindow : Window, IDisposable
         foreach (var species in rollup.RipeBySpecies)
         {
             ImGui.SameLine();
-            var range = WindowFormat.Range(
+            var range = WindowFormat.Coarse(
                 species.Window.Earliest.ToLocalTime(), species.Window.Latest.ToLocalTime());
             ImGui.TextDisabled($"· {Plugin.Tables.SpeciesName(species.SpeciesIndex)} ~{range}");
+            if (ImGui.IsItemHovered())
+                ImGui.SetTooltip(WindowTooltip(species.Window));
             ImGui.SameLine();
             ImGui.TextDisabled(WindowFormat.Mark(species.Window.Provenance));
             if (ImGui.IsItemHovered())
-                ImGui.SetTooltip(WindowFormat.MarkMeaning(species.Window.Provenance));
+                ImGui.SetTooltip(WindowTooltip(species.Window));
         }
     }
 
@@ -603,9 +612,11 @@ public class MainWindow : Window, IDisposable
     /// <summary>Eight cells, one per bed slot: fill says stage, the under-bar says the bed
     /// wants water. Nothing is drawn for a state that means nothing (a watered bed, a pot,
     /// a slot we cannot judge) - a bar that is always there is a bar nobody reads.</summary>
-    private static void DrawStrip(List<ClaimedBed> beds, bool isHere, DateTimeOffset now)
+    private static void DrawStrip(List<ClaimedBed> beds, bool isPots, bool isHere, DateTimeOffset now)
     {
-        var cells = PatchStrip.ForPatch(beds, Plugin.Tables, Plugin.Garden.Wilt, now);
+        var cells = isPots
+            ? PatchStrip.ForPots(beds, WiltingPotKeys())
+            : PatchStrip.ForPatch(beds, Plugin.Tables, Plugin.Garden.Wilt, now);
         var draw = ImGui.GetWindowDrawList();
         var side = ImGui.GetTextLineHeight();
         var size = new Vector2(side, side);
@@ -616,7 +627,9 @@ public class MainWindow : Window, IDisposable
                 ImGui.SameLine(0f, CellGap);
 
             var cell = cells[i];
-            var bed = beds.FirstOrDefault(b => b.BedSlot == cell.Slot);
+            var bed = isPots
+                ? beds.FirstOrDefault(b => b.MapKey == cell.Slot)
+                : beds.FirstOrDefault(b => b.BedSlot == cell.Slot);
             var drifted = bed is not null && ReadsEmptyNow(bed, isHere);
 
             // An invisible button owns the rect: it reserves the layout space AND gives
@@ -635,9 +648,17 @@ public class MainWindow : Window, IDisposable
                     ImGui.ColorConvertFloat4ToU32(bar));
 
             if (ImGui.IsItemHovered())
-                ImGui.SetTooltip(CellTooltip(cell, bed, drifted, now));
+                ImGui.SetTooltip(CellTooltip(cell, bed, isPots, drifted, now));
         }
     }
+
+    /// <summary>Map keys of pots the live map says are wilting RIGHT NOW (b4=1) - the only
+    /// water claim a pot cell makes is the game's own, observed, never predicted.</summary>
+    private static HashSet<int> WiltingPotKeys()
+        => CensusPump.LastIndoor
+            .Where(kv => kv.Value.Wilt == 1)
+            .Select(kv => kv.Key)
+            .ToHashSet();
 
     private static Vector4 CellFillColor(StripCell cell, bool drifted)
     {
@@ -699,20 +720,25 @@ public class MainWindow : Window, IDisposable
     /// <summary>The bed's whole line, on hover. The strip is a picture; this is the
     /// sentence behind it, and it says the same thing the grid row says.</summary>
     private static string CellTooltip(
-        StripCell cell, ClaimedBed? bed, bool drifted, DateTimeOffset now)
+        StripCell cell, ClaimedBed? bed, bool isPots, bool drifted, DateTimeOffset now)
     {
+        // A pot's Slot IS its map key; a bed's is 0-based and displays +1.
+        var name = isPots ? $"Pot {cell.Slot}" : $"Bed {cell.Slot + 1}";
+
         if (bed is null)
-            return $"Bed {cell.Slot + 1}: {UntrackedTag}";
+            return $"{name}: {UntrackedTag}";
         if (drifted)
-            return $"Bed {cell.Slot + 1}: reads empty now - replanted without me?";
+            return $"{name}: reads empty now - replanted without me?";
 
         var latest = bed.Latest;
         if (latest is null)
-            return $"Bed {cell.Slot + 1}: recorded, nothing seen in it yet";
+            return $"{name}: recorded, nothing seen in it yet";
 
-        var line = $"Bed {cell.Slot + 1}: {Plugin.Tables.SpeciesName(latest.SpeciesIndex)}"
-                   + $"\nstage {latest.Stage} · seen {WindowFormat.Ago(latest.At, now)}"
-                   + $"\nwater {WindowFormat.Water(cell.Water)}";
+        var line = $"{name}: {Plugin.Tables.SpeciesName(latest.SpeciesIndex)}"
+                   + $"\nstage {latest.Stage} · seen {WindowFormat.Ago(latest.At, now)}";
+        line += isPots
+            ? cell.Water == WaterState.Danger ? "\nwilting - water now" : ""
+            : $"\nwater {WindowFormat.Water(cell.Water)}";
 
         if (latest.Stage >= 4)
             return $"{line}\nripe now";
@@ -962,11 +988,13 @@ public class MainWindow : Window, IDisposable
             return;
         }
 
-        ImGui.Text(WindowFormat.Range(window.Earliest.ToLocalTime(), window.Latest.ToLocalTime()));
+        ImGui.Text(WindowFormat.Coarse(window.Earliest.ToLocalTime(), window.Latest.ToLocalTime()));
+        if (ImGui.IsItemHovered())
+            ImGui.SetTooltip(WindowTooltip(window));
         ImGui.SameLine();
         ImGui.TextDisabled(WindowFormat.Mark(window.Provenance));
         if (ImGui.IsItemHovered())
-            ImGui.SetTooltip(WindowFormat.MarkMeaning(window.Provenance));
+            ImGui.SetTooltip(WindowTooltip(window));
     }
 
     /// <summary>Tend appears only for a bed that is actually in reach - and it is the only

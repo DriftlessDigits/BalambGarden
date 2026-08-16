@@ -58,6 +58,38 @@ public static class WindowFormat
         return $"{lo}-{hi}";
     }
 
+    /// <summary>A window as day-parts ("Tue afternoon-Thu afternoon") - the surface's
+    /// voice for a claim the model only holds to within hours (ruling 2026-08-16:
+    /// minute-precision display overstates the instrument; the exact range moves to the
+    /// hover). Same collapse rules as <see cref="Range"/>: zero-width speaks once,
+    /// same-day drops the second day name.</summary>
+    public static string Coarse(DateTimeOffset earliest, DateTimeOffset latest)
+    {
+        var lo = $"{earliest.ToString("ddd", CultureInfo.InvariantCulture)} {DayPart(earliest)}";
+        if (latest <= earliest)
+            return lo;
+
+        var samePart = earliest.Date == latest.Date && DayPart(earliest) == DayPart(latest);
+        if (samePart)
+            return lo;
+
+        var hi = earliest.Date == latest.Date
+            ? DayPart(latest)
+            : $"{latest.ToString("ddd", CultureInfo.InvariantCulture)} {DayPart(latest)}";
+        return $"{lo}-{hi}";
+    }
+
+    /// <summary>The small hours are "early morning", never a "night" that reads as the
+    /// same date's evening.</summary>
+    private static string DayPart(DateTimeOffset t) => t.Hour switch
+    {
+        < 5 => "early morning",
+        < 12 => "morning",
+        < 17 => "afternoon",
+        < 21 => "evening",
+        _ => "night",
+    };
+
     /// <summary>Data age, beside every number the dashboard shows. Clock skew clamps to
     /// "just now" - a negative age would be the surface claiming to have seen the future.</summary>
     public static string Ago(DateTimeOffset at, DateTimeOffset now)

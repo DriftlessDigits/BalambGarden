@@ -77,6 +77,54 @@ public class PatchStripTests
         Assert.Equal(CellFill.Growing, cells[0].Fill);
     }
 
+    private static ClaimedBed Pot(int key, byte stage)
+    {
+        var pot = new ClaimedBed
+        {
+            Estate = Chelsea, MapKey = key, PatchOrdinal = 0, BedSlot = 0, IsPot = true,
+        };
+        pot.Observe(new Observation(Now.AddHours(-1), 0x31, stage,
+            ObservationSource.TendReceipt));
+        return pot;
+    }
+
+    [Fact] // pots have no eight-slot shape: one cell per pot, in map-key order
+    public void PotStripIsOneCellPerPotInKeyOrder()
+    {
+        var cells = PatchStrip.ForPots([Pot(181, 2), Pot(180, 4)], new HashSet<int>());
+
+        Assert.Equal(2, cells.Count);
+        Assert.Equal([180, 181], cells.Select(c => c.Slot));
+        Assert.Equal(CellFill.Ripe, cells[0].Fill);
+        Assert.Equal(CellFill.Growing, cells[1].Fill);
+        Assert.Equal(2, cells[1].Stage);
+    }
+
+    [Fact] // pot wilt is OBSERVED (b4=1 on the live map), never predicted - the only
+           // water claim a pot cell can carry is the game's own
+    public void PotStripMarksObservedWiltOnly()
+    {
+        var cells = PatchStrip.ForPots(
+            [Pot(180, 2), Pot(181, 2)], new HashSet<int> { 180 });
+
+        Assert.Equal(WaterState.Danger, cells[0].Water);
+        Assert.Equal(WaterState.NotApplicable, cells[1].Water);
+    }
+
+    [Fact] // a recorded pot with no sighting yet is Unknown, same silence as beds
+    public void PotStripReadsUnknownWithNoSighting()
+    {
+        var bare = new ClaimedBed
+        {
+            Estate = Chelsea, MapKey = 5, PatchOrdinal = 0, BedSlot = 0, IsPot = true,
+        };
+
+        var cells = PatchStrip.ForPots([bare], new HashSet<int>());
+
+        Assert.Equal(CellFill.Unknown, cells[0].Fill);
+        Assert.Equal(WaterState.NotApplicable, cells[0].Water);
+    }
+
     [Fact] // claimed but unidentified is a different silence from unclaimed
     public void ClaimedWithNoSightingReadsUnknown()
     {
