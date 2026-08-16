@@ -134,4 +134,17 @@ public class DomainTablesTests
         Assert.NotNull(seedId);
         Assert.Equal((ushort)0x24, T.SpeciesIndexBySeedId(seedId!.Value));
     }
+
+    [Fact] // grow hours for ANY species the tables can clock: crop rows keep their own
+    // hours; a NAMED species with no crop row is a flowerpot flower - the whole line
+    // grows in 1 day (community table, 08-16; our own anchored pots will receipt it).
+    // Unnamed species get null: no clock is claimed for a plant we cannot even name.
+    public void GrowHoursCoversCropsAndFlowers()
+    {
+        var krakka = T.CropBySpeciesIndex(0x31)!;
+        Assert.Equal(krakka.GrowHours, T.GrowHours(0x31));
+        Assert.Equal(24, T.GrowHours(82));    // Daisies - flower, no crop row
+        Assert.Equal(24, T.GrowHours(93));    // Cosmos
+        Assert.Null(T.GrowHours(0xEE));       // unnamed - no claim
+    }
 }

@@ -44,6 +44,21 @@ public class RollupTests
         Assert.NotNull(rollup.NextRipe);   // the stage-2 beds project a window
     }
 
+    [Fact] // a flowerpot flower has no crop row but DOES have a clock (24h, the whole
+    // flowerpot line) - an anchored planting must project a ripe window, not a "?"
+    public void FlowerPotWithPlantReceiptProjectsAWindow()
+    {
+        var pot = new ClaimedBed
+            { Estate = Chelsea, MapKey = 129, PatchOrdinal = 0, BedSlot = 0, IsPot = true };
+        pot.Observe(new Observation(Now.AddHours(-2), 82, 1, ObservationSource.PlantReceipt));
+
+        var rollup = Assert.Single(Rollups.ForEstate(Chelsea, [pot], T, new ClockWiltSource(), Now));
+        var daisy = Assert.Single(rollup.RipeBySpecies);
+        Assert.Equal(82, daisy.SpeciesIndex);
+        Assert.Equal(Now.AddHours(22), daisy.Window.Earliest);   // plant + 24h, anchored
+        Assert.Equal(Provenance.Anchored, daisy.Window.Provenance);
+    }
+
     [Fact]
     public void NudgeSpeaksWhenAttentionNeeded()
     {

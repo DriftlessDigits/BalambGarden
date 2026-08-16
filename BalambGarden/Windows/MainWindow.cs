@@ -759,8 +759,8 @@ public class MainWindow : Window, IDisposable
         if (latest.Stage >= 4)
             return $"{line}\nripe now";
 
-        var crop = Plugin.Tables.CropBySpeciesIndex(latest.SpeciesIndex);
-        if (crop is null || StageModel.RipeWindow(bed.Ring, crop.GrowHours) is not { } window)
+        if (Plugin.Tables.GrowHours(latest.SpeciesIndex) is not { } growHours
+            || StageModel.RipeWindow(bed.Ring, growHours) is not { } window)
             return line;
 
         var range = WindowFormat.Range(
@@ -1010,7 +1010,8 @@ public class MainWindow : Window, IDisposable
             return;
         }
 
-        if (crop is null || StageModel.RipeWindow(bed.Ring, crop.GrowHours) is not { } window)
+        if (Plugin.Tables.GrowHours(latest?.SpeciesIndex ?? 0) is not { } growHours
+            || StageModel.RipeWindow(bed.Ring, growHours) is not { } window)
         {
             ImGui.TextDisabled("?");
             return;

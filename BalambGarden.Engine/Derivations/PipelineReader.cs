@@ -173,9 +173,9 @@ public static class PipelineReader
             {
                 if (bed.Latest is not { } latest)
                     continue;
-                if (tables.CropBySpeciesIndex(latest.SpeciesIndex) is not { } crop)
+                if (tables.GrowHours(latest.SpeciesIndex) is not { } growHours)
                     continue;
-                if (StageModel.RipeWindow(bed.Ring, crop.GrowHours) is not { } window)
+                if (StageModel.RipeWindow(bed.Ring, growHours) is not { } window)
                     continue;
                 combined = combined is { } c
                     ? new EtaWindow(

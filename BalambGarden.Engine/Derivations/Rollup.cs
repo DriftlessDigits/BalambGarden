@@ -51,8 +51,12 @@ public static class Rollups
                         case WaterState.Unknown: unknown++; break;
                     }
 
-                    if (!isRipe && latest is not null && crop is not null
-                        && StageModel.RipeWindow(bed.Ring, crop.GrowHours) is { } window
+                    // GrowHours rather than the crop row: flowerpot flowers have no crop
+                    // row but DO have a clock (24h line-wide) - a "?" for an anchored
+                    // flower planting would be the surface refusing a claim it can make.
+                    if (!isRipe && latest is not null
+                        && tables.GrowHours(latest.SpeciesIndex) is { } growHours
+                        && StageModel.RipeWindow(bed.Ring, growHours) is { } window
                         && (!ripeBySpecies.TryGetValue(latest.SpeciesIndex, out var held)
                             || window.Earliest < held.Earliest))
                         ripeBySpecies[latest.SpeciesIndex] = window;

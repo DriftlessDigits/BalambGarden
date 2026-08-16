@@ -147,6 +147,21 @@ public sealed class DomainTables
     public string SpeciesName(ushort index)
         => nameByIndex.GetValueOrDefault(index) ?? $"Unknown (0x{index:X2})";
 
+    /// <summary>The whole flowerpot flower line grows in one day (community table,
+    /// 2026-08-16; our own anchored pot plantings receipt the claim as they ripen).</summary>
+    public const int FlowerGrowHours = 24;
+
+    /// <summary>Grow hours for any species the tables can clock. A crop row keeps its own
+    /// hours; a NAMED species with no crop row is a flowerpot flower (the crop table is
+    /// outdoor data - flowers are a separate game system) and takes the flower line's
+    /// shared 24h. An unnamed species gets null: no clock for a plant we cannot name.</summary>
+    public int? GrowHours(ushort index)
+    {
+        if (CropBySpeciesIndex(index) is { } crop)
+            return crop.GrowHours;
+        return nameByIndex.ContainsKey(index) ? FlowerGrowHours : null;
+    }
+
     /// <summary>Species whose display name is shared with an earlier index. Empty today;
     /// non-empty means <see cref="SpeciesIndexByName"/> can only answer for the first of
     /// them, and whoever loaded the tables should say so rather than pretend otherwise.</summary>
