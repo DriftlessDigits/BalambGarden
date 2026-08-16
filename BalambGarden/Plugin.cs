@@ -190,7 +190,7 @@ public sealed class Plugin : IDalamudPlugin
         }
     }
 
-    private void OnTerritoryChanged(ushort territory)
+    private void OnTerritoryChanged(uint territory)
     {
         // A rezone ends the scene the recording was scoped to; the proximity check
         // re-arms it at the next pot. Manual watching (flag off) is untouched.
