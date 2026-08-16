@@ -1,76 +1,42 @@
-> ⚠️ **Don't click Fork!**
-> 
-> This is a GitHub Template repo. If you want to use this for a plugin, [use this template][new-repo] to make a new repo!
->
-> ![image](https://github.com/goatcorp/BalambGarden/assets/16760685/d9732094-e1ed-4769-a70b-58ed2b92580c)
+<p align="center">
+  <img src="images/icon.png" width="256" alt="Balamb Garden" />
+</p>
 
-# BalambGarden
+# Balamb Garden
 
-[![Use This Template badge](https://img.shields.io/badge/Use%20This%20Template-0?logo=github&labelColor=grey)][new-repo]
+*Your garden, tended. SeeDs, watered.*
 
+A Dalamud gardening companion for FFXIV housing. Stand by your garden and water, harvest, or replant a whole patch - or every ripe pot in the house - with one button, at a patient human pace.
 
-Simple example plugin for Dalamud.
+## What it does
 
-This is not designed to be the simplest possible example, but it is also not designed to cover everything you might want to do. For more detailed questions, come ask in [the Discord](https://discord.gg/holdshift).
+- **One-press Replant ripe** - patches and flowerpots: harvest everything ripe and put the same plant back in, seeds derived from what's growing, soil from your bags. Beds still growing are left alone.
+- **Cycle** - the pick-your-seed version: harvest, then replant with the soil and seed you choose.
+- **A census ledger** - what's planted where, when you watered it, and when it will be ripe, down to the afternoon ("Tue-Thu afternoon"; exact hours on hover).
+- **Flowerpot flowers first-class** - their seeds, their clocks, and observed wilt warnings.
+- **Tips** - watches your crossbreed pipelines against live bag contents and says when a chain is about to starve.
+- **Auto-filled planting** - the picker fills itself with your named soil and seed and confirms; or hands the picker to you and verifies what you chose.
 
-## Main Points
+Everything is receipt-driven: the plugin records what the game actually showed it, never what it guessed. `/garden` to open.
 
-* Simple functional plugin
-  * Slash command
-  * Main UI
-  * Settings UI
-  * Image loading
-  * Plugin json
-* Simple, slightly-improved plugin configuration handling
-* Project organization
-  * Copies all necessary plugin files to the output directory
-    * Does not copy dependencies that are provided by dalamud
-    * Output directory can be zipped directly and have exactly what is required
-  * Hides data files from visual studio to reduce clutter
-    * Also allows having data files in different paths than VS would usually allow if done in the IDE directly
+## Install
 
+Add the custom repository in Dalamud Settings -> Experimental -> Custom Plugin Repositories:
 
-The intention is less that any of this is used directly in other projects, and more to show how similar things can be done.
+```
+https://raw.githubusercontent.com/DriftlessDigits/DalamudPluginRepo/main/pluginmaster.json
+```
 
-## How To Use
+Then install **Balamb Garden** from the plugin installer.
 
-### Getting Started
+## Build
 
-To begin, [clone this template repository][new-repo] to your own GitHub account. This will automatically bring in everything you need to get a jumpstart on development. You do not need to fork this repository unless you intend to contribute modifications to it.
+```
+dotnet build BalambGarden -c Debug -p:Platform=x64
+```
 
-Be sure to also check out the [Dalamud Developer Docs][dalamud-docs] for helpful information about building your own plugin. The Developer Docs includes helpful information about all sorts of things, including [how to submit][submit] your newly-created plugin to the official repository. Assuming you use this template repository, the provided project build configuration and license are already chosen to make everything a breeze.
+Engine logic lives in `BalambGarden.Engine` (pure, fully tested); game interaction in `BalambGarden`.
 
-[new-repo]: https://github.com/new?template_name=BalambGarden&template_owner=goatcorp
-[dalamud-docs]: https://dalamud.dev
-[submit]: https://dalamud.dev/plugin-publishing/submission
+## License
 
-### Prerequisites
-
-BalambGarden assumes all the following prerequisites are met:
-
-* XIVLauncher, FINAL FANTASY XIV, and Dalamud have all been installed and the game has been run with Dalamud at least once.
-* XIVLauncher is installed to its default directories and configurations.
-  * If a custom path is required for Dalamud's dev directory, it must be set with the `DALAMUD_HOME` environment variable.
-* A .NET Core 8 SDK has been installed and configured, or is otherwise available. (In most cases, the IDE will take care of this.)
-
-### Building
-
-1. Open up `BalambGarden.sln` in your C# editor of choice (likely [Visual Studio 2022](https://visualstudio.microsoft.com) or [JetBrains Rider](https://www.jetbrains.com/rider/)).
-2. Build the solution. By default, this will build a `Debug` build, but you can switch to `Release` in your IDE.
-3. The resulting plugin can be found at `BalambGarden/bin/x64/Debug/BalambGarden.dll` (or `Release` if appropriate.)
-
-### Activating in-game
-
-1. Launch the game and use `/xlsettings` in chat or `xlsettings` in the Dalamud Console to open up the Dalamud settings.
-    * In here, go to `Experimental`, and add the full path to the `BalambGarden.dll` to the list of Dev Plugin Locations.
-2. Next, use `/xlplugins` (chat) or `xlplugins` (console) to open up the Plugin Installer.
-    * In here, go to `Dev Tools > Installed Dev Plugins`, and the `BalambGarden` should be visible. Enable it.
-3. You should now be able to use `/pmycommand` (chat) or `pmycommand` (console)!
-
-Note that you only need to add it to the Dev Plugin Locations once (Step 1); it is preserved afterwards. You can disable, enable, or load your plugin on startup through the Plugin Installer.
-
-### Reconfiguring for your own uses
-
-Replace all references to `BalambGarden` in all the files and filenames with your desired name, then start building the plugin of your dreams. You'll figure it out 😁
-
-Dalamud will load the JSON file (by default, `BalambGarden/BalambGarden.json`) next to your DLL and use it for metadata, including the description for your plugin in the Plugin Installer. Make sure to update this with information relevant to _your_ plugin!
+AGPL-3.0-or-later
