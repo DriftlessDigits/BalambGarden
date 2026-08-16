@@ -127,6 +127,17 @@ public class DomainTablesTests
         Assert.Null(T.SpeciesIndexByName("Blue Nonsense"));          // strip never invents
     }
 
+    [Fact] // Talk speaks the harvest ITEM name where it differs from the species name:
+    // "Royal Kukuru Bean" receipted on Sam's yard beds (4x unknown-species warnings,
+    // 08-16 13:46 dalamud.log) and in Chelsea's /xllog. Receipts-only alias table -
+    // one entry per proven string, never a pattern.
+    public void ReceiptedItemNameAliasesResolve()
+    {
+        Assert.Equal((ushort)0x24, T.SpeciesIndexByName("Royal Kukuru Bean"));
+        Assert.Equal((ushort)0x24, T.SpeciesIndexByName("  royal kukuru bean "));
+        Assert.Null(T.SpeciesIndexByName("Royal Nonsense Bean")); // aliases never invent
+    }
+
     [Fact]
     public void SpeciesIndexRoundTripsThroughSeedId()
     {
