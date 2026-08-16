@@ -35,11 +35,11 @@ public static class Rollups
                     if (isRipe) ripe++;
 
                     var crop = latest is null ? null : tables.CropBySpeciesIndex(latest.SpeciesIndex);
-                    // A pot's water state never depends on its crop: flowerpots cannot wilt
-                    // (see ClockWiltSource), so an unidentified pot flower is Not Applicable
-                    // rather than Unknown. NotApplicable falls through every case below - it
-                    // counts toward nothing, so a stale pot can never make the estate look
-                    // thirsty. Ripe still counts: pots do ripen, they just never die.
+                    // A pot's water state is deliberately out of the thirst counts: no pot
+                    // has ever been SEEN to wilt, but the evidence base is flower seeds
+                    // only - whether that is a pot mechanic or a flower oddity is exactly
+                    // what the dry-vs-watered twins labs are running to decide (08-15).
+                    // Until they report, NotApplicable asserts nothing either way.
                     var state = bed.IsPot ? WaterState.NotApplicable
                         : crop is null ? WaterState.Unknown
                         : wilt.StateFor(bed, crop, now);

@@ -552,7 +552,16 @@ public class MainWindow : Window, IDisposable
             ? $"{rollup.Claimed} recorded"
             : $"{rollup.Claimed}/{PatchStrip.Slots}");
 
+        // The steady state lives here, once per patch, instead of in a column that repeats
+        // it per bed: "all watered" is only sayable when nothing is thirsty AND nothing is
+        // unjudgeable, so it is a claim about the whole patch rather than a shrug.
         var thirsty = rollup.Due + rollup.Overdue + rollup.Danger;
+        if (!rollup.IsPots && rollup.Claimed > 0 && thirsty == 0 && rollup.Unknown == 0)
+        {
+            ImGui.SameLine();
+            ImGui.TextDisabled("· all watered");
+        }
+
         if (thirsty > 0)
         {
             ImGui.SameLine();
@@ -571,16 +580,19 @@ public class MainWindow : Window, IDisposable
             ImGui.TextDisabled($"· {rollup.Unknown} unknown");
         }
 
-        if (rollup.NextRipe is not { } window)
-            return;
-
-        ImGui.SameLine();
-        ImGui.TextDisabled(
-            $"· ripe ~{WindowFormat.Range(window.Earliest.ToLocalTime(), window.Latest.ToLocalTime())}");
-        ImGui.SameLine();
-        ImGui.TextDisabled(WindowFormat.Mark(window.Provenance));
-        if (ImGui.IsItemHovered())
-            ImGui.SetTooltip(WindowFormat.MarkMeaning(window.Provenance));
+        // One window per species, earliest first (Task 2): a patch of two crops has two
+        // answers, and a single "next ripe" would quietly speak for the other one.
+        foreach (var species in rollup.RipeBySpecies)
+        {
+            ImGui.SameLine();
+            var range = WindowFormat.Range(
+                species.Window.Earliest.ToLocalTime(), species.Window.Latest.ToLocalTime());
+            ImGui.TextDisabled($"· {Plugin.Tables.SpeciesName(species.SpeciesIndex)} ~{range}");
+            ImGui.SameLine();
+            ImGui.TextDisabled(WindowFormat.Mark(species.Window.Provenance));
+            if (ImGui.IsItemHovered())
+                ImGui.SetTooltip(WindowFormat.MarkMeaning(species.Window.Provenance));
+        }
     }
 
     // ------------------------------------------------------------------ patch strip
@@ -787,7 +799,7 @@ public class MainWindow : Window, IDisposable
             ? ObjectSensor.NearbyPots()
             : [];
 
-        using (var table = ImRaii.Table($"beds{rollup.PatchOrdinal}", 6,
+        using (var table = ImRaii.Table($"beds{rollup.PatchOrdinal}", 5,
                    ImGuiTableFlags.RowBg | ImGuiTableFlags.Borders | ImGuiTableFlags.SizingStretchProp))
         {
             if (!table.Success)
@@ -796,7 +808,6 @@ public class MainWindow : Window, IDisposable
             ImGui.TableSetupColumn("Bed", ImGuiTableColumnFlags.WidthFixed, 120f);
             ImGui.TableSetupColumn("Plant", ImGuiTableColumnFlags.WidthStretch);
             ImGui.TableSetupColumn("Stage", ImGuiTableColumnFlags.WidthFixed, 90f);
-            ImGui.TableSetupColumn("Water", ImGuiTableColumnFlags.WidthFixed, 110f);
             ImGui.TableSetupColumn("Ripe", ImGuiTableColumnFlags.WidthFixed, 150f);
             ImGui.TableSetupColumn("##verbs", ImGuiTableColumnFlags.WidthFixed, 150f);
             ImGui.TableHeadersRow();
@@ -842,6 +853,21 @@ public class MainWindow : Window, IDisposable
             if (ImGui.IsItemHovered())
                 ImGui.SetTooltip("right-click to forget this record");
             DrawForgetMenu(record, bed);
+
+            // Water is exception-first now (UI ruling 2026-08-15): a whole column that
+            // mostly reads "watered" spends the grid's widest real estate on the state
+            // nobody has to act on. Only a bed actually asking for water says anything
+            // here; the steady state is one word on the rollup line above.
+            var water = bed.IsPot ? WaterState.NotApplicable
+                : crop is null ? WaterState.Unknown
+                : Plugin.Garden.Wilt.StateFor(bed, crop, now);
+            if (water is WaterState.Due or WaterState.Overdue or WaterState.Danger)
+            {
+                ImGui.SameLine();
+                ImGui.TextColored(water == WaterState.Danger ? Red : Amber,
+                    water == WaterState.Danger ? "· DANGER - water now" : "· thirsty");
+            }
+
             if (bedObject is { InReach: true })
             {
                 ImGui.SameLine();
@@ -862,9 +888,6 @@ public class MainWindow : Window, IDisposable
             }
 
             ImGui.TableNextColumn();
-            DrawWaterCell(bed, crop, now);
-
-            ImGui.TableNextColumn();
             DrawRipeCell(bed, crop, latest, now);
 
             ImGui.TableNextColumn();
@@ -873,33 +896,6 @@ public class MainWindow : Window, IDisposable
             else
                 DrawBedVerbs(bedObject, actionable);
         }
-    }
-
-    /// <summary>State as text plus a dot in the state's colour - the text carries the
-    /// claim on its own, the dot is only there to find it fast.</summary>
-    private static void DrawWaterCell(ClaimedBed bed, Engine.Domain.Crop? crop, DateTimeOffset now)
-    {
-        // Pot flowers have never been seen to wilt (08-15: every flowerpot seed in the
-        // third-party table carries no wilt time, and our own sunflower went seed-to-ripe
-        // unwatered). Whether a normal CROP in a pot wilts is still unknown - a lab is
-        // running - so this cell prints exactly what the Engine reports and asserts
-        // nothing more.
-        var state = bed.IsPot ? WaterState.NotApplicable
-            : crop is null ? WaterState.Unknown
-            : Plugin.Garden.Wilt.StateFor(bed, crop, now);
-
-        var color = state switch
-        {
-            WaterState.Watered => Green,
-            WaterState.Due => Amber,
-            WaterState.Overdue => Amber,
-            WaterState.Danger => Red,
-            _ => Dim,
-        };
-
-        ImGui.TextColored(color, "●");
-        ImGui.SameLine();
-        ImGui.Text(WindowFormat.Water(state));
     }
 
     /// <summary>A bed at stage 4 IS ripe - it is a sighting, not a forecast - so it says
@@ -981,8 +977,8 @@ public class MainWindow : Window, IDisposable
             }
             if (actionable && ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
                 ImGui.SetTooltip(
-                    "Changes petal pigment (receipted). Whether a pot also NEEDS water"
-                    + "\nto live is unverified - the twins lab will say.");
+                    "Changes the flower's colour (receipted). Whether a pot also NEEDS"
+                    + "\nwater to live is unverified - the twins lab will say.");
             UnrosteredTip(actionable);
 
             ImGui.SameLine();
@@ -1031,7 +1027,6 @@ public class MainWindow : Window, IDisposable
         ImGui.Text($"Bed {bed.BedSlot + 1}");
         ImGui.TableNextColumn();
         ImGui.TextColored(Amber, $"Bed {bed.BedSlot + 1} reads empty now - replanted without me?");
-        ImGui.TableNextColumn();
         ImGui.TableNextColumn();
         ImGui.TableNextColumn();
         ImGui.TableNextColumn();
