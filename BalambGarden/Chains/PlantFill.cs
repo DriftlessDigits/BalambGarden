@@ -12,12 +12,14 @@ namespace BalambGarden.Chains;
 /// presses its Confirm, so a cycle stops asking the player to type the order twice (once
 /// in our dropdown, once in the game's picker).
 ///
-/// <para>MECHANISM (Sam's lateral, 08-16): with the picker open, right-click an item in
-/// the inventory and pick Use - the game routes it into the matching slot itself. That
-/// context-menu Use is <c>AgentInventoryContext.UseItem</c>, a real game entry point, so
-/// the slots never need a synthetic click at all. (The slot components register no
-/// MouseClick - the 08-16 tree dump receipt - and their DragDrop event dialect stays
-/// unmapped on purpose: there is nothing left that needs it.)</para>
+/// <para>MECHANISM (Sam's lateral, 08-16): with the picker open, right-click the item in
+/// the inventory and pick Use - the game routes it into the matching slot itself. Driven
+/// LITERALLY: OpenForItemSlot opens the item's real context menu and the Use entry is
+/// clicked by name (Scrooge's ItemPricingPipeline pattern). The shortcut was refuted
+/// live: AgentInventoryContext.UseItem routes through "is this item usable?", which soil
+/// and seeds fail outside their picker moment - both its shapes no-opped silently. And
+/// the slots themselves register no MouseClick (tree receipt), so the menu is not just
+/// the honest path, it is the only one.</para>
 ///
 /// <para>FAIL-CLOSED, structurally: Confirm only enables once the game itself accepted
 /// both items into their slots. A Use that landed nothing leaves Confirm disabled, the
@@ -95,12 +97,13 @@ internal static unsafe partial class PlantFlow
         }
     }
 
-    /// <summary>The context menu's Use, without the context menu (Sam's receipt: Use on a
-    /// soil/seed while the picker is open fills its slot). The item's REAL bag location is
-    /// found first and passed explicitly - a defaulted location can silently Use nothing
-    /// (08-16: 'got to the inventory and then nothing happened'). True only means the call
-    /// was made; whether the item landed is read off the slot's own icon.</summary>
-    internal static bool UseFromInventory(uint itemId)
+    /// <summary>Sam's manual flow, verbatim: open the item's own context menu. Both
+    /// UseItem shapes were refuted live (08-16: located args = three silent no-ops;
+    /// Scrooge's default shape = same - UseItem routes through "is this item usable?",
+    /// which soil and seeds fail outside their picker context; Scrooge's coffers pass).
+    /// This is Scrooge's OTHER receipted pattern (ItemPricingPipeline.ClickInventoryItem):
+    /// OpenForItemSlot on the item's real bag slot, then the Use entry in the menu.</summary>
+    internal static bool OpenItemMenu(uint itemId)
     {
         try
         {
@@ -115,20 +118,43 @@ internal static unsafe partial class PlantFlow
                 return false;
             }
 
-            // Scrooge's receipted shape (CofferOrchestrator): default args, inventoryType
-            // = Invalid - THE GAME finds the item. Passing the real (bag, slot) routes a
-            // targeted path that demonstrably does nothing here (08-16: three located
-            // Uses, slot icon never moved). The bag scan above stays as the honest
-            // "you don't have one" gate; the call itself names only the item.
-            Plugin.Log.Information($"[Fill] UseItem({itemId}) (in {bag} slot {slot})");
-            agent->UseItem(itemId);
+            var addonId = FFXIVClientStructs.FFXIV.Client.UI.Agent.AgentInventory.Instance()->OpenAddonId;
+            Plugin.Log.Information(
+                $"[Fill] OpenForItemSlot({bag}, {slot}) addonId={addonId} (item {itemId})");
+            agent->OpenForItemSlot(bag, slot, 0, addonId);
             return true;
         }
         catch (Exception ex)
         {
-            Plugin.Log.Warning($"[Fill] UseItem({itemId}) failed: {ex.Message}");
+            Plugin.Log.Warning($"[Fill] OpenForItemSlot({itemId}) failed: {ex.Message}");
             return false;
         }
+    }
+
+    /// <summary>The context menu's Use entry, clicked the way Scrooge clicks "Put Up for
+    /// Sale": read the menu's entries by name, fire the addon's own callback with the
+    /// entry's index. Returns null while the menu is not up yet (caller keeps waiting on
+    /// its budget); false = the menu is up and Use is NOT in it - a hard refusal.</summary>
+    internal static bool? ClickContextMenuUse(out string why)
+    {
+        why = "";
+        if (!GenericHelpers.TryGetAddonByName<AtkUnitBase>("ContextMenu", out var addon)
+            || !GenericHelpers.IsAddonReady(addon))
+            return null;
+
+        var reader = new ECommons.UIHelpers.AtkReaderImplementations.ReaderContextMenu(addon);
+        for (var i = 0; i < reader.Entries.Count; i++)
+        {
+            if (!reader.Entries[i].Name.Equals("Use", StringComparison.OrdinalIgnoreCase))
+                continue;
+            Plugin.Log.Information($"[Fill] context menu: Use at entry {i}");
+            ECommons.Automation.Callback.Fire(addon, true, 0, i, 0, 0, 0);
+            return true;
+        }
+
+        why = "the item's menu offers no Use here";
+        addon->Close(true);
+        return false;
     }
 
     private static (FFXIVClientStructs.FFXIV.Client.Game.InventoryType Bag, int Slot, bool Found)
@@ -315,8 +341,12 @@ internal sealed unsafe class GardeningFill
 {
     private enum Step
     {
-        UseSoil,
-        UseSeed,
+        OpenSoilMenu,
+        ClickSoilUse,
+        VerifySoil,
+        OpenSeedMenu,
+        ClickSeedUse,
+        VerifySeed,
         PressConfirm,
         Done,
     }
@@ -326,11 +356,10 @@ internal sealed unsafe class GardeningFill
     private readonly string soilName;
     private readonly string seedName;
     private readonly Random random = new();
-    private Step step = Step.UseSoil;
+    private Step step = Step.OpenSoilMenu;
     private DateTime nextActionAt = DateTime.MinValue;
     private DateTime stepDeadline = DateTime.MaxValue;
     private bool settled;
-    private int usesThisStep;
     private readonly uint?[] baselineIcon = new uint?[2];
 
     /// <summary>Why the driver stopped driving, if it did. Non-null means the step is the
@@ -394,12 +423,28 @@ internal sealed unsafe class GardeningFill
 
         switch (step)
         {
-            case Step.UseSoil:
-                Use(picker, slot: 0, soilItemId, soilName, Step.UseSeed);
+            case Step.OpenSoilMenu:
+                OpenMenu(soilItemId, soilName, Step.ClickSoilUse);
                 break;
 
-            case Step.UseSeed:
-                Use(picker, slot: 1, seedItemId, seedName, Step.PressConfirm);
+            case Step.ClickSoilUse:
+                ClickUse(soilName, Step.VerifySoil);
+                break;
+
+            case Step.VerifySoil:
+                Verify(picker, slot: 0, soilName, Step.OpenSeedMenu);
+                break;
+
+            case Step.OpenSeedMenu:
+                OpenMenu(seedItemId, seedName, Step.ClickSeedUse);
+                break;
+
+            case Step.ClickSeedUse:
+                ClickUse(seedName, Step.VerifySeed);
+                break;
+
+            case Step.VerifySeed:
+                Verify(picker, slot: 1, seedName, Step.PressConfirm);
                 break;
 
             case Step.PressConfirm:
@@ -419,49 +464,57 @@ internal sealed unsafe class GardeningFill
         }
     }
 
-    /// <summary>One slot's fill, verified where the picker lets us: the slot's own icon
-    /// says whether the Use landed (a refused Use - "unable to execute" - is silent to the
-    /// caller). Landed -> next step; not yet -> re-Use at pace, up to three tries; slots
-    /// unreadable -> one Use on trust and Confirm arbitrates, the original contract.</summary>
-    private void Use(AtkUnitBase* picker, int slot, uint itemId, string itemName, Step next)
+    private void OpenMenu(uint itemId, string itemName, Step next)
+    {
+        if (PlantFlow.OpenItemMenu(itemId))
+            Advance(next);
+        else
+            Expire($"could not open {itemName}'s menu");
+    }
+
+    /// <summary>Waits for the context menu, then clicks its Use - the way Sam's hand does
+    /// it. Menu not up yet = keep waiting on the budget; menu up without Use = refusal.</summary>
+    private void ClickUse(string itemName, Step next)
+    {
+        switch (PlantFlow.ClickContextMenuUse(out var why))
+        {
+            case true:
+                Advance(next);
+                break;
+            case false:
+                Stop($"{itemName}: {why}");
+                break;
+            default:
+                Expire($"{itemName}'s menu did not open");
+                break;
+        }
+    }
+
+    /// <summary>The landing receipt: the slot's own icon changed off its empty baseline.
+    /// Unreadable slots (either read null) advance on trust after a beat - Confirm still
+    /// arbitrates, the original contract.</summary>
+    private void Verify(AtkUnitBase* picker, int slot, string itemName, Step next)
     {
         var current = PlantFlow.SlotIconId(picker, slot);
-        var filled = current is null || baselineIcon[slot] is null
-            ? (bool?)null
-            : current != baselineIcon[slot];
-        if (filled == true)
+        if (current is null || baselineIcon[slot] is null)
+        {
+            Advance(next);
+            return;
+        }
+
+        if (current != baselineIcon[slot])
         {
             Plugin.Log.Information($"[Fill] {itemName} landed (slot icon {baselineIcon[slot]} -> {current})");
             Advance(next);
             return;
         }
 
-        if (usesThisStep >= 1 && filled is null)
-        {
-            Advance(next);   // unreadable slots: trust the one call, Confirm decides
-            return;
-        }
-
-        if (usesThisStep >= 3)
-        {
-            Expire($"{itemName} would not go in after {usesThisStep} tries");
-            return;
-        }
-
-        if (!PlantFlow.UseFromInventory(itemId))
-        {
-            Expire($"could not Use {itemName} from the bags");
-            return;
-        }
-
-        usesThisStep++;
-        nextActionAt = DateTime.UtcNow.AddMilliseconds(Jitter(PlantFlow.FillPaceMS));
+        Expire($"{itemName} never appeared in its slot");
     }
 
     private void Advance(Step next)
     {
         step = next;
-        usesThisStep = 0;
         nextActionAt = DateTime.UtcNow.AddMilliseconds(Jitter(PlantFlow.FillPaceMS));
         stepDeadline = DateTime.UtcNow.AddMilliseconds(PlantFlow.FillStepBudgetMS);
     }
