@@ -71,6 +71,7 @@ public class MainWindow : Window, IDisposable
     // else by entity id negated to avoid collision), and its order form. 0 = "whatever
     // I pick in game" - the picker stays the player's and the chain only verifies.
     private long? plantPanelPot;
+    private bool plantPanelCycle;
     private uint plantSoilId;
     private uint plantSeedId;
 
@@ -1089,6 +1090,14 @@ public class MainWindow : Window, IDisposable
                 plugin.Launched(plugin.PotChain);
             }
             UnrosteredTip(actionable);
+
+            ImGui.SameLine();
+            var cycleOpen = plantPanelPot == PanelKey(pot) && plantPanelCycle;
+            if (ImGui.SmallButton(cycleOpen ? "Cycle (close)" : "Cycle..."))
+                TogglePlantPanel(pot, cycle: true);
+            if (actionable && ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+                ImGui.SetTooltip("Harvest, then replant with the soil and seed you pick below.");
+            UnrosteredTip(actionable);
         }
 
         BusyTip();
@@ -1342,15 +1351,16 @@ public class MainWindow : Window, IDisposable
     private static long PanelKey(PotObject pot)
         => pot.MapKey is { } key ? key : -(long)pot.Object.EntityId;
 
-    private void TogglePlantPanel(PotObject pot)
+    private void TogglePlantPanel(PotObject pot, bool cycle = false)
     {
         var key = PanelKey(pot);
-        if (plantPanelPot == key)
+        if (plantPanelPot == key && plantPanelCycle == cycle)
         {
             plantPanelPot = null;
             return;
         }
         plantPanelPot = key;
+        plantPanelCycle = cycle;
         plantSoilId = 0;
         plantSeedId = 0;
     }
@@ -1417,9 +1427,12 @@ public class MainWindow : Window, IDisposable
 
         using (ImRaii.Disabled(plugin.AnyChainBusy))
         {
-            if (ImGui.SmallButton("Plant"))
+            if (ImGui.SmallButton(plantPanelCycle ? "Harvest + Plant" : "Plant"))
             {
-                plugin.PotChain.Plant(pot, plantSoilId, plantSeedId);
+                if (plantPanelCycle)
+                    plugin.PotChain.Cycle(pot, plantSoilId, plantSeedId);
+                else
+                    plugin.PotChain.Plant(pot, plantSoilId, plantSeedId);
                 plugin.Launched(plugin.PotChain);
                 plantPanelPot = null;
             }

@@ -116,6 +116,29 @@ internal sealed unsafe class PotChain : ChainBase
         Close("pot planted");
     }
 
+    /// <summary>Harvest then replant, one pot, one run - the pot twin of the patch Cycle.
+    /// Two units so the stop boundary between them is real: a stop pressed during the
+    /// harvest lands before the replant begins, at the second Open's gate. Each verb
+    /// takes its own before-read (SnapshotPots per step), so the two receipts bind
+    /// exactly as they do when the verbs run alone.</summary>
+    internal void Cycle(PotObject pot, uint soilItemId, uint expectedSeedId)
+    {
+        if (!BeginRun(2, "cycling pot..."))
+            return;
+
+        Open(pot);
+        TaskManager.Enqueue(SelectHarvest, "harvest");
+        TaskManager.Enqueue(AwaitHarvest, HarvestWaitMS, "yield");
+        TaskManager.Enqueue(() => AwaitPotBind(ReceiptVerb.Harvest, "harvested"),
+            BindStepLimitMS, "identify");
+        Open(pot);
+        TaskManager.Enqueue(() => SelectPlant(soilItemId, expectedSeedId), "plant");
+        TaskManager.Enqueue(() => AwaitSow(expectedSeedId), HumanStepLimitMS, "sow");
+        TaskManager.Enqueue(() => AwaitPotBind(ReceiptVerb.Plant, "planted"),
+            BindStepLimitMS, "identify");
+        Close("pot cycled");
+    }
+
     private void Open(PotObject pot)
     {
         _potKey = pot.MapKey;
