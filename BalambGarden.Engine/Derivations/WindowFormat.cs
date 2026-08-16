@@ -58,8 +58,8 @@ public static class WindowFormat
             : $"{(int)span.TotalDays}d ago";
     }
 
-    /// <summary>The water column. "-" means the column does not apply to this row (a
-    /// flowerpot's water is pigment, and pot flowers have never been seen to wilt);
+    /// <summary>The water state as a word. "-" means the state makes no claim for this row
+    /// (pot wilt is unverified - the twins labs will say; until then pots assert nothing);
     /// "?" means we genuinely do not know. Two different silences, two different marks.</summary>
     public static string Water(WaterState state) => state switch
     {

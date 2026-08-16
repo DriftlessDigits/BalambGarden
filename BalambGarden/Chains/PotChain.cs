@@ -13,10 +13,11 @@ namespace BalambGarden.Chains;
 /// differs is that a pot is its own one-bed patch and has to be identified before a receipt
 /// about it means anything.
 ///
-/// <para>Watering a pot is PIGMENT ONLY. Flowerpots do not wilt (08-15 finding: every
-/// flowerpot seed is 1-day grow with no wilt time, corroborated by our own unwatered
-/// sunflower running seed-to-ripe), so nothing here - label, tooltip, or run-log line -
-/// may suggest a thirsty plant.</para>
+/// <para>Watering a pot changes the flower's colour (receipted). Whether a pot ALSO needs
+/// water to live is unverified: no pot has ever been seen to wilt, but the evidence base
+/// is flower seeds only - the dry-vs-watered twins labs are running to decide whether
+/// that is a pot mechanic or a flower oddity. Until they report, nothing here asserts
+/// either way.</para>
 ///
 /// <para>Which pot: the chain knows before it acts. A pot object resolves to its DataMap
 /// key through the furniture vector (<see cref="MapSensor.ReadFurniture"/> carries the
@@ -70,10 +71,11 @@ internal sealed unsafe class PotChain : ChainBase
     private DateTime _settleUntil;
     private DateTime _nextPollAt;
 
-    /// <summary>Applies pigment. Not a drink - see the class note.</summary>
+    /// <summary>Waters one pot. Colour change is the receipted effect; whether it is also
+    /// a drink is the twins labs' question - see the class note.</summary>
     internal void Water(PotObject pot)
     {
-        if (!BeginRun(1, "tending pot (pigment)..."))
+        if (!BeginRun(1, "watering pot..."))
             return;
 
         Open(pot);

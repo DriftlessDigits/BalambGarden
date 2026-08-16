@@ -20,11 +20,11 @@ public sealed class ClockWiltSource : IWiltSource
 
     public WaterState StateFor(ClaimedBed bed, Crop crop, DateTimeOffset now)
     {
-        // Flowerpots cannot wilt (08-15 finding: Sam's third-party gardening table lists
-        // every flowerpot seed at 1-day grow with NO wilt time, corroborated by our own
-        // sunflower receipt - unwatered seed to ripe in about a day). Indoor watering is
-        // the pigment mechanic, cosmetic only. Marching a pot to Danger would be a false
-        // alarm about a plant that cannot die, so the clock never runs on one.
+        // No pot has ever been SEEN to wilt, but the evidence base is flower seeds only
+        // (Sam's table + our unwatered sunflower, both flowers) - whether that is a pot
+        // mechanic or a flower oddity is what the dry-vs-watered twins labs are running
+        // to decide (08-15). Until they report, the clock does not run on pots: a Danger
+        // march would assert a mechanic nothing has receipted.
         if (bed.IsPot)
             return WaterState.NotApplicable;
 
