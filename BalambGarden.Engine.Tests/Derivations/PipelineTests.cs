@@ -83,9 +83,11 @@ public class PipelineTests
         var tips = PipelineReader.Tips(Household(), T, Now);
         var bottlenecks = tips.Where(t => t.Kind == TipKind.Bottleneck).ToList();
         Assert.Equal(2, bottlenecks.Count);
-        Assert.Contains(bottlenecks, t => t.Text.Contains("Royal Kukuru seeds feed"));
-        Assert.Contains(bottlenecks, t => t.Text.Contains("Curiel Root seeds feed"));
-        Assert.Contains(bottlenecks, t => t.Text.Contains("Thavnairian Onion"));
+        Assert.Contains(bottlenecks, t => t.Text.Contains("Royal Kukuru seeds"));
+        Assert.Contains(bottlenecks, t => t.Text.Contains("Curiel Root seeds"));
+        // Consumer is named by PLACE, not by product - the stock line above already
+        // names what the patch makes, and saying it twice was the confusing sentence.
+        Assert.All(bottlenecks, t => Assert.Contains("replants with", t.Text));
     }
 
     // Three FC patches all running the same cross - the real household shape (08-16).
@@ -113,7 +115,7 @@ public class PipelineTests
     {
         var tips = PipelineReader.Tips(HouseholdWithTriplicateFc(), T, Now);
         var bottlenecks = tips.Where(t => t.Kind == TipKind.Bottleneck
-            && t.Text.Contains("Curiel Root seeds feed")).ToList();
+            && t.Text.Contains("Curiel Root seeds")).ToList();
         Assert.Single(bottlenecks);
         Assert.Contains("patches 1-3", bottlenecks[0].Text);
     }
@@ -140,12 +142,12 @@ public class PipelineTests
         var inv = new FakeInventory(new() { [Seed(0x2C)] = 2, [Seed(0x24)] = 10 });
         var tips = PipelineReader.Tips(Household(), T, Now, inventory: inv);
 
-        var curiel = tips.Single(t => t.Kind == TipKind.Bottleneck && t.Text.Contains("Curiel Root seeds feed"));
+        var curiel = tips.Single(t => t.Kind == TipKind.Bottleneck && t.Text.Contains("Curiel Root seeds"));
         Assert.Contains("needs 4", curiel.Text);
         Assert.Contains("2 in bags", curiel.Text);
         Assert.True(curiel.Attention);
 
-        var kukuru = tips.Single(t => t.Kind == TipKind.Bottleneck && t.Text.Contains("Royal Kukuru seeds feed"));
+        var kukuru = tips.Single(t => t.Kind == TipKind.Bottleneck && t.Text.Contains("Royal Kukuru seeds"));
         Assert.Contains("10 in bags", kukuru.Text);
         Assert.Contains("covered", kukuru.Text);
         Assert.False(kukuru.Attention);
@@ -161,7 +163,7 @@ public class PipelineTests
         var inv = new FakeInventory(new() { [Seed(0x2C)] = 0, [Seed(0x24)] = 0 });
 
         var tips = PipelineReader.Tips(beds, T, Now, inventory: inv);
-        var curiel = tips.Single(t => t.Kind == TipKind.Bottleneck && t.Text.Contains("Curiel Root seeds feed"));
+        var curiel = tips.Single(t => t.Kind == TipKind.Bottleneck && t.Text.Contains("Curiel Root seeds"));
         Assert.Contains("after the replant", curiel.Text);
         Assert.True(curiel.Attention);
     }
@@ -176,7 +178,7 @@ public class PipelineTests
         var inv = new FakeInventory(new() { [Seed(0x2C)] = 0, [Seed(0x24)] = 0 });
 
         var tips = PipelineReader.Tips(beds, T, Now, inventory: inv);
-        var curiel = tips.Single(t => t.Kind == TipKind.Bottleneck && t.Text.Contains("Curiel Root seeds feed"));
+        var curiel = tips.Single(t => t.Kind == TipKind.Bottleneck && t.Text.Contains("Curiel Root seeds"));
         Assert.Contains("before the replant", curiel.Text);
     }
 

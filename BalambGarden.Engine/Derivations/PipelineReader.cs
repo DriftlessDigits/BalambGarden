@@ -102,61 +102,62 @@ public static class PipelineReader
                 ConsumerEstate: r.consumer.Estate));
 
         // One line per real relationship: every feeder PATCH of the same (estate, seed,
-        // consumer) is the same supply edge - the patches list together.
+        // consumer) is the same supply edge - the patches list together. Sentence shape
+        // (08-16 Sam: the dash-chain read as clause soup): lead with who needs what,
+        // clauses on "·" like the rest of the UI, the time range LAST so its internal
+        // dash never collides with a clause break. The consumer is named by PLACE - the
+        // stock line above already says what it makes.
         foreach (var relationship in relationships)
         {
-            var products = string.Join(" or ", relationship
-                .Select(r => r.consumer.ResultSeedId)
-                .Distinct()
-                .OrderBy(seed => seed)
-                .Select(seed => tables.CropBySeedId(seed)?.Name ?? "?"));
             var feederName = tables.CropBySeedId(relationship.Key.FeederSeed)?.Name ?? "?";
             var feederPatches = PatchList(relationship.Select(r => r.feeder.PatchOrdinal));
-            var text = $"{feederName} seeds feed the {products} patch " +
-                       $"({name(relationship.Key.ConsumerEstate)}) - feeder is " +
-                       $"{name(relationship.Key.FeederEstate)} {feederPatches}";
-            var attention = false;
+            var feederLabel = $"{name(relationship.Key.FeederEstate)} {feederPatches}";
+            var consumerPatches = relationship
+                .Select(r => (r.consumer.Estate, r.consumer.PatchOrdinal)).Distinct().ToList();
+            var consumerLabel = $"{name(relationship.Key.ConsumerEstate)} "
+                                + PatchList(consumerPatches.Select(p => p.PatchOrdinal));
+
+            var fallback = $"{consumerLabel} replants with {feederName} seeds · feeder is {feederLabel}";
 
             // The state join (rulings 2026-08-16): demand from the consumer's actual
             // layout, supply from the live bag read, feeder ripeness as a DATE only -
             // crossbreed yield is chance-based, so a future harvest is never a quantity.
-            if (inventory is not null)
-            {
-                var sample = relationship.First().consumer;
-                var species = tables.SeedIdBySpeciesIndex(sample.SpeciesA) == relationship.Key.FeederSeed
-                    ? sample.SpeciesA : sample.SpeciesB;
-                var consumerPatches = relationship
-                    .Select(r => (r.consumer.Estate, r.consumer.PatchOrdinal)).Distinct().ToList();
-                var consumerBeds = beds.Where(b => !b.IsPot
-                    && consumerPatches.Contains((b.Estate, b.PatchOrdinal))).ToList();
-                var demand = consumerBeds.Count(b => b.Latest?.SpeciesIndex == species);
-                var supply = inventory.CountOf(relationship.Key.FeederSeed);
+            var sample = relationship.First().consumer;
+            var species = tables.SeedIdBySpeciesIndex(sample.SpeciesA) == relationship.Key.FeederSeed
+                ? sample.SpeciesA : sample.SpeciesB;
+            var consumerBeds = beds.Where(b => !b.IsPot
+                && consumerPatches.Contains((b.Estate, b.PatchOrdinal))).ToList();
+            var demand = consumerBeds.Count(b => b.Latest?.SpeciesIndex == species);
 
-                if (demand > 0)
-                {
-                    text += $" - replant needs {demand}, {supply} in bags";
-                    if (supply >= demand)
-                    {
-                        text += " - covered";
-                    }
-                    else
-                    {
-                        // Short: the feeder's ripe window against the consumer's replant
-                        // moment says whether the chain is late or merely lean.
-                        attention = true;
-                        var feederKeys = relationship
-                            .Select(r => (r.feeder.Estate, r.feeder.PatchOrdinal)).Distinct().ToList();
-                        var feederWindow = CombinedWindow(beds.Where(b => !b.IsPot
-                            && feederKeys.Contains((b.Estate, b.PatchOrdinal))), tables);
-                        var consumerWindow = CombinedWindow(consumerBeds, tables);
-                        if (feederWindow is { } f && consumerWindow is { } c)
-                        {
-                            text += $" - feeder ripens {fmt(f.Earliest, f.Latest)}, "
-                                    + (f.Earliest <= c.Earliest ? "before" : "after")
-                                    + " the replant";
-                        }
-                    }
-                }
+            if (inventory is null || demand == 0)
+            {
+                tips.Add(new Tip(TipKind.Bottleneck, fallback));
+                continue;
+            }
+
+            var supply = inventory.CountOf(relationship.Key.FeederSeed);
+            var text = $"{consumerLabel} replant needs {demand} {feederName} seeds · {supply} in bags";
+            var attention = false;
+
+            if (supply >= demand)
+            {
+                text += " · covered";
+            }
+            else
+            {
+                // Short: the feeder's ripe window against the consumer's replant moment
+                // says whether the chain is late or merely lean.
+                attention = true;
+                var feederKeys = relationship
+                    .Select(r => (r.feeder.Estate, r.feeder.PatchOrdinal)).Distinct().ToList();
+                var feederWindow = CombinedWindow(beds.Where(b => !b.IsPot
+                    && feederKeys.Contains((b.Estate, b.PatchOrdinal))), tables);
+                var consumerWindow = CombinedWindow(consumerBeds, tables);
+                text += feederWindow is { } f && consumerWindow is { } c
+                    ? $" · feeder {feederLabel} ripens "
+                      + (f.Earliest <= c.Earliest ? "before" : "after")
+                      + $" the replant: {fmt(f.Earliest, f.Latest)}"
+                    : $" · feeder is {feederLabel}";
             }
 
             tips.Add(new Tip(TipKind.Bottleneck, text, attention));
