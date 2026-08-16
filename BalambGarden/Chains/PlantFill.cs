@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using ECommons;
+using ECommons.Automation.UIInput;
 using ECommons.DalamudServices;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using FFXIVClientStructs.FFXIV.Component.GUI;
@@ -208,12 +209,12 @@ internal static unsafe partial class PlantFlow
                 return false;
             }
 
-            if (!ClickComponentNode(picker, node))
-            {
-                why = "Confirm carries no click event";
-                return false;
-            }
-
+            // ECommons' own click, not an imitation: it replays the OwnerNode's FIRST
+            // registered event whatever its type - buttons actuate on ButtonClick, not
+            // MouseClick (08-16: a hand-rolled MouseClick replay on the collision child
+            // 'succeeded' and moved nothing; Sam's manual Cancel receipted the real
+            // event: 'receive ButtonClick param=5').
+            button->ClickAddonButton(picker);
             why = "";
             return true;
         }
@@ -257,63 +258,6 @@ internal static unsafe partial class PlantFlow
             // an empty/short list and hands the picker back to the player.
             Plugin.Log.Warning($"[Fill] node walk failed: {ex.Message}");
         }
-    }
-
-    /// <summary>
-    /// Clicks a component node by replaying the node's OWN registered MouseClick event
-    /// through the addon - event type and param both come from the game's event manager,
-    /// so there is no magic number here to be wrong about. This is ECommons'
-    /// <c>ClickAddonButton</c> pattern with the event-type walk kept, so a node whose
-    /// first event is a hover does not get fired as if it were a click. False = this node
-    /// has no click to replay; the caller fails closed.
-    /// </summary>
-    private static bool ClickComponentNode(AtkUnitBase* addon, AtkComponentNode* node)
-    {
-        if (node == null)
-            return false;
-
-        try
-        {
-            var resNode = &node->AtkResNode;
-            if (Replay(addon, resNode))
-                return true;
-
-            // Buttons can register their click on a collision child rather than on the
-            // component node itself. Still the node's own event, still no constants.
-            var component = node->Component;
-            if (component == null)
-                return false;
-
-            var uld = component->UldManager;
-            for (var i = 0; i < uld.NodeListCount; i++)
-            {
-                var child = uld.NodeList[i];
-                if (child != null && Replay(addon, child))
-                    return true;
-            }
-
-            return false;
-        }
-        catch (Exception ex)
-        {
-            Plugin.Log.Warning($"[Fill] click failed: {ex.Message}");
-            return false;
-        }
-    }
-
-    private static bool Replay(AtkUnitBase* addon, AtkResNode* node)
-    {
-        if (!node->IsEventRegistered(AtkEventType.MouseClick))
-            return false;
-
-        var evt = node->AtkEventManager.Event;
-        while (evt != null && evt->State.EventType != AtkEventType.MouseClick)
-            evt = evt->NextEvent;
-        if (evt == null)
-            return false;
-
-        addon->ReceiveEvent(AtkEventType.MouseClick, (int)evt->Param, evt, null);
-        return true;
     }
 
     private static string TextOf(AtkTextNode* text)
