@@ -1,0 +1,46 @@
+# Roster recon - 2026-08-15 20:38-20:42 (9 presses: 4 estates in/out pairs + chambers + rando negative)
+# Instrument: ReconProbe.DumpAccessRoster @ 2d6a33f. FINDINGS FIRST, representative blocks after.
+#
+# F1 DIRECT HOUSEID EQUALITY HOLDS - roster row HouseId == GetCurrentHouseId() byte-for-byte
+#    at all four estates, outside AND inside. Matching is `==`. No masking, no decoding.
+# F2 Roster = exactly the 4 estates, identical from every location (incl. rooms, incl. rando's).
+#    Row-level Ward/Plot are DISPLAY-form and only populated for shared estates (own estates: 0/0)
+#    - never use them; the embedded HouseId is always complete and raw.
+# F3 Chambers are NOT a roster row; GetOwnedHouseId(PersonalChambers) == the HouseId read standing
+#    in room 7 (0x0037015401CB0039). Room-bit mask receipt: hall 0x...000B0039 vs chambers
+#    0x...01CB0039 (room bits isolated in that byte pair).
+# F4 HasHousePermissions() = INDOORS bool. False outside at EVERY estate (incl. own house, incl.
+#    Chelsea's where grants provably exist); True inside all four. Useless for outdoor gardening
+#    advisory - DEMOTED as a GardenRights source.
+# F5 Negative clean: rando plot (raw W3 P50 Shirogane, 0x0037028100030032) matches nothing in
+#    roster or owned reads.
+# F6 0xFFFFFFFFFFFFFFFF = the game's "none" (empty SharedEstate[1] slot).
+#
+# The four roster estate rows (identical every press; gil varies by distance only):
+[Roster] row aetheryte=165 territory=979 estateType=ApartmentRoom(6) ward=0 plot=0 subIndex=128 sharedHouse=False apartment=True
+[Roster]   houseId=0x003703D307470080 territory=979 world=55 ward=7 plot=0 room=29 isApartment=True apartmentDivision=0
+[Roster] row aetheryte=97 territory=641 estateType=PersonalEstate(2) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False
+[Roster]   houseId=0x0037028100030033 territory=641 world=55 ward=3 plot=51 room=0 isApartment=False
+[Roster] row aetheryte=57 territory=340 estateType=FreeCompanyEstate(0) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False
+[Roster]   houseId=0x00370154000B0039 territory=340 world=55 ward=11 plot=57 room=0 isApartment=False
+[Roster] row aetheryte=60 territory=340 estateType=SharedEstate(4) ward=12 plot=33 subIndex=1 sharedHouse=True apartment=False
+[Roster]   houseId=0x00370154000B0020 territory=340 world=55 ward=11 plot=32 room=0 isApartment=False
+#
+# Owned reads (identical every press):
+[Roster] owned FreeCompanyEstate: 0x00370154000B0039
+[Roster] owned PersonalChambers: 0x0037015401CB0039
+[Roster] owned PersonalEstate: 0x0037028100030033
+[Roster] owned SharedEstate[0]: 0x00370154000B0020
+[Roster] owned SharedEstate[1]: 0xFFFFFFFFFFFFFFFF
+[Roster] owned ApartmentRoom: 0x003703D307470080
+#
+# The nine "here" lines (the equality + HasHousePermissions receipts):
+20:38:28 here: currentHouseId=0x00370154000B0020 ward=11 plot=32 room=0 inside=False hasHousePermissions=False   # Chelsea outside
+20:38:50 here: currentHouseId=0x00370154000B0020 inside=True hasHousePermissions=True  indoor=SAME               # Chelsea inside
+20:39:40 here: currentHouseId=0x00370154000B0039 ward=11 plot=57 room=0 inside=False hasHousePermissions=False   # FC yard
+20:39:50 here: currentHouseId=0x00370154000B0039 inside=True hasHousePermissions=True  indoor=SAME               # FC hall
+20:40:07 here: currentHouseId=0x0037015401CB0039 ward=11 plot=57 room=7 inside=True hasHousePermissions=True     # FC chambers (room 7)
+20:40:36 here: currentHouseId=0x0037028100030033 ward=3 plot=51 room=0 inside=False hasHousePermissions=False    # Papa's outside (OWN house: still False)
+20:41:03 here: currentHouseId=0x0037028100030033 inside=True hasHousePermissions=True  indoor=SAME               # Papa's inside
+20:41:47 here: currentHouseId=0x003703D307470080 ward=7 plot=-128 room=29 inside=True hasHousePermissions=True   # Apartment
+20:42:42 here: currentHouseId=0x0037028100030032 ward=3 plot=50 room=0 inside=False hasHousePermissions=False    # RANDO (negative - matches nothing)
