@@ -49,20 +49,27 @@ public static class PipelineReader
     }
 
     public static IReadOnlyList<Tip> Tips(
-        IReadOnlyList<ClaimedBed> beds, DomainTables tables, DateTimeOffset now)
+        IReadOnlyList<ClaimedBed> beds, DomainTables tables, DateTimeOffset now,
+        Func<EstateKey, string>? nameOf = null)
     {
+        var name = nameOf ?? (k => k.DisplayLabel());
         var tips = new List<Tip>();
         var intents = RecognizeIntents(beds, tables);
 
-        // Stock: one line per PATCH, naming every product that pair can yield.
-        foreach (var patch in intents.GroupBy(i => (i.Estate, i.PatchOrdinal, i.SpeciesA, i.SpeciesB)))
+        // Stock: three patches running the same cross are ONE fact about the garden -
+        // one line per (estate, pair), patches listed together (08-16 Sam: 13 lines of
+        // the tab restating the same census).
+        foreach (var pair in intents.GroupBy(i => (i.Estate, i.SpeciesA, i.SpeciesB)))
         {
-            var products = string.Join(" or ", patch
-                .OrderBy(i => i.ResultSeedId)
-                .Select(i => tables.CropBySeedId(i.ResultSeedId)?.Name ?? $"seed {i.ResultSeedId}"));
+            var products = string.Join(" or ", pair
+                .Select(i => i.ResultSeedId)
+                .Distinct()
+                .OrderBy(seed => seed)
+                .Select(seed => tables.CropBySeedId(seed)?.Name ?? $"seed {seed}"));
+            var patches = PatchList(pair.Select(i => i.PatchOrdinal));
             tips.Add(new Tip(TipKind.Stock,
-                $"{patch.Key.Estate.DisplayLabel()} patch {patch.Key.PatchOrdinal + 1}: " +
-                $"{tables.SpeciesName(patch.Key.SpeciesA)} x {tables.SpeciesName(patch.Key.SpeciesB)} " +
+                $"{name(pair.Key.Estate)} {patches}: " +
+                $"{tables.SpeciesName(pair.Key.SpeciesA)} x {tables.SpeciesName(pair.Key.SpeciesB)} " +
                 $"-> {products}"));
         }
 
@@ -79,24 +86,37 @@ public static class PipelineReader
                 .Select(consumer => (feeder, consumer)))
             .GroupBy(r => (
                 FeederEstate: r.feeder.Estate,
-                FeederPatch: r.feeder.PatchOrdinal,
                 FeederSeed: r.feeder.ResultSeedId,
-                ConsumerEstate: r.consumer.Estate,
-                ConsumerPatch: r.consumer.PatchOrdinal));
+                ConsumerEstate: r.consumer.Estate));
 
+        // One line per real relationship: every feeder PATCH of the same (estate, seed,
+        // consumer) is the same supply edge - the patches list together.
         foreach (var relationship in relationships)
         {
-            var feeder = relationship.First().feeder;
             var products = string.Join(" or ", relationship
                 .Select(r => r.consumer.ResultSeedId)
                 .Distinct()
                 .OrderBy(seed => seed)
                 .Select(seed => tables.CropBySeedId(seed)?.Name ?? "?"));
-            var feederName = tables.CropBySeedId(feeder.ResultSeedId)?.Name ?? "?";
+            var feederName = tables.CropBySeedId(relationship.Key.FeederSeed)?.Name ?? "?";
+            var feederPatches = PatchList(relationship.Select(r => r.feeder.PatchOrdinal));
             tips.Add(new Tip(TipKind.Bottleneck,
                 $"{feederName} seeds feed the {products} patch " +
-                $"({relationship.Key.ConsumerEstate.DisplayLabel()}) - feeder is " +
-                $"{feeder.Estate.DisplayLabel()} patch {feeder.PatchOrdinal + 1}"));
+                $"({name(relationship.Key.ConsumerEstate)}) - feeder is " +
+                $"{name(relationship.Key.FeederEstate)} {feederPatches}"));
+        }
+
+        // "patch 2" / "patches 1-3" / "patches 1, 3": contiguous ordinals compress to a
+        // range, gaps stay honest as a list. Display is 1-based like everywhere else.
+        static string PatchList(IEnumerable<int> ordinals)
+        {
+            var sorted = ordinals.Distinct().OrderBy(o => o).Select(o => o + 1).ToList();
+            if (sorted.Count == 1)
+                return $"patch {sorted[0]}";
+            var contiguous = sorted.Last() - sorted.First() == sorted.Count - 1;
+            return contiguous
+                ? $"patches {sorted.First()}-{sorted.Last()}"
+                : $"patches {string.Join(", ", sorted)}";
         }
 
         // Anomaly: a patch that is one bed away from a clean A/B alternation.
@@ -117,7 +137,7 @@ public static class PipelineReader
                 (kv.Key % 2 == 0 && kv.Value != evenGroups[0].Key) ||
                 (kv.Key % 2 == 1 && kv.Value != oddGroups[0].Key)).Key;
             tips.Add(new Tip(TipKind.Anomaly,
-                $"{patch.Key.Estate.DisplayLabel()} patch {patch.Key.PatchOrdinal + 1} " +
+                $"{name(patch.Key.Estate)} patch {patch.Key.PatchOrdinal + 1} " +
                 $"bed {offSlot + 1} breaks the alternation - intentional?"));
         }
 

@@ -88,6 +88,45 @@ public class PipelineTests
         Assert.Contains(bottlenecks, t => t.Text.Contains("Thavnairian Onion"));
     }
 
+    // Three FC patches all running the same cross - the real household shape (08-16).
+    private static List<ClaimedBed> HouseholdWithTriplicateFc()
+    {
+        var beds = new List<ClaimedBed>();
+        beds.AddRange(Patch(SamHouse, 0, 1038, 0x24, 0x2C, stage: 3));    // Kukuru x Curiel
+        beds.AddRange(Patch(FcHouse, 0, 1293, 0x31, 0x11, stage: 1));     // Krakka x Mirror
+        beds.AddRange(Patch(FcHouse, 1, 1294, 0x31, 0x11, stage: 1));
+        beds.AddRange(Patch(FcHouse, 2, 1295, 0x31, 0x11, stage: 1));
+        return beds;
+    }
+
+    [Fact] // three patches running the same cross are ONE fact - one stock line, not three
+    public void SamePairPatchesCollapseIntoOneStockLine()
+    {
+        var tips = PipelineReader.Tips(HouseholdWithTriplicateFc(), T, Now);
+        var fcStock = tips.Where(t => t.Kind == TipKind.Stock && t.Text.Contains("Krakka")).ToList();
+        Assert.Single(fcStock);
+        Assert.Contains("patches 1-3", fcStock[0].Text);
+    }
+
+    [Fact] // three feeder patches of one relationship are ONE bottleneck line
+    public void SameRelationshipFeedersCollapseIntoOneLine()
+    {
+        var tips = PipelineReader.Tips(HouseholdWithTriplicateFc(), T, Now);
+        var bottlenecks = tips.Where(t => t.Kind == TipKind.Bottleneck
+            && t.Text.Contains("Curiel Root seeds feed")).ToList();
+        Assert.Single(bottlenecks);
+        Assert.Contains("patches 1-3", bottlenecks[0].Text);
+    }
+
+    [Fact] // tips speak the names the tabs wear, not ward-plot serial numbers
+    public void TipsUseTheCallersEstateNames()
+    {
+        var tips = PipelineReader.Tips(Household(), T, Now,
+            k => k == SamHouse ? "Sam's Place" : k == FcHouse ? "FC Estate" : "Chelsea's");
+        Assert.Contains(tips, t => t.Text.Contains("Sam's Place"));
+        Assert.DoesNotContain(tips, t => t.Text.Contains("Ward"));
+    }
+
     [Fact] // one bed off-pattern: anomaly, phrased as a question, never a correction
     public void BrokenAlternationIsAnAnomaly()
     {

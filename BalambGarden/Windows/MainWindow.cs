@@ -1292,7 +1292,11 @@ public class MainWindow : Window, IDisposable
     /// people to stop reading the panel that matters.</summary>
     private static void DrawTipsTab(DateTimeOffset now)
     {
-        var tips = PipelineReader.Tips(Plugin.Garden.Census.LedgerBeds, Plugin.Tables, now);
+        // Tips speak the names the tabs wear - a renamed estate is "Papa's Place" in
+        // every sentence, never its ward-plot serial number.
+        var tips = PipelineReader.Tips(Plugin.Garden.Census.LedgerBeds, Plugin.Tables, now,
+            key => Plugin.Garden.Ledger.Estates.FirstOrDefault(e => e.Key == key)?.DisplayName
+                   ?? key.DisplayLabel());
 
         var label = tips.Count > 0 ? $"Tips ({tips.Count})###tips" : "Tips###tips";
         using var tab = ImRaii.TabItem(label);
