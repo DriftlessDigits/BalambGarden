@@ -72,6 +72,43 @@ public class RollupTests
         Assert.Null(Rollups.ArrivalNudge(Chelsea, rollups));
     }
 
+    // Same patch, one pre-ripe sighting of the named species. 0x32 Thavnairian Onion grows
+    // in 240h, 0x31 Krakka Root in 72h - two clocks in one bed row.
+    private static ClaimedBed BedWithSpecies(int slot, ushort species)
+    {
+        var bed = new ClaimedBed
+        {
+            Estate = Chelsea, MapKey = 110, PatchOrdinal = 0, BedSlot = slot,
+            LastTended = Now.AddHours(-1),
+        };
+        bed.Observe(new Observation(Now.AddHours(-1), species, 2, ObservationSource.TendReceipt));
+        return bed;
+    }
+
+    [Fact]
+    public void RipeWindowsGroupBySpecies()
+    {
+        const ushort speciesA = 0x32;   // Thavnairian Onion, 240h - the slower crop
+        const ushort speciesB = 0x31;   // Krakka Root, 72h - the faster crop
+
+        // Two species in one patch, different grow clocks -> two entries, earliest first,
+        // and NextRipe agrees with the first entry.
+        var beds = new List<ClaimedBed>
+        {
+            BedWithSpecies(slot: 0, speciesA),   // the slower crop
+            BedWithSpecies(slot: 1, speciesB),   // the faster crop
+            BedWithSpecies(slot: 2, speciesA),   // duplicate species: still one entry
+        };
+
+        var rollup = Assert.Single(Rollups.ForEstate(Chelsea, beds, T, new ClockWiltSource(), Now));
+
+        Assert.Equal(2, rollup.RipeBySpecies.Count);
+        Assert.Equal(speciesB, rollup.RipeBySpecies[0].SpeciesIndex);
+        Assert.Equal(speciesA, rollup.RipeBySpecies[1].SpeciesIndex);
+        Assert.True(rollup.RipeBySpecies[0].Window.Earliest <= rollup.RipeBySpecies[1].Window.Earliest);
+        Assert.Equal(rollup.RipeBySpecies[0].Window, rollup.NextRipe);
+    }
+
     private static ClaimedBed Pot(int mapKey, byte stage, double tendedHoursAgo)
     {
         var pot = new ClaimedBed

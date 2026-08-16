@@ -4,10 +4,12 @@ using BalambGarden.Engine.Ledger;
 
 namespace BalambGarden.Engine.Derivations;
 
+public sealed record SpeciesRipe(ushort SpeciesIndex, EtaWindow Window);
+
 public sealed record PatchRollup(
     EstateKey Estate, int PatchOrdinal, bool IsPots,
     int Claimed, int Ripe, int Due, int Overdue, int Danger, int Unknown,
-    EtaWindow? NextRipe);
+    EtaWindow? NextRipe, IReadOnlyList<SpeciesRipe> RipeBySpecies);
 
 public static class Rollups
 {
@@ -25,7 +27,7 @@ public static class Rollups
             .Select(g =>
             {
                 int ripe = 0, due = 0, overdue = 0, danger = 0, unknown = 0;
-                EtaWindow? nextRipe = null;
+                var ripeBySpecies = new Dictionary<ushort, EtaWindow>();
                 foreach (var bed in g)
                 {
                     var latest = bed.Latest;
@@ -49,13 +51,20 @@ public static class Rollups
                         case WaterState.Unknown: unknown++; break;
                     }
 
-                    if (!isRipe && crop is not null
+                    if (!isRipe && latest is not null && crop is not null
                         && StageModel.RipeWindow(bed.Ring, crop.GrowHours) is { } window
-                        && (nextRipe is null || window.Earliest < nextRipe.Earliest))
-                        nextRipe = window;
+                        && (!ripeBySpecies.TryGetValue(latest.SpeciesIndex, out var held)
+                            || window.Earliest < held.Earliest))
+                        ripeBySpecies[latest.SpeciesIndex] = window;
                 }
+
+                var speciesRipe = ripeBySpecies
+                    .Select(kv => new SpeciesRipe(kv.Key, kv.Value))
+                    .OrderBy(s => s.Window.Earliest)
+                    .ToList();
                 return new PatchRollup(estate, g.Key.PatchOrdinal, g.Key.IsPot,
-                    g.Count(), ripe, due, overdue, danger, unknown, nextRipe);
+                    g.Count(), ripe, due, overdue, danger, unknown,
+                    speciesRipe.Count == 0 ? null : speciesRipe[0].Window, speciesRipe);
             })
             .OrderBy(r => r.IsPots).ThenBy(r => r.PatchOrdinal)
             .ToList();
