@@ -32,13 +32,43 @@ internal static unsafe partial class PlantFlow
     /// a miss is a refusal, never a guess at a node id.</summary>
     internal const string ConfirmLabel = "Confirm";
 
-    /// <summary>Between two driven actions. The same human-tempo argument the chains
-    /// make: a fill that lands its items in one frame is not a person using a menu.</summary>
-    internal const int FillPaceMS = 400;
+    /// <summary>Between two driven actions, jittered. The same human-tempo argument the
+    /// chains make: a fill that lands its items in one frame is not a person using a menu.</summary>
+    internal const int FillPaceMS = 600;
+    internal const int FillJitterMS = 250;
+
+    /// <summary>Before the FIRST action after the picker opens. A person spends a beat
+    /// reaching for the inventory, and the game agrees: an immediate UseItem got "unable
+    /// to execute at this time" live (08-16, Sam) - the picker reads ready before the
+    /// interaction transition has finished.</summary>
+    internal const int FillSettleMS = 1_200;
 
     /// <summary>How long one fill step gets before the driver hands the picker back.
     /// Short on purpose: the fallback is the player, who is already standing there.</summary>
-    internal const int FillStepBudgetMS = 3_000;
+    internal const int FillStepBudgetMS = 4_000;
+
+    /// <summary>Whether the picker's soil (0) / seed (1) slot visibly holds an item -
+    /// the DragDrop component's icon carries the item's icon id once a Use lands. Null =
+    /// the slots could not be read as DragDrops; the caller falls back to trusting the
+    /// Use call and letting Confirm arbitrate.</summary>
+    internal static bool? SlotFilled(AtkUnitBase* picker, int index)
+    {
+        var slots = new List<nint>();
+        CollectComponents(picker, ComponentType.DragDrop, slots, visibleOnly: true);
+        if (slots.Count != 2 || index < 0 || index > 1)
+            return null;
+
+        if (ScreenX(slots[0]) > ScreenX(slots[1]))   // soil left, seed right (capture F2)
+            (slots[0], slots[1]) = (slots[1], slots[0]);
+
+        var drag = (AtkComponentDragDrop*)((AtkComponentNode*)slots[index])->Component;
+        if (drag == null || drag->AtkComponentIcon == null)
+            return null;
+        return drag->AtkComponentIcon->IconId != 0;
+    }
+
+    private static float ScreenX(nint componentNode)
+        => ((AtkComponentNode*)componentNode)->AtkResNode.ScreenX;
 
     internal static bool GardeningReady(out AtkUnitBase* addon)
         => GenericHelpers.TryGetAddonByName(GardeningAddon, out addon)
@@ -252,9 +282,12 @@ internal sealed unsafe class GardeningFill
     private readonly uint seedItemId;
     private readonly string soilName;
     private readonly string seedName;
+    private readonly Random random = new();
     private Step step = Step.UseSoil;
     private DateTime nextActionAt = DateTime.MinValue;
     private DateTime stepDeadline = DateTime.MaxValue;
+    private bool settled;
+    private int usesThisStep;
 
     /// <summary>Why the driver stopped driving, if it did. Non-null means the step is the
     /// human's now - and that is a normal ending, not an error.</summary>
@@ -295,17 +328,27 @@ internal sealed unsafe class GardeningFill
         if (!PlantFlow.GardeningReady(out var picker))
             return;
 
+        // The picker reads ready before the world does (08-16 live: an immediate Use got
+        // "unable to execute at this time"). A person spends this beat reaching for the
+        // inventory anyway.
+        if (!settled)
+        {
+            settled = true;
+            nextActionAt = DateTime.UtcNow.AddMilliseconds(Jitter(PlantFlow.FillSettleMS));
+            return;
+        }
+
         if (stepDeadline == DateTime.MaxValue)
             stepDeadline = DateTime.UtcNow.AddMilliseconds(PlantFlow.FillStepBudgetMS);
 
         switch (step)
         {
             case Step.UseSoil:
-                Use(soilItemId, soilName, Step.UseSeed);
+                Use(picker, slot: 0, soilItemId, soilName, Step.UseSeed);
                 break;
 
             case Step.UseSeed:
-                Use(seedItemId, seedName, Step.PressConfirm);
+                Use(picker, slot: 1, seedItemId, seedName, Step.PressConfirm);
                 break;
 
             case Step.PressConfirm:
@@ -325,20 +368,51 @@ internal sealed unsafe class GardeningFill
         }
     }
 
-    private void Use(uint itemId, string itemName, Step next)
+    /// <summary>One slot's fill, verified where the picker lets us: the slot's own icon
+    /// says whether the Use landed (a refused Use - "unable to execute" - is silent to the
+    /// caller). Landed -> next step; not yet -> re-Use at pace, up to three tries; slots
+    /// unreadable -> one Use on trust and Confirm arbitrates, the original contract.</summary>
+    private void Use(AtkUnitBase* picker, int slot, uint itemId, string itemName, Step next)
     {
-        if (PlantFlow.UseFromInventory(itemId))
+        var filled = PlantFlow.SlotFilled(picker, slot);
+        if (filled == true)
+        {
             Advance(next);
-        else
+            return;
+        }
+
+        if (usesThisStep >= 1 && filled is null)
+        {
+            Advance(next);   // unreadable slots: trust the one call, Confirm decides
+            return;
+        }
+
+        if (usesThisStep >= 3)
+        {
+            Expire($"{itemName} would not go in after {usesThisStep} tries");
+            return;
+        }
+
+        if (!PlantFlow.UseFromInventory(itemId))
+        {
             Expire($"could not Use {itemName} from the bags");
+            return;
+        }
+
+        usesThisStep++;
+        nextActionAt = DateTime.UtcNow.AddMilliseconds(Jitter(PlantFlow.FillPaceMS));
     }
 
     private void Advance(Step next)
     {
         step = next;
-        nextActionAt = DateTime.UtcNow.AddMilliseconds(PlantFlow.FillPaceMS);
+        usesThisStep = 0;
+        nextActionAt = DateTime.UtcNow.AddMilliseconds(Jitter(PlantFlow.FillPaceMS));
         stepDeadline = DateTime.UtcNow.AddMilliseconds(PlantFlow.FillStepBudgetMS);
     }
+
+    private int Jitter(int baseMS)
+        => Math.Max(250, baseMS + (int)(((random.NextDouble() * 2.0) - 1.0) * PlantFlow.FillJitterMS));
 
     /// <summary>A wait that has not paid off yet: keep waiting until the budget is gone,
     /// then hand the picker to the player with the reason it stalled.</summary>
