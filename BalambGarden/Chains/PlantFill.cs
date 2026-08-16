@@ -115,8 +115,13 @@ internal static unsafe partial class PlantFlow
                 return false;
             }
 
-            Plugin.Log.Information($"[Fill] UseItem({itemId}) from {bag} slot {slot}");
-            agent->UseItem(itemId, bag, (uint)slot);
+            // Scrooge's receipted shape (CofferOrchestrator): default args, inventoryType
+            // = Invalid - THE GAME finds the item. Passing the real (bag, slot) routes a
+            // targeted path that demonstrably does nothing here (08-16: three located
+            // Uses, slot icon never moved). The bag scan above stays as the honest
+            // "you don't have one" gate; the call itself names only the item.
+            Plugin.Log.Information($"[Fill] UseItem({itemId}) (in {bag} slot {slot})");
+            agent->UseItem(itemId);
             return true;
         }
         catch (Exception ex)
