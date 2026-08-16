@@ -1320,20 +1320,28 @@ public class MainWindow : Window, IDisposable
 
         ImGui.SameLine();
 
-        // Sow-flow recon: Sam plants by hand with this on, the log records what the
-        // addons actually held. A recording, not a snapshot - so it keeps its own switch.
-        // The choice PERSISTS across reloads (08-15: hot-loads reset the runtime flag and
-        // cost us two captures in one day) - a recording you asked for stays asked-for.
-        var watching = PlantFlow.Watching;
-        if (ImGui.Checkbox("Watch plant flow", ref watching))
+        // Sow-flow recon, SCOPED (Sam's ruling 08-15): the checkbox is a persisted intent
+        // - "record when I'm gardening" - not a raw switch. Armed automatically within
+        // 4.6y of a pot, disarmed on rezone (Plugin.AutoArmWatcher), so captures hold
+        // gardening rather than a night of quest dialogue, and hot-loads forget nothing.
+        var watchIntent = Plugin.Configuration.WatchPlantFlow;
+        if (ImGui.Checkbox("Watch plant flow", ref watchIntent))
         {
-            if (watching)
-                PlantFlow.StartWatching();
-            else
-                PlantFlow.StopWatching();
-            Plugin.Configuration.WatchPlantFlow = watching;
+            Plugin.Configuration.WatchPlantFlow = watchIntent;
             Plugin.Configuration.Save();
+            if (!watchIntent)
+                PlantFlow.StopWatching();
         }
+
+        // The sanity readout (Sam's ask): the checkbox is intent, this is the actual
+        // state, side by side - so "why didn't that capture?" is answered at a glance.
+        ImGui.SameLine();
+        if (PlantFlow.Watching)
+            ImGui.TextColored(Green, "recording");
+        else if (watchIntent)
+            ImGui.TextDisabled($"idle - arms within {Plugin.WatcherArmRangeY:F1}y of a pot, drops on rezone");
+        else
+            ImGui.TextDisabled("off");
 
         ImGui.TextDisabled($"{beds.Count} beds within 40y");
 

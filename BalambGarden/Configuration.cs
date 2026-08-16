@@ -54,10 +54,11 @@ public class Configuration : IPluginConfiguration
     /// has always been, so turning this off costs nothing but the convenience.</summary>
     public bool AutoFillPicker { get; set; } = true;
 
-    /// <summary>Whether the plant-flow recon watcher is recording. Persisted because the
-    /// runtime flag dies on every hot-load (08-15: two captures lost in one day to reset
-    /// toggles) - a recording you asked for stays asked-for until you say otherwise. Only
-    /// read by debug builds; Release carries no watcher to start.</summary>
+    /// <summary>The plant-flow recon INTENT: "record when I'm gardening." Debug builds arm
+    /// the watcher within 4.6y of a pot and drop it on rezone (Sam's ruling 08-15), so a
+    /// capture holds gardening rather than a night of quest dialogue. Persisted because
+    /// the runtime flag dies on every hot-load (two captures lost in one day to reset
+    /// toggles). Release carries no watcher at all.</summary>
     public bool WatchPlantFlow { get; set; }
 
     /// <summary>How far the working patch sweep looks, in yalms. Sam's ruling 08-14 set the

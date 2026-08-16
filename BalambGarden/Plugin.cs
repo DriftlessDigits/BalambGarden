@@ -105,10 +105,10 @@ public sealed class Plugin : IDalamudPlugin
         Game.ObtainWatch.Start();
 
 #if DEBUG
-        // A recording the user asked for survives hot-loads (08-15: reset toggles cost two
-        // captures in one day). The checkbox writes this flag; startup honors it.
-        if (Configuration.WatchPlantFlow)
-            Chains.PlantFlow.StartWatching();
+        // Scoped recording: the persisted flag means "arm near pots", and a rezone ends
+        // the scene a recording was scoped to. The proximity check in OnFrameworkUpdate
+        // does the arming, so a hot-load next to a pot re-arms within seconds.
+        Svc.ClientState.TerritoryChanged += OnTerritoryChanged;
 #endif
 
         // Add a simple message to the log with level set to information
@@ -124,6 +124,9 @@ public sealed class Plugin : IDalamudPlugin
         PluginInterface.UiBuilder.OpenConfigUi -= ToggleConfigUi;
         PluginInterface.UiBuilder.OpenMainUi -= ToggleMainUi;
         Svc.Framework.Update -= OnFrameworkUpdate;
+#if DEBUG
+        Svc.ClientState.TerritoryChanged -= OnTerritoryChanged;
+#endif
         Game.ObtainWatch.Stop();
 #if DEBUG
         // A watcher left registered would outlive the plugin its callback belongs to.
@@ -152,7 +155,51 @@ public sealed class Plugin : IDalamudPlugin
         if (!PlayerState.IsLoaded)
             return;
         Game.CensusPump.Tick();
+#if DEBUG
+        AutoArmWatcher();
+#endif
     }
+
+#if DEBUG
+    /// <summary>How close to a pot counts as "about to garden" (Sam's spec, 08-15).
+    /// Internal so the recon readout can quote the real number, not a copy of it.</summary>
+    internal const float WatcherArmRangeY = 4.6f;
+
+    private DateTime nextWatcherCheckUtc = DateTime.MinValue;
+
+    /// <summary>Scoped recording (Sam's ruling 08-15): with the config flag on, the
+    /// plant-flow watcher arms itself when a pot is within reach and disarms on every
+    /// rezone/teleport - so captures hold gardening, not a night of quest dialogue.
+    /// Debug builds only; Release has no watcher at all.</summary>
+    private void AutoArmWatcher()
+    {
+        if (!Configuration.WatchPlantFlow || Chains.PlantFlow.Watching)
+            return;
+        if (DateTime.UtcNow < nextWatcherCheckUtc)
+            return;
+        nextWatcherCheckUtc = DateTime.UtcNow.AddSeconds(2);
+
+        foreach (var pot in Game.ObjectSensor.NearbyPots())
+        {
+            if (pot.Distance > WatcherArmRangeY)
+                continue;
+            Chains.PlantFlow.StartWatching();
+            Log.Information($"[PlantRecon] auto-armed - {pot.Name} at {pot.Distance:F1}y");
+            return;
+        }
+    }
+
+    private void OnTerritoryChanged(ushort territory)
+    {
+        // A rezone ends the scene the recording was scoped to; the proximity check
+        // re-arms it at the next pot. Manual watching (flag off) is untouched.
+        if (Configuration.WatchPlantFlow && Chains.PlantFlow.Watching)
+        {
+            Chains.PlantFlow.StopWatching();
+            Log.Information("[PlantRecon] auto-disarmed - rezone");
+        }
+    }
+#endif
 
     private void OnCommand(string command, string args)
     {
