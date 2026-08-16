@@ -222,6 +222,124 @@ internal static unsafe class ReconProbe
         }
     }
 
+    /// <summary>
+    /// The access roster, side by side with where we are standing - the Permission
+    /// Architecture's load-bearing capture (spec: Balamb Garden - Permission Architecture,
+    /// 2026-08-15). The spec claims a teleport-list row matches the current estate by
+    /// DIRECT HouseId equality; this dump is what proves or breaks that, one press per
+    /// estate. Three views of the same fact are printed so any disagreement is visible
+    /// in a single capture block:
+    /// (1) every estate-shaped teleport-list row, raw (HouseId hex beside the game's
+    ///     own decode of it),
+    /// (2) the current location's HouseId as the sensors read it right here,
+    /// (3) HousingManager's owned-estate answers per estate type (the corroborating
+    ///     read - a roster row and an owned-house answer that disagree is a finding).
+    /// <para>Estate-shaped filter is deliberately wide (ward, plot, sub-index, or a
+    /// nonzero HouseId - ANY of them): FreeCompanyEstate is enum value ZERO, so nothing
+    /// here may treat a zero as "not an estate". Rows the filter passes over are counted
+    /// out loud, never silently dropped.</para>
+    /// </summary>
+    internal static void DumpAccessRoster()
+    {
+        try
+        {
+            var telepo = FFXIVClientStructs.FFXIV.Client.Game.UI.Telepo.Instance();
+            if (telepo == null)
+            {
+                Plugin.Log.Information("[Roster] Telepo: null - no roster read possible");
+                return;
+            }
+            if (!ECommons.GameHelpers.Player.Available)
+            {
+                Plugin.Log.Information("[Roster] no local player - refresh would be a lie, refusing");
+                return;
+            }
+
+            // The refresh contract (Dalamud's own IAetheryteList does exactly this before
+            // every enumeration): the list is stale until asked, and a null back means
+            // the game refused - which is itself the capture.
+            if (telepo->UpdateAetheryteList() == null)
+            {
+                Plugin.Log.Information("[Roster] UpdateAetheryteList returned null - game refused the refresh");
+                return;
+            }
+
+            var total = 0;
+            var estateRows = 0;
+            foreach (var row in telepo->TeleportList)
+            {
+                total++;
+                var estateShaped =
+                    row.Ward > 0 || row.Plot > 0 || row.SubIndex > 0 || row.HouseId.Id != 0;
+                if (!estateShaped)
+                    continue;
+                estateRows++;
+
+                var houseId = row.HouseId;
+                Plugin.Log.Information(
+                    $"[Roster] row aetheryte={row.AetheryteId} territory={row.TerritoryId} "
+                    + $"estateType={row.EstateType}({(int)row.EstateType}) "
+                    + $"ward={row.Ward} plot={row.Plot} subIndex={row.SubIndex} "
+                    + $"sharedHouse={row.IsSharedHouse} apartment={row.IsApartment} "
+                    + $"gil={row.GilCost}");
+                Plugin.Log.Information(
+                    $"[Roster]   houseId=0x{houseId.Id:X16} territory={houseId.TerritoryTypeId} "
+                    + $"world={houseId.WorldId} ward={houseId.WardIndex} plot={houseId.PlotIndex} "
+                    + $"room={houseId.RoomNumber} isApartment={houseId.IsApartment} "
+                    + $"apartmentDivision={houseId.ApartmentDivision} isWorkshop={houseId.IsWorkshop}");
+            }
+            Plugin.Log.Information(
+                $"[Roster] teleport list: {total} rows, {estateRows} estate-shaped (rest are plain aetherytes)");
+
+            // (2) Where we are standing, by the same identity the roster rows carry.
+            // GetCurrentHouseId is the general read; the indoor one is printed too when it
+            // applies, because which of them equals the roster row IS the masking question.
+            var housing = HousingManager.Instance();
+            if (housing == null)
+            {
+                Plugin.Log.Information("[Roster] here: HousingManager null (not in a housing area)");
+            }
+            else
+            {
+                var current = housing->GetCurrentHouseId();
+                Plugin.Log.Information(
+                    $"[Roster] here: currentHouseId=0x{current.Id:X16} "
+                    + $"ward={housing->GetCurrentWard()} plot={housing->GetCurrentPlot()} "
+                    + $"room={housing->GetCurrentRoom()} inside={housing->IsInside()} "
+                    + $"hasHousePermissions={housing->HasHousePermissions()}");
+                if (housing->IsInside())
+                {
+                    var indoor = housing->GetCurrentIndoorHouseId();
+                    Plugin.Log.Information($"[Roster] here: indoorHouseId=0x{indoor.Id:X16}");
+                }
+            }
+
+            // (3) The corroborating read: what the client says we own/hold, per estate
+            // type. SharedEstate takes a slot index (two slots exist); everything else
+            // ignores it. An all-F answer is the game's own "none".
+            if (housing != null)
+            {
+                LogOwned(EstateType.FreeCompanyEstate, 0);
+                LogOwned(EstateType.PersonalChambers, 0);
+                LogOwned(EstateType.PersonalEstate, 0);
+                LogOwned(EstateType.SharedEstate, 0);
+                LogOwned(EstateType.SharedEstate, 1);
+                LogOwned(EstateType.ApartmentRoom, 0);
+            }
+        }
+        catch (Exception ex)
+        {
+            Plugin.Log.Warning($"[Roster] roster dump failed: {ex}");
+        }
+
+        static void LogOwned(EstateType type, int sharedIndex)
+        {
+            var id = HousingManager.GetOwnedHouseId(type, sharedIndex);
+            var label = type == EstateType.SharedEstate ? $"{type}[{sharedIndex}]" : $"{type}";
+            Plugin.Log.Information($"[Roster] owned {label}: 0x{id.Id:X16}");
+        }
+    }
+
     /// <summary>Hex-dumps the first bytes of each nearby bed's native GameObject.</summary>
     internal static void DumpBedStructs()
     {

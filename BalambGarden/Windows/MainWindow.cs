@@ -1390,6 +1390,7 @@ public class MainWindow : Window, IDisposable
     {
         Plugin.Log.Information("[Recon] ===== capture start =====");
         ReconProbe.LogHousingLocation();
+        ReconProbe.DumpAccessRoster();
         ReconProbe.DumpHousingRecords();
         ReconProbe.DumpBedStructs();
 
