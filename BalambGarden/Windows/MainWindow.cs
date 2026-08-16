@@ -75,10 +75,11 @@ public class MainWindow : Window, IDisposable
     private uint plantSoilId;
     private uint plantSeedId;
 
-    // The pot sweep's last refusal, shown briefly beside its button: a refusal never
-    // starts a run, so it has no chain report to live in.
-    private string potSweepNotice = "";
-    private DateTime potSweepNoticeUntil;
+    // A sweep's last refusal, shown briefly beside the button that was pressed (owner
+    // says which one): a refusal never starts a run, so it has no chain report to live in.
+    private string sweepNotice = "";
+    private string sweepNoticeOwner = "";
+    private DateTime sweepNoticeUntil;
 
     // Arrival selection. lastHere is where we were on the previous frame; when it changes,
     // the new estate's tab takes the selection for exactly one frame. Selecting every
@@ -533,8 +534,8 @@ public class MainWindow : Window, IDisposable
         ImGui.SameLine();
         DrawRollupSummary(rollup);
 
-        if (rollup.IsPots && isHere && rollup.Ripe > 0)
-            DrawPotSweepButton(beds, actionable);
+        if (rollup.IsPots && isHere)
+            DrawPotVerbs(beds, actionable);
 
         if (patch is not null)
             DrawPatchVerbs(record, patch, actionable);
@@ -800,6 +801,23 @@ public class MainWindow : Window, IDisposable
                 plugin.Launched(plugin.TendChain);
             }
 
+            // The pots' one-press sweep, outdoors (08-16 Sam: "make outdoor match").
+            // Same gate as the pot row: it exists only when something ripe is here to act
+            // on. Beds still growing are left out of the plan, not a reason to refuse.
+            var anyRipe = Plugin.Garden.Census.LedgerBeds.Any(b =>
+                b.Estate == record.Key && !b.IsPot && b.PatchOrdinal == patch.Ordinal
+                && b.Latest?.Stage == 4);
+            if (anyRipe)
+            {
+                ImGui.SameLine();
+                if (ImGui.SmallButton("Replant ripe"))
+                    LaunchPatchReplant(record, patch);
+                if (actionable && ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+                    ImGui.SetTooltip("Harvest + replant every ripe bed with the same crop."
+                        + "\nSeeds from the ledger, topsoil from your bags. Beds still"
+                        + "\ngrowing are left alone.");
+            }
+
             ImGui.SameLine();
             var openHere = cyclePatch == (record.Key, patch.Ordinal);
             if (ImGui.SmallButton(openHere ? "Cycle (close)" : "Cycle..."))
@@ -818,6 +836,62 @@ public class MainWindow : Window, IDisposable
 
         BusyTip();
         UnrosteredTip(actionable);
+        DrawSweepNotice($"patch{patch.Ordinal}");
+    }
+
+    /// <summary>The patch twin of the pot sweep, one press: same-as-harvested plan off
+    /// the ledger, ripe-or-empty beds only (a bed mid-growth is left out, exactly as the
+    /// pot sweep leaves unripe pots alone - never a refusal), topsoil from the bags under
+    /// the same "the bag is the plan" rule. Everything else is the existing patch cycle:
+    /// CycleChain's own pre-flight still guards the run, so a shortage refuses in the
+    /// player's terms before the first click.</summary>
+    private unsafe void LaunchPatchReplant(EstateRecord record, PatchGroup patch)
+    {
+        var owner = $"patch{patch.Ordinal}";
+
+        // The freshest possible read: ripeness decides which beds are in, same as pots.
+        CensusPump.SightNow();
+
+        var plan = ReplantPlan.DefaultFor(record.Key, patch.Ordinal);
+        if (Plugin.Garden.Census.BoundKey(record.Key, patch.Ordinal) is { } mapKey
+            && CensusPump.LastOutdoor.TryGetValue(mapKey, out var readings))
+        {
+            foreach (var slot in plan.Seeds.Keys.ToList())
+            {
+                if (readings.FirstOrDefault(r => r.Slot == slot) is { Occupied: true, Stage: < 4 })
+                    plan.Seeds.Remove(slot);
+            }
+        }
+
+        // DefaultFor pre-fills FIRST topsoil found - right for a panel a human confirms,
+        // not for a press nobody reviews. The one-press path holds the stricter rule.
+        var bags = new BagInventory();
+        var soils = Plugin.Tables.Soils
+            .Select(s => (s.ItemId, s.Name, Count: bags.CountOf(s.ItemId)))
+            .Where(s => s.Count > 0)
+            .ToList();
+        if (soils.Count == 0)
+        {
+            SweepNotice(owner, "no topsoil in bags - nothing to replant with");
+            return;
+        }
+
+        if (soils.Count > 1)
+        {
+            SweepNotice(owner, "more than one topsoil in bags ("
+                + string.Join(", ", soils.Select(s => s.Name)) + ") - use Cycle... to pick one");
+            return;
+        }
+
+        plan.SoilItemId = soils[0].ItemId;
+        if (CycleChain.PreflightError(patch, plan) is { } refusal)
+        {
+            SweepNotice(owner, refusal);
+            return;
+        }
+
+        plugin.CycleChain.Run(patch, plan);
+        plugin.Launched(plugin.CycleChain);
     }
 
     /// <summary>A patch in front of you with nothing recorded in it. No rollup can exist
@@ -1055,14 +1129,26 @@ public class MainWindow : Window, IDisposable
         UnrosteredTip(actionable);
     }
 
-    /// <summary>"Cycle ripe" on the Pots rollup line: harvest + replant every ripe pot
-    /// with what it already grows, one press. Seed comes from the species table (flowers
-    /// carry the join like crops, 08-16), soil from the bags ("the bag is the plan",
-    /// ruling 08-16). Anything underivable is skipped by name in the run report; a refusal
-    /// (no soil, two soils, no bag room) does nothing and says why beside the button.</summary>
-    private void DrawPotSweepButton(List<ClaimedBed> beds, bool actionable)
+    /// <summary>The pot verbs row, shaped like a patch's (08-16 Sam: the sweep had
+    /// drifted inline onto the rollup while every outdoor verb lives indented under its
+    /// header). "Replant ripe" = harvest + replant every ripe pot with what it already
+    /// grows, one press: seed from the species table (flowers carry the join like crops,
+    /// 08-16), soil from the bags ("the bag is the plan"). Underivable pots are skipped
+    /// by name in the run report; a refusal (no soil, two soils, no bag room) does
+    /// nothing and says why beside the button.</summary>
+    private void DrawPotVerbs(List<ClaimedBed> beds, bool actionable)
     {
-        ImGui.SameLine();
+        // In reach is the whole gate: standing outside, the indoor pot objects are not
+        // in the object table at all, so the row honestly vanishes rather than offering
+        // a press that cannot act (08-16 Sam: "don't show it if I'm not in range").
+        var pots = ObjectSensor.AllPots();
+        var ripeInReach = beds.Any(b =>
+            b.IsPot && b.Latest?.Stage == 4
+            && pots.FindIndex(p => p.MapKey == b.MapKey && p.InReach) >= 0);
+        if (!ripeInReach)
+            return;
+
+        using var indent = ImRaii.PushIndent();
         using (ImRaii.Disabled(plugin.AnyChainBusy || !actionable))
         {
             // "Replant", not "Cycle": Cycle is the verb where you PICK the seed; this one
@@ -1077,11 +1163,7 @@ public class MainWindow : Window, IDisposable
         BusyTip();
         UnrosteredTip(actionable);
 
-        if (potSweepNotice.Length > 0 && DateTime.UtcNow < potSweepNoticeUntil)
-        {
-            ImGui.SameLine();
-            ImGui.TextColored(Amber, potSweepNotice);
-        }
+        DrawSweepNotice("pots");
     }
 
     private unsafe void LaunchPotSweep(List<ClaimedBed> beds)
@@ -1104,13 +1186,13 @@ public class MainWindow : Window, IDisposable
         var plan = PlanPotCycles(candidates);
         if (plan.Refusal is { } refusal)
         {
-            SweepNotice(refusal);
+            SweepNotice("pots", refusal);
             return;
         }
 
         if (plan.Jobs.Count == 0)
         {
-            SweepNotice(plan.Skips.Count > 0 ? plan.Skips[0] : "nothing ripe to cycle");
+            SweepNotice("pots", plan.Skips.Count > 0 ? plan.Skips[0] : "nothing ripe to cycle");
             return;
         }
 
@@ -1131,10 +1213,20 @@ public class MainWindow : Window, IDisposable
         return PotCyclePlanner.Plan(candidates, soils, new BagInventory(), free, Plugin.Tables);
     }
 
-    private void SweepNotice(string text)
+    private void SweepNotice(string owner, string text)
     {
-        potSweepNotice = text;
-        potSweepNoticeUntil = DateTime.UtcNow.AddSeconds(6);
+        sweepNotice = text;
+        sweepNoticeOwner = owner;
+        sweepNoticeUntil = DateTime.UtcNow.AddSeconds(6);
+    }
+
+    private void DrawSweepNotice(string owner)
+    {
+        if (sweepNoticeOwner != owner || sweepNotice.Length == 0
+            || DateTime.UtcNow >= sweepNoticeUntil)
+            return;
+        ImGui.SameLine();
+        ImGui.TextColored(Amber, sweepNotice);
     }
 
     /// <summary>One pot's one-click cycle-with-itself: the sweep's rules applied to a
@@ -1152,7 +1244,7 @@ public class MainWindow : Window, IDisposable
             return;
         }
 
-        SweepNotice(plan.Refusal
+        SweepNotice("pots", plan.Refusal
             ?? (plan.Skips.Count > 0 ? plan.Skips[0] : "could not derive a replant"));
         if (plantPanelPot != PanelKey(pot) || !plantPanelCycle)
             TogglePlantPanel(pot, cycle: true);
