@@ -75,6 +75,7 @@ internal static unsafe class ReconProbe
         try
         {
             DumpFurnitureVector();
+            DumpPotDiscriminator();
             DumpDataMap();
             DumpBedGimmicks();
         }
@@ -122,6 +123,49 @@ internal static unsafe class ReconProbe
             logged++;
         }
         Plugin.Log.Information($"[Probe] furniture within 45y: {logged}");
+    }
+
+    /// <summary>The pot-gate receipt (08-16): every furniture entry beside what the game's
+    /// own sheets say it IS - Item name and HousingFurniture category - and what the
+    /// DataMap holds at that index. Phantom pots (this estate: seven of them) decode as
+    /// plants out of non-pot furniture data; the discriminator for sightings-record-pots
+    /// comes off this dump, never off a hardcoded item-id list.</summary>
+    private static void DumpPotDiscriminator()
+    {
+        var furniture = MapSensor.CurrentFurniture();
+        if (furniture == null)
+        {
+            Plugin.Log.Information("[Probe] pot-gate: no furniture manager");
+            return;
+        }
+
+        var items = Plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.Item>();
+        var housing = Plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.HousingFurniture>();
+        var map = MapSensor.ReadRawEntries();
+
+        Plugin.Log.Information("[Probe] pot-gate: furniture x sheets x datamap");
+        foreach (var pointer in furniture->FurnitureVector)
+        {
+            var item = pointer.Value;
+            if (item == null || item->Id == 0)
+                continue;
+
+            // Which sheet does item->Id key? Print both answers; the log gets to say.
+            var asItem = items.GetRowOrDefault(item->Id);
+            var asHousing = housing.GetRowOrDefault(item->Id);
+
+            var line = $"[Probe] pot-gate idx={item->Index} id={item->Id}"
+                + $" | Item: {(asItem is { } i ? i.Name.ExtractText() : "-")}"
+                + $" | HousingFurniture: {(asHousing is { } h
+                    ? $"cat={h.HousingItemCategory} item={h.Item.ValueNullable?.Name.ExtractText() ?? "-"}"
+                    : "-")}";
+
+            line += map.TryGetValue(item->Index, out var bytes)
+                ? $" | datamap: word0=0x{(ushort)(bytes[0] | (bytes[1] << 8)):X} b2={bytes[2]} b3={bytes[3]}"
+                : " | datamap: none";
+
+            Plugin.Log.Information(line);
+        }
     }
 
     /// <summary>
