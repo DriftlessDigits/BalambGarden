@@ -2,7 +2,7 @@
   "Author": "DriftlessDigits",
   "Name": "Balamb Garden",
   "Punchline": "Your garden, tended. SeeDs, watered.",
-  "Description": "Gardening companion (early preview): stand by your garden and water a whole patch - or every patch in reach - with one button, at a patient human pace. Keeps a ledger of what's planted where and when you last watered it. /garden to open. Timers and more on the way.",
+  "Description": "Gardening companion: stand by your garden and water, harvest, or replant a whole patch - or every ripe pot in the house - with one button, at a patient human pace. Keeps a ledger of what's planted where, when you watered it, and when it will be ripe (down to the afternoon). Tips watch your crossbreed pipelines and say when a chain is about to starve. /garden to open.",
   "ApplicableVersion": "any",
   "Tags": [
     "Utility",
