@@ -11,4 +11,10 @@
     <ProjectReference Include="..\ECommons\ECommons\ECommons.csproj" />
     <ProjectReference Include="..\BalambGarden.Engine\BalambGarden.Engine.csproj" />
   </ItemGroup>
+
+  <ItemGroup>
+    <!-- Dev loads read images/icon.png beside the DLL (IconUrl is only fetched for
+         repo installs), and DalamudPackager folds the folder into the release zip. -->
+    <Content Include="images\icon.png" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
 </Project>
