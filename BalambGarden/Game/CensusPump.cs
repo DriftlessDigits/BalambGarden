@@ -135,13 +135,27 @@ internal static class CensusPump
         if (EstateSensor.IsInside())
         {
             LastIndoor = MapSensor.ReadIndoor();
+
+            // Option A (08-16 ruling): rows the pot-gate has disowned die here, not by
+            // seven right-clicks. Only keys SEEN this read and turned away are pruned - a
+            // key absent from the map entirely (pot picked up, map not settled) is not
+            // evidence against its row.
+            var pruned = 0;
+            if (CoveredHere && MapSensor.LastPhantomKeys.Count > 0)
+            {
+                pruned = Plugin.Garden.Census.PrunePhantomPots(estate, MapSensor.LastPhantomKeys);
+                if (pruned > 0)
+                    Plugin.Log.Information(
+                        $"[Census] pot-gate pruned {pruned} phantom pot row(s) at {estate.DisplayLabel()}");
+            }
+
             foreach (var (key, pot) in LastIndoor)
             {
                 landed += Plugin.Garden.Census.OnMapSighting(estate, key,
                     [new BedReading(0, pot.SpeciesIndex, pot.Stage, pot.Extra, pot.Occupied)], now,
                     isPot: true, mayRecord: CoveredHere);
             }
-            if (CoveredHere && landed > 0)
+            if (CoveredHere && (landed > 0 || pruned > 0))
                 Plugin.Garden.Save();
         }
         else

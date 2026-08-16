@@ -64,7 +64,7 @@ internal static unsafe class MapSensor
             var item = pointer.Value;
             if (item == null || item->Id == 0)
                 continue;
-            placements.Add(new FurniturePlacement(item->Index, item->Position));
+            placements.Add(new FurniturePlacement(item->Index, item->Position, item->Id));
         }
         return placements;
     }
@@ -118,17 +118,31 @@ internal static unsafe class MapSensor
         return result;
     }
 
-    /// <summary>Indoor: single-plant pot entries only; multi-slot furniture rejected
-    /// by the decoder (aquariums etc., 08-13).</summary>
+    /// <summary>DataMap keys seen on the last indoor read that the pot-gate turned away -
+    /// furniture holding plant-shaped bytes without being a flowerpot (vases, aquariums,
+    /// canvases; seven of them at the pot house, 08-16). The census prunes any ledger row
+    /// still wearing one of these keys.</summary>
+    internal static IReadOnlyList<int> LastPhantomKeys { get; private set; } = [];
+
+    /// <summary>Indoor: flowerpot entries only. The pot-gate decides membership by
+    /// furniture id (08-16 receipt - decor vases and aquariums DECODE pot-shaped, so the
+    /// decoder cannot be the gate); the decoder then reads what the gated pots hold.</summary>
     internal static Dictionary<int, PotReading> ReadIndoor()
     {
         var result = new Dictionary<int, PotReading>();
         UnreadableCount = 0;
+        LastPhantomKeys = [];
         if (!EstateSensor.IsInside())
             return result;
 
-        foreach (var (key, bytes) in ReadRawEntries())
+        var raw = ReadRawEntries();
+        var potKeys = PotGate.Keys(ReadFurniture(), FlowerpotSheet.Ids);
+        LastPhantomKeys = raw.Keys.Where(k => !potKeys.Contains(k)).ToList();
+
+        foreach (var (key, bytes) in raw)
         {
+            if (!potKeys.Contains(key))
+                continue;
             try
             {
                 if (MapFormat.DecodeIndoorEntry(

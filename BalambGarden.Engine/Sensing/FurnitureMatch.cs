@@ -2,9 +2,11 @@ using System.Numerics;
 
 namespace BalambGarden.Engine.Sensing;
 
-/// <summary>One entry of the housing furniture vector, reduced to the two fields identity
-/// needs: where it stands and which slot of the vector it is.</summary>
-public readonly record struct FurniturePlacement(int Index, Vector3 Position);
+/// <summary>One entry of the housing furniture vector, reduced to the fields identity
+/// needs: where it stands, which slot of the vector it is, and what the game says it IS
+/// (the raw furniture id - Id + 0x20000 keys the HousingFurniture sheet, receipted 08-16).
+/// Id defaults to 0 (unknown) because position matching has no use for it.</summary>
+public readonly record struct FurniturePlacement(int Index, Vector3 Position, uint Id = 0);
 
 /// <summary>
 /// Matching a placed object on the screen to its entry in the housing furniture vector,

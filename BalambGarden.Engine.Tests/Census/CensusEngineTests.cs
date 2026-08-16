@@ -166,6 +166,45 @@ public class CensusEngineTests
         Assert.Empty(store.Beds);
     }
 
+    [Fact] // pot-gate (08-16): when the furniture vector disowns a key, its row and binding die
+    public void PrunePhantomPotsRemovesRowsAndBindings()
+    {
+        var store = new LedgerStore();
+        var engine = new CensusEngine(store);
+        var estate = new EstateKey(344, 24, 41);
+        foreach (var key in new[] { 126, 127, 128, 129, 117, 194 })   // 4 real + 2 phantoms
+            engine.OnMapSighting(estate, key, [new BedReading(0, 44, 3, 0, true)],
+                T0, isPot: true, mayRecord: true);
+
+        var pruned = engine.PrunePhantomPots(estate, [117, 194]);
+
+        Assert.Equal(2, pruned);
+        Assert.Equal(4, store.Beds.Count);
+        Assert.All(store.Beds, b => Assert.Contains(b.MapKey, new[] { 126, 127, 128, 129 }));
+        Assert.Null(engine.BoundKey(estate, 117, isPot: true));
+        Assert.NotNull(engine.BoundKey(estate, 126, isPot: true));
+    }
+
+    [Fact] // prune speaks the pot namespace only - outdoor twins of the number are untouched
+    public void PrunePhantomPotsLeavesOutdoorAndOtherEstatesAlone()
+    {
+        var store = new LedgerStore();
+        var engine = new CensusEngine(store);
+        var estate = new EstateKey(344, 24, 41);
+        var elsewhere = new EstateKey(649, 4, 52);
+        engine.Bind(estate, 0, mapKey: 117);   // outdoor patch that happens to share the number
+        engine.OnReceipt(new ReceiptEvent(estate, 0, 0, ReceiptVerb.Tend, 0x41, 2, T0));
+        engine.OnMapSighting(elsewhere, 117, [new BedReading(0, 44, 3, 0, true)],
+            T0, isPot: true, mayRecord: true);
+
+        var pruned = engine.PrunePhantomPots(estate, [117]);
+
+        Assert.Equal(0, pruned);
+        Assert.Equal(2, store.Beds.Count);
+        Assert.Equal(117, engine.BoundKey(estate, 0));
+        Assert.NotNull(engine.BoundKey(elsewhere, 117, isPot: true));
+    }
+
     [Fact]
     public void ReceiptAlwaysCreatesTheRow()   // the ClaimOnAction=false path is gone
     {

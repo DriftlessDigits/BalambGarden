@@ -92,6 +92,20 @@ public sealed class CensusEngine(LedgerStore ledger)
 
     public void Abandon(ClaimedBed bed) => ledger.Beds.Remove(bed);
 
+    /// <summary>The pot-gate prune (08-16 ruling: option A, no seven-click funeral). A key
+    /// the furniture vector has disowned - present in the DataMap, not backed by a
+    /// flowerpot - loses its pot row and pot binding here. Pot namespace only: an outdoor
+    /// patch sharing the number, and every other estate, are not spoken for. Returns how
+    /// many rows died; the caller decides whether that is worth a save.</summary>
+    public int PrunePhantomPots(EstateKey estate, IReadOnlyCollection<int> phantomKeys)
+    {
+        var pruned = ledger.Beds.RemoveAll(b =>
+            b.Estate == estate && b.IsPot && phantomKeys.Contains(b.MapKey));
+        foreach (var key in phantomKeys)
+            ledger.Bindings.Remove(estate.BindingKey(key, isPot: true));
+        return pruned;
+    }
+
     private static ObservationSource SourceFor(ReceiptVerb verb) => verb switch
     {
         ReceiptVerb.Tend => ObservationSource.TendReceipt,
