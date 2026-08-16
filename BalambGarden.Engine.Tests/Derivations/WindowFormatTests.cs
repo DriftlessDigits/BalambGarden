@@ -22,6 +22,23 @@ public class WindowFormatTests
         }.Distinct().Count());
     }
 
+    [Fact] // the reader's clock choice: same windows, 12h face, am/pm on the number
+    public void TwelveHourClockFormatsWithAmPm()
+    {
+        var lo = DateTimeOffset.Parse("2026-08-14T08:45:00Z");
+        try
+        {
+            WindowFormat.TwelveHourClock = true;
+            Assert.Equal("Fri 8:45am-12:03pm", WindowFormat.Range(lo, lo.AddMinutes(198)));
+            Assert.Equal("Fri 8:45am-Sat 1:15am", WindowFormat.Range(lo, lo.AddHours(16.5)));
+            Assert.Equal("Fri 8:45am", WindowFormat.Range(lo, lo));
+        }
+        finally
+        {
+            WindowFormat.TwelveHourClock = false;
+        }
+    }
+
     [Fact] // a zero-width window is a time, not a range pretending to have two ends
     public void ZeroWidthWindowPrintsOneTime()
     {

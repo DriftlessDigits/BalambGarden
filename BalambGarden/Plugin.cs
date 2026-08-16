@@ -66,6 +66,10 @@ public sealed class Plugin : IDalamudPlugin
 
         Configuration = PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
 
+        // The Engine formats time; the app owns the preference. Set once here, and the
+        // config window re-sets it on change.
+        BalambGarden.Engine.Derivations.WindowFormat.TwelveHourClock = Configuration.TwelveHourClock;
+
         Tables = BalambGarden.Engine.Domain.DomainTables.Load();
         Log.Information($"[Engine] domain tables loaded: sunflower check = {Tables.SpeciesName(103)}");
 

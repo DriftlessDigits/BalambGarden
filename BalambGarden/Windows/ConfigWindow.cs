@@ -116,6 +116,14 @@ public class ConfigWindow : Window, IDisposable
             }
         }
 
+        var twelveHour = configuration.TwelveHourClock;
+        if (ImGui.Checkbox("12-hour clock - ripe windows read 8:45am, not 08:45", ref twelveHour))
+        {
+            configuration.TwelveHourClock = twelveHour;
+            configuration.Save();
+            BalambGarden.Engine.Derivations.WindowFormat.TwelveHourClock = twelveHour;
+        }
+
         var trail = configuration.TrailEnabled;
         if (ImGui.Checkbox("Debug trail - append receipts to trail.jsonl", ref trail))
         {

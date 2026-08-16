@@ -805,11 +805,14 @@ public class MainWindow : Window, IDisposable
             if (!table.Success)
                 return;
 
-            ImGui.TableSetupColumn("Bed", ImGuiTableColumnFlags.WidthFixed, 120f);
+            // Fixed columns auto-fit their content (no hardcoded width); Plant is the one
+            // flex column, so dragging the window wider stretches the name, never a
+            // clipped ripe window or a half-drawn verb.
+            ImGui.TableSetupColumn("Bed", ImGuiTableColumnFlags.WidthFixed);
             ImGui.TableSetupColumn("Plant", ImGuiTableColumnFlags.WidthStretch);
-            ImGui.TableSetupColumn("Stage", ImGuiTableColumnFlags.WidthFixed, 90f);
-            ImGui.TableSetupColumn("Ripe", ImGuiTableColumnFlags.WidthFixed, 150f);
-            ImGui.TableSetupColumn("##verbs", ImGuiTableColumnFlags.WidthFixed, 150f);
+            ImGui.TableSetupColumn("Stage", ImGuiTableColumnFlags.WidthFixed);
+            ImGui.TableSetupColumn("Ripe", ImGuiTableColumnFlags.WidthFixed);
+            ImGui.TableSetupColumn("##verbs", ImGuiTableColumnFlags.WidthFixed);
             ImGui.TableHeadersRow();
 
             DrawBedRows(record, beds, pots, patch, isHere, actionable, now);

@@ -48,6 +48,10 @@ public class Configuration : IPluginConfiguration
     /// room; the name we speak under in it is theirs to set.</summary>
     public string NudgeLabel { get; set; } = "Balamb";
 
+    /// <summary>How the dashboard tells time: 12-hour with am/pm (Sam's default) or 24h.
+    /// Display only - every stored timestamp stays UTC regardless.</summary>
+    public bool TwelveHourClock { get; set; } = true;
+
     /// <summary>Whether the chain fills the planting picker's soil and seed slots itself
     /// instead of standing there while you do it by hand. It is a switch and not a promise:
     /// a fill that cannot proceed stops driving and the step becomes the hand-filled one it

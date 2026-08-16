@@ -31,19 +31,30 @@ public static class WindowFormat
             "estimated: one sighting only, so the window is the whole stage band",
     };
 
+    /// <summary>How the reader tells time. The app sets this from its config at load and
+    /// on change; the Engine only formats. False (24h) is the default so the choice is
+    /// always an explicit act of the app, never a formatting surprise.</summary>
+    public static bool TwelveHourClock;
+
+    private static string Clock(DateTimeOffset t, bool withDay)
+    {
+        var day = withDay ? t.ToString("ddd ", CultureInfo.InvariantCulture) : "";
+        return TwelveHourClock
+            ? day + t.ToString("h:mm", CultureInfo.InvariantCulture) + (t.Hour < 12 ? "am" : "pm")
+            : day + t.ToString("HH:mm", CultureInfo.InvariantCulture);
+    }
+
     /// <summary>A window in the reader's own clock - the caller converts to local time
     /// first, because the Engine has no business knowing where the player lives. A
     /// zero-width window prints as the single time it actually is, never as a range
     /// pretending to have two ends.</summary>
     public static string Range(DateTimeOffset earliest, DateTimeOffset latest)
     {
-        var lo = earliest.ToString("ddd HH:mm", CultureInfo.InvariantCulture);
+        var lo = Clock(earliest, withDay: true);
         if (latest <= earliest)
             return lo;
 
-        var hi = earliest.Date == latest.Date
-            ? latest.ToString("HH:mm", CultureInfo.InvariantCulture)
-            : latest.ToString("ddd HH:mm", CultureInfo.InvariantCulture);
+        var hi = Clock(latest, withDay: earliest.Date != latest.Date);
         return $"{lo}-{hi}";
     }
 
