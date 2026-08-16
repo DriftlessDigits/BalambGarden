@@ -29,9 +29,9 @@ public class WindowFormatTests
         try
         {
             WindowFormat.TwelveHourClock = true;
-            Assert.Equal("Fri 8:45am-12:03pm", WindowFormat.Range(lo, lo.AddMinutes(198)));
-            Assert.Equal("Fri 8:45am-Sat 1:15am", WindowFormat.Range(lo, lo.AddHours(16.5)));
-            Assert.Equal("Fri 8:45am", WindowFormat.Range(lo, lo));
+            Assert.Equal("Fri 8:45 am - 12:03 pm", WindowFormat.Range(lo, lo.AddMinutes(198)));
+            Assert.Equal("Fri 8:45 am - Sat 1:15 am", WindowFormat.Range(lo, lo.AddHours(16.5)));
+            Assert.Equal("Fri 8:45 am", WindowFormat.Range(lo, lo));
         }
         finally
         {
@@ -51,14 +51,14 @@ public class WindowFormatTests
     public void SameDayRangeDropsTheSecondDayName()
     {
         var lo = DateTimeOffset.Parse("2026-08-14T18:00:00Z");
-        Assert.Equal("Fri 18:00-23:30", WindowFormat.Range(lo, lo.AddHours(5.5)));
+        Assert.Equal("Fri 18:00 - 23:30", WindowFormat.Range(lo, lo.AddHours(5.5)));
     }
 
     [Fact]
     public void CrossDayRangeNamesBothDays()
     {
         var lo = DateTimeOffset.Parse("2026-08-14T18:00:00Z");
-        Assert.Equal("Fri 18:00-Sat 06:00", WindowFormat.Range(lo, lo.AddHours(12)));
+        Assert.Equal("Fri 18:00 - Sat 06:00", WindowFormat.Range(lo, lo.AddHours(12)));
     }
 
     [Fact] // the surface speaks in day-parts, never minute-precision it doesn't have
@@ -74,7 +74,7 @@ public class WindowFormatTests
     {
         var lo = DateTimeOffset.Parse("2026-08-16T13:47:00-05:00"); // Sun afternoon
         var hi = DateTimeOffset.Parse("2026-08-18T05:46:00-05:00"); // Tue morning
-        Assert.Equal("Sun afternoon-Tue morning", WindowFormat.Coarse(lo, hi));
+        Assert.Equal("Sun afternoon - Tue morning", WindowFormat.Coarse(lo, hi));
     }
 
     [Fact] // same day, same part: one phrase, no range pretending to have two ends

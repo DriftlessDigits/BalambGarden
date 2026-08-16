@@ -40,7 +40,7 @@ public static class WindowFormat
     {
         var day = withDay ? t.ToString("ddd ", CultureInfo.InvariantCulture) : "";
         return TwelveHourClock
-            ? day + t.ToString("h:mm", CultureInfo.InvariantCulture) + (t.Hour < 12 ? "am" : "pm")
+            ? day + t.ToString("h:mm", CultureInfo.InvariantCulture) + (t.Hour < 12 ? " am" : " pm")
             : day + t.ToString("HH:mm", CultureInfo.InvariantCulture);
     }
 
@@ -55,7 +55,7 @@ public static class WindowFormat
             return lo;
 
         var hi = Clock(latest, withDay: earliest.Date != latest.Date);
-        return $"{lo}-{hi}";
+        return $"{lo} - {hi}";
     }
 
     /// <summary>A window as day-parts ("Tue afternoon-Thu afternoon") - the surface's
@@ -76,10 +76,12 @@ public static class WindowFormat
         if (earliest.Date == latest.Date)
             return loPart == hiPart ? $"{loDay} {loPart}" : $"{loDay} {loPart}-{hiPart}";
 
-        // Shared part across days says the part once: "Tue-Thu afternoon".
+        // Shared part across days says the part once: "Tue-Thu afternoon". Different
+        // parts get breathing room around the dash - two multi-word phrases crammed
+        // together read as one.
         return loPart == hiPart
             ? $"{loDay}-{hiDay} {loPart}"
-            : $"{loDay} {loPart}-{hiDay} {hiPart}";
+            : $"{loDay} {loPart} - {hiDay} {hiPart}";
     }
 
     /// <summary>The small hours are "early morning", never a "night" that reads as the
