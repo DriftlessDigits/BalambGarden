@@ -73,6 +73,14 @@ internal sealed unsafe class CycleChain : ChainBase
     /// honest timeout always fires before the task manager's blunt one.</summary>
     private const int HumanStepLimitMS = PlantFlow.HumanFillTimeoutMS + 15_000;
 
+    // Post-run display settle: how long the dashboard read gets to catch up with the
+    // final sow before the run stops waiting on it. Display-only - see AwaitMapSettle.
+    private const int SettleLimitMS = 6_000;
+    private const int SettleStepLimitMS = SettleLimitMS + 4_000;
+    private const int SettlePollMS = 500;
+    private DateTime _settleUntil;
+    private DateTime _nextSettlePoll;
+
     private string _plant = "";
     private string _header = "";
     private DateTime _armedAt;
@@ -260,6 +268,16 @@ internal sealed unsafe class CycleChain : ChainBase
             }
         }
 
+        // The last bed has nobody after it to refresh the map (Chelsea's field report,
+        // 08-16: bed 8 read empty on her screen until "something else" re-read - every
+        // earlier bed gets refreshed by the next bed's work, the final one waits). Poll
+        // the DISPLAY read until every cycled slot shows occupied, then let go: the
+        // receipts landed at each sow's Yes and are already saved - this is only the
+        // dashboard catching up with the ground.
+        var slots = beds.Select(b => b.Slot).ToList();
+        _settleUntil = DateTime.MinValue;
+        TaskManager.Enqueue(() => AwaitMapSettle(mapKey, slots), SettleStepLimitMS, "settle");
+
         var total = beds.Count;
         TaskManager.Enqueue(() =>
         {
@@ -268,6 +286,33 @@ internal sealed unsafe class CycleChain : ChainBase
                 Plugin.Log.Information($"[CycleChain] report: {line}");
             return true;
         }, "report");
+    }
+
+    private bool? AwaitMapSettle(int mapKey, IReadOnlyList<int> slots)
+    {
+        if (_settleUntil == DateTime.MinValue)
+            _settleUntil = DateTime.UtcNow.AddMilliseconds(SettleLimitMS);
+
+        if (DateTime.UtcNow < _nextSettlePoll)
+            return false;
+        _nextSettlePoll = DateTime.UtcNow.AddMilliseconds(SettlePollMS);
+
+        CensusPump.RefreshDisplayOnly();
+        var readings = CensusPump.LastOutdoor.GetValueOrDefault(mapKey);
+        var missing = slots
+            .Where(s => readings?.FirstOrDefault(r => r.Slot == s) is not { Occupied: true })
+            .ToList();
+        if (missing.Count == 0)
+            return true;
+
+        if (DateTime.UtcNow <= _settleUntil)
+            return false;
+
+        // Honest stand-down, never a block: the rows heal on any later read.
+        Note("map still shows bed(s) "
+            + string.Join(", ", missing.Select(s => s + 1))
+            + " empty - the display catches up on the next read");
+        return true;
     }
 
     // ---------------------------------------------------------------- steps

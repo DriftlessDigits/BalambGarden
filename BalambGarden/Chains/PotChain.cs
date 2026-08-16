@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using BalambGarden.Engine.Census;
 using BalambGarden.Engine.Sensing;
 using BalambGarden.Game;
@@ -47,6 +48,13 @@ internal sealed unsafe class PotChain : ChainBase
     private const int MapSettleMS = 4_000;
     private const int MapPollMS = 250;
     private const int BindStepLimitMS = MapSettleMS + 6_000;
+
+    // Post-run display settle (see EnqueueDisplaySettle).
+    private const int SettleLimitMS = 6_000;
+    private const int SettleStepLimitMS = SettleLimitMS + 4_000;
+    private const int SettlePollMS = 500;
+    private DateTime _displaySettleUntil;
+    private DateTime _nextDisplayPoll;
 
     private string _plant = "";
     private string _obtained = "";
@@ -113,6 +121,7 @@ internal sealed unsafe class PotChain : ChainBase
         TaskManager.Enqueue(() => AwaitSow(expectedSeedId), HumanStepLimitMS, "sow");
         TaskManager.Enqueue(() => AwaitPotBind(ReceiptVerb.Plant, "planted"),
             BindStepLimitMS, "identify");
+        EnqueueDisplaySettle([pot.MapKey]);
         Close("pot planted");
     }
 
@@ -136,6 +145,7 @@ internal sealed unsafe class PotChain : ChainBase
         TaskManager.Enqueue(() => AwaitSow(expectedSeedId), HumanStepLimitMS, "sow");
         TaskManager.Enqueue(() => AwaitPotBind(ReceiptVerb.Plant, "planted"),
             BindStepLimitMS, "identify");
+        EnqueueDisplaySettle([pot.MapKey]);
         Close("pot cycled");
     }
 
@@ -170,7 +180,43 @@ internal sealed unsafe class PotChain : ChainBase
                 BindStepLimitMS, "identify");
         }
 
+        EnqueueDisplaySettle(jobs.Select(j => j.Pot.MapKey).ToList());
         Close("pots cycled");
+    }
+
+    /// <summary>The pot twin of CycleChain's post-run settle (same last-actor exposure,
+    /// 08-16 Chelsea field report): the bind polls read the map directly and never touch
+    /// the UI-facing LastIndoor, so a just-replanted pot can sit on a "reads empty" drift
+    /// row until something else sights. Poll the DISPLAY read until every replanted key
+    /// is back in the map, then let go - the receipts landed long ago.</summary>
+    private void EnqueueDisplaySettle(IReadOnlyList<int?> keys)
+    {
+        var wanted = keys.Where(k => k is not null).Select(k => k!.Value).ToList();
+        if (wanted.Count == 0)
+            return;
+
+        _displaySettleUntil = DateTime.MinValue;
+        TaskManager.Enqueue(() =>
+        {
+            if (_displaySettleUntil == DateTime.MinValue)
+                _displaySettleUntil = DateTime.UtcNow.AddMilliseconds(SettleLimitMS);
+
+            if (DateTime.UtcNow < _nextDisplayPoll)
+                return false;
+            _nextDisplayPoll = DateTime.UtcNow.AddMilliseconds(SettlePollMS);
+
+            CensusPump.RefreshDisplayOnly();
+            var missing = wanted.Where(k => !CensusPump.LastIndoor.ContainsKey(k)).ToList();
+            if (missing.Count == 0)
+                return true;
+
+            if (DateTime.UtcNow <= _displaySettleUntil)
+                return false;
+
+            Note($"map still shows pot(s) {string.Join(", ", missing)} empty - "
+                + "the display catches up on the next read");
+            return true;
+        }, SettleStepLimitMS, "settle");
     }
 
     private void Open(PotObject pot)

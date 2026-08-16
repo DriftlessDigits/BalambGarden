@@ -122,6 +122,21 @@ internal static class CensusPump
         }
     }
 
+    /// <summary>Refreshes the UI-facing map reads WITHOUT posting observations. The
+    /// post-run settle poll needs display truth a dozen times in a few seconds, and a
+    /// full sight each poll would flush every bed's eight-slot observation ring and
+    /// take the run's own receipt provenance with it (the PotChain snapshot learned
+    /// this first). Census state is untouched: the receipts already carry the truth.</summary>
+    internal static void RefreshDisplayOnly()
+    {
+        if (EstateSensor.Current() is null)
+            return;
+        if (EstateSensor.IsInside())
+            LastIndoor = MapSensor.ReadIndoor();
+        else
+            LastOutdoor = MapSensor.ReadOutdoor();
+    }
+
     internal static void SightNow()
     {
         var estate = EstateSensor.Current();
