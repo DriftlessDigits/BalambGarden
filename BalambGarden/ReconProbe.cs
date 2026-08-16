@@ -78,11 +78,57 @@ internal static unsafe class ReconProbe
             DumpPotDiscriminator();
             DumpDataMap();
             DumpBedGimmicks();
+            DumpManagerDiff();
         }
         catch (Exception ex)
         {
             Plugin.Log.Warning($"[Probe] housing records dump failed: {ex}");
         }
+    }
+
+    private static byte[]? managerSnapshot;
+
+    /// <summary>The wilt hunt's last unsearched room (Sam's push, 08-16: "hard to believe
+    /// wilting isn't stored in data somewhere" - he was right to push; the DataMap entry
+    /// and the whole 0x1C0 EventObject were both exhausted honestly, but
+    /// HousingObjectManager is 0x12E8 bytes and ClientStructs maps 0x18 of it). Two-press
+    /// isolation: first capture snapshots the manager, the player changes ONE thing
+    /// (water one wilted bed), the next capture prints exactly which bytes moved. Pointer
+    /// churn from the StdMap is expected noise; a per-bed stride correlating with the
+    /// watered slot is the signal.</summary>
+    private static unsafe void DumpManagerDiff()
+    {
+        var furniture = MapSensor.CurrentFurniture();
+        if (furniture == null)
+        {
+            managerSnapshot = null;
+            return;
+        }
+
+        const int Size = 0x12E8;
+        var mgr = (byte*)&furniture->ObjectManager;
+        var now = new byte[Size];
+        for (var i = 0; i < Size; i++)
+            now[i] = mgr[i];
+
+        if (managerSnapshot is { } prev)
+        {
+            var changed = 0;
+            for (var i = 0; i < Size; i++)
+            {
+                if (prev[i] == now[i])
+                    continue;
+                if (changed++ < 200)
+                    Plugin.Log.Information($"[Probe] mgr-diff +0x{i:X4}: {prev[i]:X2} -> {now[i]:X2}");
+            }
+            Plugin.Log.Information($"[Probe] mgr-diff: {changed} byte(s) changed since last capture");
+        }
+        else
+        {
+            Plugin.Log.Information($"[Probe] mgr-diff: baseline snapshot taken (0x{Size:X} bytes)");
+        }
+
+        managerSnapshot = now;
     }
 
     /// <summary>Furniture positions/item ids. The app reads this vector too now
