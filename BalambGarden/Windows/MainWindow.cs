@@ -75,6 +75,11 @@ public class MainWindow : Window, IDisposable
     private uint plantSoilId;
     private uint plantSeedId;
 
+    // The pot sweep's last refusal, shown briefly beside its button: a refusal never
+    // starts a run, so it has no chain report to live in.
+    private string potSweepNotice = "";
+    private DateTime potSweepNoticeUntil;
+
     // Arrival selection. lastHere is where we were on the previous frame; when it changes,
     // the new estate's tab takes the selection for exactly one frame. Selecting every
     // frame would fight the player every time they clicked another tab.
@@ -527,6 +532,9 @@ public class MainWindow : Window, IDisposable
 
         ImGui.SameLine();
         DrawRollupSummary(rollup);
+
+        if (rollup.IsPots && isHere && rollup.Ripe > 0)
+            DrawPotSweepButton(beds, actionable);
 
         if (patch is not null)
             DrawPatchVerbs(record, patch, actionable);
@@ -1047,6 +1055,109 @@ public class MainWindow : Window, IDisposable
         UnrosteredTip(actionable);
     }
 
+    /// <summary>"Cycle ripe" on the Pots rollup line: harvest + replant every ripe pot
+    /// with what it already grows, one press. Seed comes from the species table (flowers
+    /// carry the join like crops, 08-16), soil from the bags ("the bag is the plan",
+    /// ruling 08-16). Anything underivable is skipped by name in the run report; a refusal
+    /// (no soil, two soils, no bag room) does nothing and says why beside the button.</summary>
+    private void DrawPotSweepButton(List<ClaimedBed> beds, bool actionable)
+    {
+        ImGui.SameLine();
+        using (ImRaii.Disabled(plugin.AnyChainBusy || !actionable))
+        {
+            // "Replant", not "Cycle": Cycle is the verb where you PICK the seed; this one
+            // puts the same plant back. The header keeps the row buttons' vocabulary.
+            if (ImGui.SmallButton("Replant ripe"))
+                LaunchPotSweep(beds);
+        }
+
+        if (actionable && ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+            ImGui.SetTooltip("Harvest + replant every ripe pot with the same plant."
+                + "\nSeed comes from its species, soil from your bags.");
+        BusyTip();
+        UnrosteredTip(actionable);
+
+        if (potSweepNotice.Length > 0 && DateTime.UtcNow < potSweepNoticeUntil)
+        {
+            ImGui.SameLine();
+            ImGui.TextColored(Amber, potSweepNotice);
+        }
+    }
+
+    private unsafe void LaunchPotSweep(List<ClaimedBed> beds)
+    {
+        // The freshest possible read: ripeness decides who is in the sweep, and a stale
+        // stage would build the wrong queue (same rule as the patch cycle).
+        CensusPump.SightNow();
+
+        var pots = ObjectSensor.AllPots();
+        var candidates = beds
+            .Where(b => b.IsPot && b.Latest?.Stage == 4)
+            .Select(b =>
+            {
+                var found = pots.FindIndex(p => p.MapKey == b.MapKey);
+                return new PotCycleCandidate(b.MapKey, b.Latest?.SpeciesIndex,
+                    found >= 0 && pots[found].InReach);
+            })
+            .ToList();
+
+        var plan = PlanPotCycles(candidates);
+        if (plan.Refusal is { } refusal)
+        {
+            SweepNotice(refusal);
+            return;
+        }
+
+        if (plan.Jobs.Count == 0)
+        {
+            SweepNotice(plan.Skips.Count > 0 ? plan.Skips[0] : "nothing ripe to cycle");
+            return;
+        }
+
+        var jobs = plan.Jobs
+            .Select(j => (Pot: pots[pots.FindIndex(p => p.MapKey == j.Key)], j.SeedId))
+            .ToList();
+        plugin.PotChain.CycleMany(jobs, plan.SoilItemId, plan.Skips);
+        plugin.Launched(plugin.PotChain);
+    }
+
+    /// <summary>One planner call for sweep and single-row Replant alike - same rules,
+    /// same words, whichever button was pressed.</summary>
+    private static unsafe PotCyclePlan PlanPotCycles(List<PotCycleCandidate> candidates)
+    {
+        var inventory = FFXIVClientStructs.FFXIV.Client.Game.InventoryManager.Instance();
+        var free = inventory == null ? 0 : (int)inventory->GetEmptySlotsInBag();
+        var soils = SoilsInBag().Select(s => new BagSoil(s.ItemId, s.Name, s.Count)).ToList();
+        return PotCyclePlanner.Plan(candidates, soils, new BagInventory(), free, Plugin.Tables);
+    }
+
+    private void SweepNotice(string text)
+    {
+        potSweepNotice = text;
+        potSweepNoticeUntil = DateTime.UtcNow.AddSeconds(6);
+    }
+
+    /// <summary>One pot's one-click cycle-with-itself: the sweep's rules applied to a
+    /// single candidate. Anything the planner cannot derive opens the Cycle picker
+    /// instead, with the reason shown - never a guess, never a dead click.</summary>
+    private void ReplantOne(ClaimedBed bed, PotObject pot)
+    {
+        var plan = PlanPotCycles(
+            [new PotCycleCandidate(bed.MapKey, bed.Latest?.SpeciesIndex, pot.InReach)]);
+
+        if (plan.Jobs.Count == 1)
+        {
+            plugin.PotChain.Cycle(pot, plan.SoilItemId, plan.Jobs[0].SeedId);
+            plugin.Launched(plugin.PotChain);
+            return;
+        }
+
+        SweepNotice(plan.Refusal
+            ?? (plan.Skips.Count > 0 ? plan.Skips[0] : "could not derive a replant"));
+        if (plantPanelPot != PanelKey(pot) || !plantPanelCycle)
+            TogglePlantPanel(pot, cycle: true);
+    }
+
     /// <summary>A pot row's verbs, lit only when the pot object itself is in reach.
     /// Identity is the object's own key (HousingFurnitureIndex, 08-16), so matching the
     /// row to the object is a lookup, not a diff. The list is swept once for the whole
@@ -1091,6 +1202,20 @@ public class MainWindow : Window, IDisposable
                 plugin.Launched(plugin.PotChain);
             }
             UnrosteredTip(actionable);
+
+            // Replant only exists where it can act: a ripe pot. Anywhere else the press
+            // would just be a slower way to hit the harvest refusal.
+            if (bed.Latest?.Stage == 4)
+            {
+                ImGui.SameLine();
+                if (ImGui.SmallButton("Replant"))
+                    ReplantOne(bed, pot);
+                if (actionable && ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+                    ImGui.SetTooltip("Harvest, then replant the same plant - seed from its"
+                        + "\nspecies, soil from your bags. If either can't be derived,"
+                        + "\nthe Cycle picker opens instead.");
+                UnrosteredTip(actionable);
+            }
 
             ImGui.SameLine();
             var cycleOpen = plantPanelPot == PanelKey(pot) && plantPanelCycle;

@@ -139,11 +139,51 @@ internal sealed unsafe class PotChain : ChainBase
         Close("pot cycled");
     }
 
+    /// <summary>The sweep: harvest + replant every pot the planner cleared, one run. The
+    /// jobs arrive derived and resource-checked (<see cref="Engine.Derivations.PotCyclePlanner"/>);
+    /// the skips arrive as the planner's own words and go straight into the report, so the
+    /// run says what it declined and why. A stop lands between verbs, exactly as in a
+    /// single Cycle - each pot's Open re-gates.</summary>
+    internal void CycleMany(
+        IReadOnlyList<(PotObject Pot, uint SeedId)> jobs, uint soilItemId,
+        IReadOnlyList<string> skips)
+    {
+        if (jobs.Count == 0)
+            return;
+        if (!BeginRun(jobs.Count * 2, $"cycling {jobs.Count} pots..."))
+            return;
+
+        foreach (var skip in skips)
+            Note($"skipped {skip}");
+
+        foreach (var (pot, seedId) in jobs)
+        {
+            Open(pot);
+            TaskManager.Enqueue(SelectHarvest, "harvest");
+            TaskManager.Enqueue(AwaitHarvest, HarvestWaitMS, "yield");
+            TaskManager.Enqueue(() => AwaitPotBind(ReceiptVerb.Harvest, "harvested"),
+                BindStepLimitMS, "identify");
+            Open(pot);
+            TaskManager.Enqueue(() => SelectPlant(soilItemId, seedId), "plant");
+            TaskManager.Enqueue(() => AwaitSow(seedId), HumanStepLimitMS, "sow");
+            TaskManager.Enqueue(() => AwaitPotBind(ReceiptVerb.Plant, "planted"),
+                BindStepLimitMS, "identify");
+        }
+
+        Close("pots cycled");
+    }
+
     private void Open(PotObject pot)
     {
-        _potKey = pot.MapKey;
         TaskManager.DelayNext(ApplyJitter(Plugin.Configuration.TendPaceMS));
-        TaskManager.Enqueue(() => CheckStop("the pot"), "gate");
+        // The key is claimed when the gate RUNS, not when the queue is built: a sweep
+        // enqueues every pot's Open up front, and a field set at build time would stamp
+        // every receipt in the run with the last pot's key.
+        TaskManager.Enqueue(() =>
+        {
+            _potKey = pot.MapKey;
+            return CheckStop("the pot");
+        }, "gate");
         TaskManager.Enqueue(() => Interact(pot.Object), "interact");
         TaskManager.Enqueue(AdvanceToMenu, "advance");
     }
