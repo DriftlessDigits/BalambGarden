@@ -127,6 +127,70 @@ public class PipelineTests
         Assert.DoesNotContain(tips, t => t.Text.Contains("Ward"));
     }
 
+    private sealed class FakeInventory(Dictionary<uint, int> counts) : IInventorySource
+    {
+        public int CountOf(uint itemId) => counts.GetValueOrDefault(itemId);
+    }
+
+    private static uint Seed(ushort species) => T.SeedIdBySpeciesIndex(species)!.Value;
+
+    [Fact] // the state join: demand from the layout, supply from bags, shortage = attention
+    public void ShortBottleneckCarriesDemandSupplyAndAttention()
+    {
+        var inv = new FakeInventory(new() { [Seed(0x2C)] = 2, [Seed(0x24)] = 10 });
+        var tips = PipelineReader.Tips(Household(), T, Now, inventory: inv);
+
+        var curiel = tips.Single(t => t.Kind == TipKind.Bottleneck && t.Text.Contains("Curiel Root seeds feed"));
+        Assert.Contains("needs 4", curiel.Text);
+        Assert.Contains("2 in bags", curiel.Text);
+        Assert.True(curiel.Attention);
+
+        var kukuru = tips.Single(t => t.Kind == TipKind.Bottleneck && t.Text.Contains("Royal Kukuru seeds feed"));
+        Assert.Contains("10 in bags", kukuru.Text);
+        Assert.Contains("covered", kukuru.Text);
+        Assert.False(kukuru.Attention);
+    }
+
+    [Fact] // consumer ripe NOW + feeder still growing = the real alarm: feeder lands after
+    public void FeederRipeningAfterTheReplantSaysAfter()
+    {
+        var beds = new List<ClaimedBed>();
+        beds.AddRange(Patch(ChelseaHouse, 0, 110, 0x41, 0x11, stage: 1)); // Fig x Mirror
+        beds.AddRange(Patch(FcHouse, 0, 1293, 0x31, 0x11, stage: 1));     // feeder: growing
+        beds.AddRange(Patch(SamHouse, 0, 1038, 0x24, 0x2C, stage: 4));    // consumer: ripe now
+        var inv = new FakeInventory(new() { [Seed(0x2C)] = 0, [Seed(0x24)] = 0 });
+
+        var tips = PipelineReader.Tips(beds, T, Now, inventory: inv);
+        var curiel = tips.Single(t => t.Kind == TipKind.Bottleneck && t.Text.Contains("Curiel Root seeds feed"));
+        Assert.Contains("after the replant", curiel.Text);
+        Assert.True(curiel.Attention);
+    }
+
+    [Fact] // feeder ripe NOW + consumer still growing = short but the seeds land in time
+    public void FeederRipeningBeforeTheReplantSaysBefore()
+    {
+        var beds = new List<ClaimedBed>();
+        beds.AddRange(Patch(ChelseaHouse, 0, 110, 0x41, 0x11, stage: 1));
+        beds.AddRange(Patch(FcHouse, 0, 1293, 0x31, 0x11, stage: 4));     // feeder: ripe now
+        beds.AddRange(Patch(SamHouse, 0, 1038, 0x24, 0x2C, stage: 1));    // consumer: growing
+        var inv = new FakeInventory(new() { [Seed(0x2C)] = 0, [Seed(0x24)] = 0 });
+
+        var tips = PipelineReader.Tips(beds, T, Now, inventory: inv);
+        var curiel = tips.Single(t => t.Kind == TipKind.Bottleneck && t.Text.Contains("Curiel Root seeds feed"));
+        Assert.Contains("before the replant", curiel.Text);
+    }
+
+    [Fact] // no inventory source = no supply claims at all - fail-closed, never a guess
+    public void NoInventoryMakesNoSupplyClaims()
+    {
+        var tips = PipelineReader.Tips(Household(), T, Now);
+        foreach (var tip in tips.Where(t => t.Kind == TipKind.Bottleneck))
+        {
+            Assert.DoesNotContain("in bags", tip.Text);
+            Assert.False(tip.Attention);
+        }
+    }
+
     [Fact] // one bed off-pattern: anomaly, phrased as a question, never a correction
     public void BrokenAlternationIsAnAnomaly()
     {
@@ -134,7 +198,8 @@ public class PipelineTests
         beds[5].Observe(new Observation(Now.AddHours(-1), 0x31, 1, ObservationSource.TendReceipt));
 
         var tips = PipelineReader.Tips(beds, T, Now);
-        Assert.Contains(tips, t => t.Kind == TipKind.Anomaly);
+        var anomaly = tips.Single(t => t.Kind == TipKind.Anomaly);
+        Assert.True(anomaly.Attention);
     }
 
     [Fact] // a single-species patch is not a cross - no intent, no tips noise

@@ -6,7 +6,17 @@ namespace BalambGarden.Engine.Derivations;
 
 public enum TipKind { Stock, Bottleneck, Anomaly }
 
-public sealed record Tip(TipKind Kind, string Text);
+/// <summary>Attention = this line should be READ (a shortage, an anomaly) - it drives the
+/// tab's "(!)" flag. Stock furniture and covered chains never claim it.</summary>
+public sealed record Tip(TipKind Kind, string Text, bool Attention = false);
+
+/// <summary>What the plugin can see in bags RIGHT NOW. The Engine asks, never caches -
+/// a supply claim is only ever as fresh as the read behind it (ruling 2026-08-16: bags
+/// only, live, honest about scope).</summary>
+public interface IInventorySource
+{
+    int CountOf(uint itemId);
+}
 
 public sealed record CrossIntent(
     EstateKey Estate, int PatchOrdinal, ushort SpeciesA, ushort SpeciesB, uint ResultSeedId);
@@ -50,9 +60,11 @@ public static class PipelineReader
 
     public static IReadOnlyList<Tip> Tips(
         IReadOnlyList<ClaimedBed> beds, DomainTables tables, DateTimeOffset now,
-        Func<EstateKey, string>? nameOf = null)
+        Func<EstateKey, string>? nameOf = null, IInventorySource? inventory = null,
+        Func<DateTimeOffset, DateTimeOffset, string>? formatWindow = null)
     {
         var name = nameOf ?? (k => k.DisplayLabel());
+        var fmt = formatWindow ?? WindowFormat.Coarse;
         var tips = new List<Tip>();
         var intents = RecognizeIntents(beds, tables);
 
@@ -100,10 +112,78 @@ public static class PipelineReader
                 .Select(seed => tables.CropBySeedId(seed)?.Name ?? "?"));
             var feederName = tables.CropBySeedId(relationship.Key.FeederSeed)?.Name ?? "?";
             var feederPatches = PatchList(relationship.Select(r => r.feeder.PatchOrdinal));
-            tips.Add(new Tip(TipKind.Bottleneck,
-                $"{feederName} seeds feed the {products} patch " +
-                $"({name(relationship.Key.ConsumerEstate)}) - feeder is " +
-                $"{name(relationship.Key.FeederEstate)} {feederPatches}"));
+            var text = $"{feederName} seeds feed the {products} patch " +
+                       $"({name(relationship.Key.ConsumerEstate)}) - feeder is " +
+                       $"{name(relationship.Key.FeederEstate)} {feederPatches}";
+            var attention = false;
+
+            // The state join (rulings 2026-08-16): demand from the consumer's actual
+            // layout, supply from the live bag read, feeder ripeness as a DATE only -
+            // crossbreed yield is chance-based, so a future harvest is never a quantity.
+            if (inventory is not null)
+            {
+                var sample = relationship.First().consumer;
+                var species = tables.SeedIdBySpeciesIndex(sample.SpeciesA) == relationship.Key.FeederSeed
+                    ? sample.SpeciesA : sample.SpeciesB;
+                var consumerPatches = relationship
+                    .Select(r => (r.consumer.Estate, r.consumer.PatchOrdinal)).Distinct().ToList();
+                var consumerBeds = beds.Where(b => !b.IsPot
+                    && consumerPatches.Contains((b.Estate, b.PatchOrdinal))).ToList();
+                var demand = consumerBeds.Count(b => b.Latest?.SpeciesIndex == species);
+                var supply = inventory.CountOf(relationship.Key.FeederSeed);
+
+                if (demand > 0)
+                {
+                    text += $" - replant needs {demand}, {supply} in bags";
+                    if (supply >= demand)
+                    {
+                        text += " - covered";
+                    }
+                    else
+                    {
+                        // Short: the feeder's ripe window against the consumer's replant
+                        // moment says whether the chain is late or merely lean.
+                        attention = true;
+                        var feederKeys = relationship
+                            .Select(r => (r.feeder.Estate, r.feeder.PatchOrdinal)).Distinct().ToList();
+                        var feederWindow = CombinedWindow(beds.Where(b => !b.IsPot
+                            && feederKeys.Contains((b.Estate, b.PatchOrdinal))), tables);
+                        var consumerWindow = CombinedWindow(consumerBeds, tables);
+                        if (feederWindow is { } f && consumerWindow is { } c)
+                        {
+                            text += $" - feeder ripens {fmt(f.Earliest, f.Latest)}, "
+                                    + (f.Earliest <= c.Earliest ? "before" : "after")
+                                    + " the replant";
+                        }
+                    }
+                }
+            }
+
+            tips.Add(new Tip(TipKind.Bottleneck, text, attention));
+        }
+
+        // A patch's window as one span: earliest any bed could ripen to latest any bed
+        // might - the whole patch is the unit a Cycle press works, so its replant clock
+        // is the union of its beds'.
+        static EtaWindow? CombinedWindow(IEnumerable<ClaimedBed> patchBeds, DomainTables tables)
+        {
+            EtaWindow? combined = null;
+            foreach (var bed in patchBeds)
+            {
+                if (bed.Latest is not { } latest)
+                    continue;
+                if (tables.CropBySpeciesIndex(latest.SpeciesIndex) is not { } crop)
+                    continue;
+                if (StageModel.RipeWindow(bed.Ring, crop.GrowHours) is not { } window)
+                    continue;
+                combined = combined is { } c
+                    ? new EtaWindow(
+                        window.Earliest < c.Earliest ? window.Earliest : c.Earliest,
+                        window.Latest > c.Latest ? window.Latest : c.Latest,
+                        c.Provenance)
+                    : window;
+            }
+            return combined;
         }
 
         // "patch 2" / "patches 1-3" / "patches 1, 3": contiguous ordinals compress to a
@@ -138,7 +218,8 @@ public static class PipelineReader
                 (kv.Key % 2 == 1 && kv.Value != oddGroups[0].Key)).Key;
             tips.Add(new Tip(TipKind.Anomaly,
                 $"{name(patch.Key.Estate)} patch {patch.Key.PatchOrdinal + 1} " +
-                $"bed {offSlot + 1} breaks the alternation - intentional?"));
+                $"bed {offSlot + 1} breaks the alternation - intentional?",
+                Attention: true));
         }
 
         return tips;

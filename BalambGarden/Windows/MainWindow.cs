@@ -1287,18 +1287,24 @@ public class MainWindow : Window, IDisposable
 
     // ------------------------------------------------------------------ tips
 
-    /// <summary>The pipeline reader's advisory lines, in their own tab. The count only
-    /// appears when there is one - a permanent "Tips (0)" is filler, and filler trains
-    /// people to stop reading the panel that matters.</summary>
+    private static readonly Game.BagInventory BagReader = new();
+
+    /// <summary>The pipeline reader's advisory lines, in their own tab. "(!)" only
+    /// appears when a line wants reading - permanent decoration on a tab label is
+    /// filler, and filler trains people to stop reading the panel that matters.</summary>
     private static void DrawTipsTab(DateTimeOffset now)
     {
         // Tips speak the names the tabs wear - a renamed estate is "Papa's Place" in
         // every sentence, never its ward-plot serial number.
         var tips = PipelineReader.Tips(Plugin.Garden.Census.LedgerBeds, Plugin.Tables, now,
             key => Plugin.Garden.Ledger.Estates.FirstOrDefault(e => e.Key == key)?.DisplayName
-                   ?? key.DisplayLabel());
+                   ?? key.DisplayLabel(),
+            BagReader,
+            (lo, hi) => WindowFormat.Coarse(lo.ToLocalTime(), hi.ToLocalTime()));
 
-        var label = tips.Count > 0 ? $"Tips ({tips.Count})###tips" : "Tips###tips";
+        // "(!)" when something should be READ (ruling 2026-08-16) - the old counter
+        // counted furniture, and a number that is always there stops meaning anything.
+        var label = tips.Any(t => t.Attention) ? "Tips (!)###tips" : "Tips###tips";
         using var tab = ImRaii.TabItem(label);
         if (!tab.Success)
             return;
@@ -1318,7 +1324,10 @@ public class MainWindow : Window, IDisposable
                 TipKind.Bottleneck => "[bottleneck]",
                 _ => "[anomaly]",
             };
-            ImGui.TextDisabled(tag);
+            if (tip.Attention)
+                ImGui.TextColored(Amber, tag);
+            else
+                ImGui.TextDisabled(tag);
             ImGui.SameLine();
             ImGui.TextWrapped(tip.Text);
         }
