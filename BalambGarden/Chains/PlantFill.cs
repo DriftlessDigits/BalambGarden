@@ -47,11 +47,11 @@ internal static unsafe partial class PlantFlow
     /// Short on purpose: the fallback is the player, who is already standing there.</summary>
     internal const int FillStepBudgetMS = 4_000;
 
-    /// <summary>Whether the picker's soil (0) / seed (1) slot visibly holds an item -
-    /// the DragDrop component's icon carries the item's icon id once a Use lands. Null =
-    /// the slots could not be read as DragDrops; the caller falls back to trusting the
-    /// Use call and letting Confirm arbitrate.</summary>
-    internal static bool? SlotFilled(AtkUnitBase* picker, int index)
+    /// <summary>The icon id the picker's soil (0) / seed (1) slot currently shows, read
+    /// off the DragDrop component's own icon. Null = the slots could not be read. An
+    /// EMPTY slot is not necessarily id 0 - the picker draws placeholder glyphs - so the
+    /// caller compares against a baseline taken before any Use, never against zero.</summary>
+    internal static uint? SlotIconId(AtkUnitBase* picker, int index)
     {
         var slots = new List<nint>();
         CollectComponents(picker, ComponentType.DragDrop, slots, visibleOnly: true);
@@ -64,7 +64,7 @@ internal static unsafe partial class PlantFlow
         var drag = (AtkComponentDragDrop*)((AtkComponentNode*)slots[index])->Component;
         if (drag == null || drag->AtkComponentIcon == null)
             return null;
-        return drag->AtkComponentIcon->IconId != 0;
+        return drag->AtkComponentIcon->IconId;
     }
 
     private static float ScreenX(nint componentNode)
@@ -96,9 +96,10 @@ internal static unsafe partial class PlantFlow
     }
 
     /// <summary>The context menu's Use, without the context menu (Sam's receipt: Use on a
-    /// soil/seed while the picker is open fills its slot). True only means the call was
-    /// made - whether an item actually landed is answered by Confirm enabling, which is
-    /// the game's own word for it.</summary>
+    /// soil/seed while the picker is open fills its slot). The item's REAL bag location is
+    /// found first and passed explicitly - a defaulted location can silently Use nothing
+    /// (08-16: 'got to the inventory and then nothing happened'). True only means the call
+    /// was made; whether the item landed is read off the slot's own icon.</summary>
     internal static bool UseFromInventory(uint itemId)
     {
         try
@@ -106,7 +107,16 @@ internal static unsafe partial class PlantFlow
             var agent = AgentInventoryContext.Instance();
             if (agent == null)
                 return false;
-            agent->UseItem(itemId);
+
+            var (bag, slot, found) = FindInBags(itemId);
+            if (!found)
+            {
+                Plugin.Log.Information($"[Fill] item {itemId} is not in the bags");
+                return false;
+            }
+
+            Plugin.Log.Information($"[Fill] UseItem({itemId}) from {bag} slot {slot}");
+            agent->UseItem(itemId, bag, (uint)slot);
             return true;
         }
         catch (Exception ex)
@@ -114,6 +124,34 @@ internal static unsafe partial class PlantFlow
             Plugin.Log.Warning($"[Fill] UseItem({itemId}) failed: {ex.Message}");
             return false;
         }
+    }
+
+    private static (FFXIVClientStructs.FFXIV.Client.Game.InventoryType Bag, int Slot, bool Found)
+        FindInBags(uint itemId)
+    {
+        var manager = FFXIVClientStructs.FFXIV.Client.Game.InventoryManager.Instance();
+        if (manager == null)
+            return (default, 0, false);
+
+        foreach (var bag in new[]
+                 {
+                     FFXIVClientStructs.FFXIV.Client.Game.InventoryType.Inventory1,
+                     FFXIVClientStructs.FFXIV.Client.Game.InventoryType.Inventory2,
+                     FFXIVClientStructs.FFXIV.Client.Game.InventoryType.Inventory3,
+                     FFXIVClientStructs.FFXIV.Client.Game.InventoryType.Inventory4,
+                 })
+        {
+            var container = manager->GetInventoryContainer(bag);
+            if (container == null)
+                continue;
+            for (var i = 0; i < container->Size; i++)
+            {
+                var item = container->GetInventorySlot(i);
+                if (item != null && item->ItemId == itemId)
+                    return (bag, i, true);
+            }
+        }
+        return (default, 0, false);
     }
 
     /// <summary>Presses the picker's Confirm once the game has enabled it. A disabled
@@ -288,6 +326,7 @@ internal sealed unsafe class GardeningFill
     private DateTime stepDeadline = DateTime.MaxValue;
     private bool settled;
     private int usesThisStep;
+    private readonly uint?[] baselineIcon = new uint?[2];
 
     /// <summary>Why the driver stopped driving, if it did. Non-null means the step is the
     /// human's now - and that is a normal ending, not an error.</summary>
@@ -334,6 +373,13 @@ internal sealed unsafe class GardeningFill
         if (!settled)
         {
             settled = true;
+            // The empty picker's slots ARE the baseline - placeholder glyphs mean an
+            // empty slot's icon id is not zero, so "landed" is "changed", never "nonzero".
+            baselineIcon[0] = PlantFlow.SlotIconId(picker, 0);
+            baselineIcon[1] = PlantFlow.SlotIconId(picker, 1);
+            Plugin.Log.Information(
+                $"[Fill] settling; empty-slot icons = {baselineIcon[0]?.ToString() ?? "?"} / "
+                + $"{baselineIcon[1]?.ToString() ?? "?"}");
             nextActionAt = DateTime.UtcNow.AddMilliseconds(Jitter(PlantFlow.FillSettleMS));
             return;
         }
@@ -374,9 +420,13 @@ internal sealed unsafe class GardeningFill
     /// unreadable -> one Use on trust and Confirm arbitrates, the original contract.</summary>
     private void Use(AtkUnitBase* picker, int slot, uint itemId, string itemName, Step next)
     {
-        var filled = PlantFlow.SlotFilled(picker, slot);
+        var current = PlantFlow.SlotIconId(picker, slot);
+        var filled = current is null || baselineIcon[slot] is null
+            ? (bool?)null
+            : current != baselineIcon[slot];
         if (filled == true)
         {
+            Plugin.Log.Information($"[Fill] {itemName} landed (slot icon {baselineIcon[slot]} -> {current})");
             Advance(next);
             return;
         }
