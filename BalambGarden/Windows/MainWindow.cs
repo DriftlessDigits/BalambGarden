@@ -1406,7 +1406,7 @@ public class MainWindow : Window, IDisposable
 
         var seedLabel = plantSeedId == 0
             ? manualOption
-            : Plugin.Tables.CropBySeedId(plantSeedId)?.SeedName ?? $"seed {plantSeedId}";
+            : Plugin.Tables.CropBySeedId(plantSeedId)?.SeedName ?? PlantFlow.ItemName(plantSeedId);
         ImGui.SetNextItemWidth(260f);
         using (var combo = ImRaii.Combo("Seed", seedLabel))
         {
@@ -1419,6 +1419,13 @@ public class MainWindow : Window, IDisposable
                         continue;
                     if (ImGui.Selectable($"{crop.SeedName} ({have} in bag)", crop.SeedId == plantSeedId))
                         plantSeedId = crop.SeedId;
+                }
+                // Flowerpot flower seeds: not in the crop table (outdoor data), so they
+                // come off the bags by the game's own names - see ExtraSeedsInBag.
+                foreach (var seed in ExtraSeedsInBag())
+                {
+                    if (ImGui.Selectable($"{seed.Name} ({seed.Count} in bag)", seed.ItemId == plantSeedId))
+                        plantSeedId = seed.ItemId;
                 }
                 if (ImGui.Selectable(manualOption, plantSeedId == 0))
                     plantSeedId = 0;
@@ -1448,6 +1455,23 @@ public class MainWindow : Window, IDisposable
     /// says ends in "soil". Nothing invented, nothing hardcoded, and a soil we have never
     /// heard of shows up the moment the player buys one.</summary>
     private static unsafe List<(uint ItemId, string Name, int Count)> SoilsInBag()
+        => BagItemsWhere(static name => name.EndsWith("soil", StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>Seed items in the bags that the crop table does NOT know - flowerpot
+    /// flower seeds, mostly (the crop table is outdoor gardening; flowerpot flowers are a
+    /// separate game system with their own seeds). Read live by the game's own item names,
+    /// same reasoning as <see cref="SoilsInBag"/>: nothing invented, and the sow
+    /// verification receipts the name at plant time either way.</summary>
+    private static List<(uint ItemId, string Name, int Count)> ExtraSeedsInBag()
+    {
+        var known = Plugin.Tables.Crops.Select(c => c.SeedId).ToHashSet();
+        return BagItemsWhere(name => name.EndsWith(" seeds", StringComparison.OrdinalIgnoreCase))
+            .Where(s => !known.Contains(s.ItemId))
+            .ToList();
+    }
+
+    private static unsafe List<(uint ItemId, string Name, int Count)> BagItemsWhere(
+        Func<string, bool> nameMatches)
     {
         var found = new List<(uint, string, int)>();
         var inventory = FFXIVClientStructs.FFXIV.Client.Game.InventoryManager.Instance();
@@ -1474,7 +1498,7 @@ public class MainWindow : Window, IDisposable
                     continue;
 
                 var name = PlantFlow.ItemName(slot->ItemId);
-                if (!name.EndsWith("soil", StringComparison.OrdinalIgnoreCase))
+                if (!nameMatches(name))
                     continue;
 
                 found.Add((slot->ItemId, name, inventory->GetInventoryItemCount(slot->ItemId)));

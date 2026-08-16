@@ -319,7 +319,8 @@ internal sealed unsafe class PotChain : ChainBase
         if (!_waitAnnounced && _fill is null && _filledBy.Length == 0 && PlantFlow.GardeningOpen())
         {
             _waitAnnounced = true;
-            var seedName = Plugin.Tables.CropBySeedId(expectedSeedId)?.SeedName ?? "your seed";
+            var seedName = Plugin.Tables.CropBySeedId(expectedSeedId)?.SeedName
+                ?? (expectedSeedId != 0 ? PlantFlow.ItemName(expectedSeedId) : "your seed");
             Note($"pot: fill soil + {seedName}, then Confirm - waiting");
         }
 
@@ -337,7 +338,11 @@ internal sealed unsafe class PotChain : ChainBase
         var crop = Plugin.Tables.CropBySeedId(expectedSeedId);
         // No soil expectation for pots: the capture's own prompt named "potting soil",
         // which is nothing in the topsoil table, and the player picks it anyway.
-        var check = SowPrompt.Check(prompt, expectedSoil: null, expectedSeed: crop?.SeedName);
+        // A seed the crop table doesn't know (flowerpot flowers) is still expected by its
+        // ITEM name - the same sheet the prompt quotes - so the check keeps its teeth.
+        var expectedSeed = crop?.SeedName
+            ?? (expectedSeedId != 0 ? PlantFlow.ItemName(expectedSeedId) : null);
+        var check = SowPrompt.Check(prompt, expectedSoil: null, expectedSeed: expectedSeed);
 
         if (!check.Ok)
         {
