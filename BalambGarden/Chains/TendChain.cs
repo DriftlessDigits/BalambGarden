@@ -19,7 +19,7 @@ namespace BalambGarden.Chains;
 /// <para>Acting IS censusing (spec, 08-13): the menu names the bed ("2nd Bed, 1st
 /// Patch", index mapped live 08-11) and the status Talk names the plant, so every
 /// completed tend is a receipt routed through <see cref="CensusPump"/> - the only
-/// path that binds a patch or claims a bed.</para>
+/// path that binds a patch and records the bed.</para>
 /// </summary>
 internal sealed unsafe class TendChain : ChainBase
 {
@@ -189,7 +189,7 @@ internal sealed unsafe class TendChain : ChainBase
                 entry.Select();
                 Acted();
                 // The receipt IS the census event: header + plant route through the pump,
-                // which binds the patch (if unbound) and claims the bed. Held until the
+                // which binds the patch (if unbound) and records the bed. Held until the
                 // dialogue goes quiet - selecting is firing, not finishing.
                 var plant = _currentPlant;
                 _pendingReceipt = () => CensusPump.OnBedReceipt(ReceiptVerb.Tend, header, plant);
@@ -211,7 +211,7 @@ internal sealed unsafe class TendChain : ChainBase
                 Acted();
                 RecordOutcome(hasHarvest
                     ? CensusPump.OnRipeSkip(header, _currentPlant)
-                    : $"{header}: skipped (no tend option - empty or no rights?)");
+                    : $"{header}: skipped (the menu offered no tend - empty bed, or not permitted here)");
                 return true;
             }
         }

@@ -25,7 +25,7 @@ internal sealed class ReplantPlan
     /// replanted bed carries an anchored plant AND tend receipt.</summary>
     internal bool AnchorTendRound { get; set; }
 
-    /// <summary>Same-as-harvested, straight off the ledger: each claimed bed's latest
+    /// <summary>Same-as-harvested, straight off the ledger: each recorded bed's latest
     /// species becomes its own seed again. Beds the ledger has no species for get no entry
     /// and are simply not part of the cycle - the plan never guesses at a bed's history.</summary>
     internal static ReplantPlan DefaultFor(EstateKey estate, int patchOrdinal)
@@ -127,7 +127,7 @@ internal sealed unsafe class CycleChain : ChainBase
         if (!patch.InReach)
             return $"walk closer to patch {patch.Ordinal + 1} ({patch.Distance:F1}y away)";
         if (plan.Seeds.Count == 0)
-            return "nothing planned: no claimed bed here has a species to replant";
+            return "nothing planned: no recorded species here to replant - stand by the patch a moment, or tend it once";
         if (Plugin.Garden.Census.BoundKey(estate, patch.Ordinal) is not { } mapKey)
             return $"patch {patch.Ordinal + 1} isn't bound yet - tend it once so the ledger knows which patch this is";
         if (!CensusPump.LastOutdoor.TryGetValue(mapKey, out var readings))
@@ -136,10 +136,10 @@ internal sealed unsafe class CycleChain : ChainBase
         var toHarvest = 0;
         foreach (var (slot, _) in plan.Seeds.OrderBy(kv => kv.Key))
         {
-            var claimed = Plugin.Garden.Census.LedgerBeds.FirstOrDefault(b =>
+            var recorded = Plugin.Garden.Census.LedgerBeds.FirstOrDefault(b =>
                 b.Estate == estate && b.PatchOrdinal == patch.Ordinal && b.BedSlot == slot && !b.IsPot);
-            if (claimed is null)
-                return $"bed {slot + 1} isn't claimed - tend it first";
+            if (recorded is null)
+                return $"bed {slot + 1} has no census record yet - stand by the patch a moment";
 
             var bedObject = patch.Beds.FirstOrDefault(b => b.Gimmick.BedIndex == slot);
             if (bedObject.Object is null || !bedObject.InReach)
