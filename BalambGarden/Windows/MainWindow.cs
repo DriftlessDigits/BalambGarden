@@ -66,11 +66,12 @@ public class MainWindow : Window, IDisposable
     private string? armedButton;
     private bool armedTouchedThisFrame;
 
-    // 0 = no expectation; the pot chain then reports what the confirmation named instead
-    // of judging it. Both are also the auto-fill's order form: a 0 here means there is
-    // nothing to fill that slot with and the picker stays the player's.
-    private uint potSeedId;
-    private uint potSoilId;
+    // The inline Plant panel: which pot's panel is open (by map key when it has one,
+    // else by entity id negated to avoid collision), and its order form. 0 = "whatever
+    // I pick in game" - the picker stays the player's and the chain only verifies.
+    private long? plantPanelPot;
+    private uint plantSoilId;
+    private uint plantSeedId;
 
     // Arrival selection. lastHere is where we were on the previous frame; when it changes,
     // the new estate's tab takes the selection for exactly one frame. Selecting every
@@ -399,9 +400,11 @@ public class MainWindow : Window, IDisposable
             DrawUnclaimedPatchRow(patch, actionable);
     }
 
-    /// <summary>Tracked pots first, from the ledger, and they render whether or not you are
-    /// standing here - a claimed pot is memory like any other bed. The block under them is
-    /// pure sensor: what is within arm's reach right now.</summary>
+    /// <summary>One grammar (UI ruling 2026-08-15): pots render through the same rollup
+    /// row + grid as patches. The rows are the ledger; reach only decides whether a row's
+    /// verbs light up. The one thing the ledger cannot show is an EMPTY pot in reach -
+    /// nothing to sight, no row - and Plant is exactly the verb an empty pot needs, so
+    /// those render as sensed rows below the grid.</summary>
     private void DrawIndoorSection(
         EstateRecord record, List<PatchRollup> rollups, List<PotObject> pots,
         bool isHere, bool actionable, DateTimeOffset now)
@@ -409,17 +412,36 @@ public class MainWindow : Window, IDisposable
         foreach (var rollup in rollups)
             DrawRollupRow(record, rollup, [], isHere, actionable, now);
 
-        // How many planted pots in this room no ledger row claims. Counted off the MAP, not
-        // off the pot objects: a pot object cannot be matched back to a map key (that is the
-        // whole reason the chain has to diff for it), but the map knows exactly which keys
-        // are occupied and the ledger knows exactly which ones are claimed. It goes quiet
-        // the moment the last one binds, which is how a bind becomes visible here.
-        var untracked = isHere && EstateSensor.IsInside()
-            ? CensusPump.LastIndoor.Keys.Count(key => !Plugin.Garden.Census.LedgerBeds.Any(
+        // Pots in front of us that no ledger row names: empty pots, plus any the
+        // position read could not key. They need a row or Plant is unreachable.
+        var unrecorded = pots
+            .Where(p => p.MapKey is not { } key || !Plugin.Garden.Census.LedgerBeds.Any(
                 b => b.Estate == record.Key && b.IsPot && b.MapKey == key))
-            : 0;
+            .ToList();
 
-        DrawPots(record.Key, pots, untracked, actionable);
+        foreach (var pot in unrecorded)
+        {
+            using var id = ImRaii.PushId((int)pot.Object.EntityId);
+            ImGui.Spacing();
+            if (!pot.InReach)
+            {
+                ImGui.TextDisabled($"{pot.Name} · {pot.Distance:F1}y away - walk closer");
+                continue;
+            }
+
+            ImGui.TextDisabled(pot.MapKey is { } mapKey
+                ? $"{pot.Name} · empty"
+                : $"{pot.Name} · {UntrackedTag}");
+            ImGui.SameLine();
+            using (ImRaii.Disabled(plugin.AnyChainBusy || !actionable))
+            {
+                if (ImGui.SmallButton("Plant..."))
+                    TogglePlantPanel(pot);
+            }
+            BusyTip();
+            UnrosteredTip(actionable);
+            DrawPlantPanel(pot);
+        }
     }
 
     private static void DrawUnclaimedLine(List<PatchGroup> patches, List<ClaimedBed> beds)
@@ -508,14 +530,17 @@ public class MainWindow : Window, IDisposable
             DrawCyclePanel(patch);
     }
 
+    /// <summary>The beds behind one rollup row. A pot rollup is the whole estate's pots
+    /// (Rollups.PotsOrdinal), so pots ignore the ordinal entirely and order by map key -
+    /// the one number a pot actually has.</summary>
     private static List<ClaimedBed> BedsOf(EstateKey estate, PatchRollup rollup)
     {
-        return Plugin.Garden.Census.LedgerBeds
-            .Where(b => b.Estate == estate
-                        && b.IsPot == rollup.IsPots
-                        && b.PatchOrdinal == rollup.PatchOrdinal)
-            .OrderBy(b => b.BedSlot)
-            .ToList();
+        var beds = Plugin.Garden.Census.LedgerBeds
+            .Where(b => b.Estate == estate && b.IsPot == rollup.IsPots);
+        return rollup.IsPots
+            ? beds.OrderBy(b => b.MapKey).ToList()
+            : beds.Where(b => b.PatchOrdinal == rollup.PatchOrdinal)
+                  .OrderBy(b => b.BedSlot).ToList();
     }
 
     /// <summary>The counts, quiet by default. Only the two things that want a decision now
@@ -767,9 +792,18 @@ public class MainWindow : Window, IDisposable
         ImGui.TableSetupColumn("##verbs", ImGuiTableColumnFlags.WidthFixed, 150f);
         ImGui.TableHeadersRow();
 
+        // The object read for the whole grid, once. A pot row matches its object by map
+        // key, so one sweep answers every row - a scan per row would be an object-table
+        // walk per row per frame.
+        List<PotObject> pots = rollup.IsPots && isHere && EstateSensor.IsInside()
+            ? ObjectSensor.NearbyPots()
+            : [];
+
         foreach (var bed in beds)
         {
-            using var id = ImRaii.PushId(bed.BedSlot);
+            // Every pot in an estate rolls up together and they all sit at BedSlot 0, so
+            // the map key is what makes a pot row's widgets its own.
+            using var id = ImRaii.PushId(bed.IsPot ? bed.MapKey : bed.BedSlot);
             ImGui.TableNextRow();
 
             if (ReadsEmptyNow(bed, isHere))
@@ -783,7 +817,7 @@ public class MainWindow : Window, IDisposable
             var crop = latest is null ? null : Plugin.Tables.CropBySpeciesIndex(latest.SpeciesIndex);
 
             ImGui.TableNextColumn();
-            ImGui.Text(bed.IsPot ? $"pot key {bed.MapKey}" : $"Bed {bed.BedSlot + 1}");
+            ImGui.Text(bed.IsPot ? $"Pot {bed.MapKey}" : $"Bed {bed.BedSlot + 1}");
             if (bedObject is { InReach: true })
             {
                 ImGui.SameLine();
@@ -810,7 +844,10 @@ public class MainWindow : Window, IDisposable
             DrawRipeCell(bed, crop, latest, now);
 
             ImGui.TableNextColumn();
-            DrawBedVerbs(record, bed, bedObject, actionable);
+            if (bed.IsPot)
+                DrawPotRowVerbs(bed, pots, actionable);
+            else
+                DrawBedVerbs(record, bed, bedObject, actionable);
         }
     }
 
@@ -890,6 +927,59 @@ public class MainWindow : Window, IDisposable
         }
 
         DrawAbandonButton(record, bed);
+    }
+
+    /// <summary>A pot row's verbs, lit only when the pot object itself is in reach.
+    /// Identity is the direct read: furniture index == map key (08-15), so matching the
+    /// row to the object is a lookup, not a diff. The list is swept once for the whole
+    /// grid and handed down.</summary>
+    private void DrawPotRowVerbs(ClaimedBed bed, List<PotObject> pots, bool actionable)
+    {
+        // PotObject is a struct, so "not found" is an index of -1 rather than a null -
+        // a default PotObject would read as a pot at 0y with no key.
+        var found = pots.FindIndex(p => p.MapKey == bed.MapKey);
+        if (found < 0)
+        {
+            ImGui.TextDisabled("-");
+            return;
+        }
+
+        var pot = pots[found];
+        if (!pot.InReach)
+        {
+            ImGui.TextDisabled($"{pot.Distance:F1}y");
+            return;
+        }
+
+        using (ImRaii.Disabled(plugin.AnyChainBusy || !actionable))
+        {
+            if (ImGui.SmallButton("Water"))
+            {
+                plugin.PotChain.Water(pot);
+                plugin.Launched(plugin.PotChain);
+            }
+            if (actionable && ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+                ImGui.SetTooltip(
+                    "Changes petal pigment (receipted). Whether a pot also NEEDS water"
+                    + "\nto live is unverified - the twins lab will say.");
+            UnrosteredTip(actionable);
+
+            ImGui.SameLine();
+            if (ImGui.SmallButton("Harvest"))
+            {
+                plugin.PotChain.Harvest(pot);
+                plugin.Launched(plugin.PotChain);
+            }
+            UnrosteredTip(actionable);
+
+            ImGui.SameLine();
+            if (ImGui.SmallButton("Plant..."))
+                TogglePlantPanel(pot);
+            UnrosteredTip(actionable);
+        }
+
+        BusyTip();
+        DrawPlantPanel(pot);
     }
 
     /// <summary>Forgetting a bed is manual and deliberate (spec): the ledger only ever
@@ -1082,158 +1172,98 @@ public class MainWindow : Window, IDisposable
 
     // ------------------------------------------------------------------ pots
 
-    /// <summary>Indoor pots in front of you. Watering a pot is the PIGMENT mechanic, not
-    /// a drink - pot flowers have never been seen to wilt (08-15) - so the verb says so
-    /// on its face. A pot out of reach is a dim line, not a row of dead buttons.
-    ///
-    /// <para>These rows are presence first: they exist because you are standing near them.
-    /// A row also carries identity when the furniture read could name the pot
-    /// (<see cref="PotObject.MapKey"/>). <paramref name="untracked"/> is how many planted
-    /// pots in this room the ledger has no row for at all, counted off the map.</para>
-    /// </summary>
-    private void DrawPots(EstateKey estate, List<PotObject> pots, int untracked, bool actionable)
+    /// <summary>Which pot a Plant panel belongs to: its map key when the furniture read
+    /// named one, else its entity id negated so a keyed pot and an unkeyed one can never
+    /// answer to the same number.</summary>
+    private static long PanelKey(PotObject pot)
+        => pot.MapKey is { } key ? key : -(long)pot.Object.EntityId;
+
+    private void TogglePlantPanel(PotObject pot)
     {
-        if (pots.Count == 0)
-            return;
-
-        ImGui.Spacing();
-        ImGui.Text($"Pots in reach ({pots.Count} nearby)");
-        if (untracked > 0)
-            ImGui.TextDisabled(UntrackedTag);
-
-        using var indent = ImRaii.PushIndent();
-        DrawPotSoilPicker();
-        DrawPotSeedPicker();
-
-        foreach (var pot in pots)
+        var key = PanelKey(pot);
+        if (plantPanelPot == key)
         {
-            using var id = ImRaii.PushId((int)pot.Object.EntityId);
-
-            if (!pot.InReach)
-            {
-                ImGui.TextDisabled($"{pot.Name} · {pot.Distance:F1}y away - walk closer");
-                DrawPotIdentity(estate, pot);
-                continue;
-            }
-
-            using (ImRaii.Disabled(plugin.AnyChainBusy || !actionable))
-            {
-                if (ImGui.Button("Water (pigment)"))
-                {
-                    plugin.PotChain.Water(pot);
-                    plugin.Launched(plugin.PotChain);
-                }
-
-                // A dead button explains why it is dead first; what it would have done is
-                // the second question.
-                if (actionable && ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
-                    ImGui.SetTooltip("Applies pigment. Pot flowers never wilt - this is colour, not water.");
-                UnrosteredTip(actionable);
-
-                ImGui.SameLine();
-                if (ImGui.Button("Harvest"))
-                {
-                    plugin.PotChain.Harvest(pot);
-                    plugin.Launched(plugin.PotChain);
-                }
-
-                UnrosteredTip(actionable);
-
-                ImGui.SameLine();
-                if (ImGui.Button("Plant"))
-                {
-                    plugin.PotChain.Plant(pot, potSoilId, potSeedId);
-                    plugin.Launched(plugin.PotChain);
-                }
-
-                UnrosteredTip(actionable);
-            }
-
-            ImGui.SameLine();
-            ImGui.TextColored(Green, $"{pot.Name} - {pot.Distance:F1}y");
-            DrawPotIdentity(estate, pot);
-        }
-    }
-
-    /// <summary>What this particular pot is, when that can be said honestly. It can be said
-    /// when the furniture read named the pot's map key AND a ledger row still claims that
-    /// key; anything else is untracked, including a pot the ledger remembers perfectly well
-    /// but cannot be pointed at from here.
-    ///
-    /// <para>Fail-closed on purpose (Sam's ruling), and now for a much narrower reason than
-    /// it used to be: the key is a direct read of the furniture vector, so it survives a
-    /// plugin reload, a relog and a zone hop - there is nothing to forget. What is left
-    /// untracked is a pot the ledger has never claimed, or one the position read could not
-    /// name; both of those are true statements rather than gaps.</para></summary>
-    private static void DrawPotIdentity(EstateKey estate, PotObject pot)
-    {
-        using var indent = ImRaii.PushIndent();
-
-        var key = pot.MapKey;
-        var bed = key is null
-            ? null
-            : Plugin.Garden.Census.LedgerBeds.FirstOrDefault(
-                b => b.Estate == estate && b.IsPot && b.MapKey == key.Value);
-        if (bed is null)
-        {
-            ImGui.TextDisabled(UntrackedTag);
+            plantPanelPot = null;
             return;
         }
-
-        // The map is the fresher of the two when it has something to say; an emptied pot
-        // reads unoccupied there and the ledger's last observation is the honest fallback.
-        var sighted = CensusPump.LastIndoor.GetValueOrDefault(bed.MapKey);
-        var species = sighted is { Occupied: true }
-            ? sighted.SpeciesIndex : bed.Latest?.SpeciesIndex ?? (ushort)0;
-        var stage = sighted is { Occupied: true }
-            ? sighted.Stage : bed.Latest?.Stage ?? (byte)0;
-
-        ImGui.TextDisabled($"{Plugin.Tables.SpeciesName(species)} · stage {stage} · recorded");
+        plantPanelPot = key;
+        plantSoilId = 0;
+        plantSeedId = 0;
     }
 
-    /// <summary>
-    /// Which soil Plant should put in the left slot. There is NO soil table to draw this
-    /// from - the shipped Soils.json is the nine outdoor topsoils, and "Potting Soil", which
-    /// is what a flowerpot actually takes, is not a topsoil and is nowhere in our data. So
-    /// this is not a table at all: it is what is in the bags right now whose name the GAME
-    /// says ends in "soil". Nothing invented, nothing hardcoded, and a soil we have never
-    /// heard of shows up the moment the player buys one.
-    ///
-    /// <para>"Whatever's in the picker" stays the default. Naming a soil is what lets the
-    /// chain fill the slot; declining to name one is a real answer that costs two clicks,
-    /// and the sow check keeps its null soil expectation either way (a prompt naming potting
-    /// soil must never be refused for not being a topsoil).</para>
-    /// </summary>
-    private void DrawPotSoilPicker()
+    /// <summary>The order form for one pot, open only while a Plant is being set up
+    /// (UI ruling 2026-08-15: pickers exist only when a Plant press needs them). Soil is
+    /// read live off the bags by name - there is no potting-soil table, on purpose (the
+    /// full rationale lives on <see cref="SoilsInBag"/>). Naming soil/seed
+    /// lets the chain fill the game's picker; leaving either on its default keeps those
+    /// clicks the player's. The confirmation is checked against this form either way.</summary>
+    private void DrawPlantPanel(PotObject pot)
     {
+        if (plantPanelPot != PanelKey(pot))
+            return;
+
+        using var indent = ImRaii.PushIndent();
+
         var soils = SoilsInBag();
-        var chosen = soils.FirstOrDefault(s => s.ItemId == potSoilId);
-        var label = potSoilId == 0 || chosen.ItemId == 0
+        var chosenSoil = soils.FirstOrDefault(s => s.ItemId == plantSoilId);
+        var soilLabel = plantSoilId == 0 || chosenSoil.ItemId == 0
             ? "Whatever's in the picker"
-            : $"{chosen.Name} ({chosen.Count})";
-
+            : $"{chosenSoil.Name} ({chosenSoil.Count})";
         ImGui.SetNextItemWidth(260f);
-        using var combo = ImRaii.Combo("Soil", label);
-        if (ImGui.IsItemHovered())
-            ImGui.SetTooltip(
-                "Name a soil and the chain fills that slot for you.\n"
-                + "Leave it on \"whatever's in the picker\" and you fill it by hand,\n"
-                + "same as before. Either way the confirmation is read before it's answered.");
-        if (!combo.Success)
-            return;
-
-        if (ImGui.Selectable("Whatever's in the picker", potSoilId == 0))
-            potSoilId = 0;
-
-        foreach (var soil in soils)
+        using (var combo = ImRaii.Combo("Soil", soilLabel))
         {
-            if (ImGui.Selectable($"{soil.Name} ({soil.Count})", soil.ItemId == potSoilId))
-                potSoilId = soil.ItemId;
+            if (combo.Success)
+            {
+                if (ImGui.Selectable("Whatever's in the picker", plantSoilId == 0))
+                    plantSoilId = 0;
+                foreach (var soil in soils)
+                {
+                    if (ImGui.Selectable($"{soil.Name} ({soil.Count})", soil.ItemId == plantSoilId))
+                        plantSoilId = soil.ItemId;
+                }
+            }
         }
+
+        var seedLabel = plantSeedId == 0
+            ? "Whatever I pick in game"
+            : Plugin.Tables.CropBySeedId(plantSeedId)?.SeedName ?? $"seed {plantSeedId}";
+        ImGui.SetNextItemWidth(260f);
+        using (var combo = ImRaii.Combo("Verify seed", seedLabel))
+        {
+            if (combo.Success)
+            {
+                if (ImGui.Selectable("Whatever I pick in game", plantSeedId == 0))
+                    plantSeedId = 0;
+                foreach (var crop in Plugin.Tables.Crops)
+                {
+                    var have = InventoryCount(crop.SeedId);
+                    if (have == 0 && crop.SeedId != plantSeedId)
+                        continue;
+                    if (ImGui.Selectable($"{crop.SeedName} ({have})", crop.SeedId == plantSeedId))
+                        plantSeedId = crop.SeedId;
+                }
+            }
+        }
+
+        using (ImRaii.Disabled(plugin.AnyChainBusy))
+        {
+            if (ImGui.SmallButton("Plant"))
+            {
+                plugin.PotChain.Plant(pot, plantSoilId, plantSeedId);
+                plugin.Launched(plugin.PotChain);
+                plantPanelPot = null;
+            }
+        }
+        BusyTip();
     }
 
     /// <summary>Every soil the bags hold, by the game's own item names. Read live rather
-    /// than tabled on purpose - see <see cref="DrawPotSoilPicker"/>.</summary>
+    /// than tabled on purpose: there is NO soil table to draw a flowerpot's soil from -
+    /// the shipped Soils.json is the nine outdoor topsoils, and "Potting Soil", which is
+    /// what a flowerpot actually takes, is not a topsoil and is nowhere in our data. So
+    /// this is not a table at all: it is what is in the bags right now whose name the GAME
+    /// says ends in "soil". Nothing invented, nothing hardcoded, and a soil we have never
+    /// heard of shows up the moment the player buys one.</summary>
     private static unsafe List<(uint ItemId, string Name, int Count)> SoilsInBag()
     {
         var found = new List<(uint, string, int)>();
@@ -1270,40 +1300,6 @@ public class MainWindow : Window, IDisposable
 
         found.Sort(static (a, b) => string.CompareOrdinal(a.Item2, b.Item2));
         return found;
-    }
-
-    /// <summary>What Plant will hold the confirmation to, and - when it names a seed the
-    /// chain can find in the bags - what it fills the right-hand slot with. "Whatever I pick
-    /// in game" is the default on purpose: the flowerpot flowers most pots hold are absent
-    /// from the crop table entirely, so demanding a table seed here would refuse the most
-    /// common pot planting there is; it just means those two clicks stay yours.</summary>
-    private void DrawPotSeedPicker()
-    {
-        var label = potSeedId == 0
-            ? "Whatever I pick in game"
-            : Plugin.Tables.CropBySeedId(potSeedId)?.SeedName ?? $"seed {potSeedId}";
-
-        ImGui.SetNextItemWidth(260f);
-        using var combo = ImRaii.Combo("Verify seed", label);
-        if (ImGui.IsItemHovered())
-            ImGui.SetTooltip(
-                "Name a seed and the chain picks it for you; leave it and you pick in game.\n"
-                + "Either way this is what it checks the confirmation against before it "
-                + "presses Yes.");
-        if (!combo.Success)
-            return;
-
-        if (ImGui.Selectable("Whatever I pick in game", potSeedId == 0))
-            potSeedId = 0;
-
-        foreach (var crop in Plugin.Tables.Crops)
-        {
-            var have = InventoryCount(crop.SeedId);
-            if (have == 0)
-                continue;
-            if (ImGui.Selectable($"{crop.SeedName} ({have})", crop.SeedId == potSeedId))
-                potSeedId = crop.SeedId;
-        }
     }
 
     private static unsafe int InventoryCount(uint itemId)
