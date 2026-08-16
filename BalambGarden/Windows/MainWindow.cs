@@ -436,7 +436,9 @@ public class MainWindow : Window, IDisposable
             ImGui.SameLine();
             using (ImRaii.Disabled(plugin.AnyChainBusy || !actionable))
             {
-                if (ImGui.SmallButton("Plant..."))
+                // The opener toggles - open, it reads as the way back out (the Cycle
+                // (close) pattern), so "Plant" never appears twice for one pot.
+                if (ImGui.SmallButton(plantPanelPot == PanelKey(pot) ? "Plant (close)" : "Plant..."))
                     TogglePlantPanel(pot);
             }
             BusyTip();
@@ -844,7 +846,11 @@ public class MainWindow : Window, IDisposable
         if (!rollup.IsPots || plantPanelPot is null)
             return;
 
-        var open = pots.FindIndex(p => PanelKey(p) == plantPanelPot);
+        // Only pots that own a ROW in this grid panel here - an unrecorded (empty) pot
+        // draws its own panel beside its own line, and drawing it in both places put two
+        // identical forms on screen at once (08-16 Sam: "confusing and clunky").
+        var open = pots.FindIndex(p => PanelKey(p) == plantPanelPot
+            && beds.Any(b => b.IsPot && b.MapKey == p.MapKey));
         if (open >= 0)
             DrawPlantPanel(pots[open]);
     }
@@ -863,7 +869,7 @@ public class MainWindow : Window, IDisposable
 
             if (ReadsEmptyNow(bed, isHere))
             {
-                DrawDriftRow(record, bed);
+                DrawDriftRow(record, bed, pots, actionable);
                 continue;
             }
 
@@ -985,9 +991,11 @@ public class MainWindow : Window, IDisposable
     }
 
     /// <summary>A pot row's verbs, lit only when the pot object itself is in reach.
-    /// Identity is the direct read: furniture index == map key (08-15), so matching the
+    /// Identity is the object's own key (HousingFurnitureIndex, 08-16), so matching the
     /// row to the object is a lookup, not a diff. The list is swept once for the whole
-    /// grid and handed down.</summary>
+    /// grid and handed down. No Plant here: an occupied pot cannot take a seed, so the
+    /// verb would be a dead button (08-16 Sam: "like 4 different Plant buttons") - Plant
+    /// lives on empty pots and on a pot row that reads empty (post-harvest).</summary>
     private void DrawPotRowVerbs(ClaimedBed bed, List<PotObject> pots, bool actionable)
     {
         // PotObject is a struct, so "not found" is an index of -1 rather than a null -
@@ -1015,8 +1023,8 @@ public class MainWindow : Window, IDisposable
             }
             if (actionable && ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
                 ImGui.SetTooltip(
-                    "Changes the flower's colour (receipted). Whether a pot also NEEDS"
-                    + "\nwater to live is unverified - the twins lab will say.");
+                    "Sets the flower's colour, and clears wilt on a thirsty crop"
+                    + "\n(both receipted 08-16 - pots DO wilt on normal crops).");
             UnrosteredTip(actionable);
 
             ImGui.SameLine();
@@ -1025,11 +1033,6 @@ public class MainWindow : Window, IDisposable
                 plugin.PotChain.Harvest(pot);
                 plugin.Launched(plugin.PotChain);
             }
-            UnrosteredTip(actionable);
-
-            ImGui.SameLine();
-            if (ImGui.SmallButton("Plant..."))
-                TogglePlantPanel(pot);
             UnrosteredTip(actionable);
         }
 
@@ -1059,17 +1062,37 @@ public class MainWindow : Window, IDisposable
     /// <summary>Drift: the ledger remembers a plant here, the map read a moment ago says
     /// the bed is empty. That is a sentence about the world, not a data point - so it
     /// replaces the row rather than corrupting it, and the only button is the honest one.</summary>
-    private void DrawDriftRow(EstateRecord record, ClaimedBed bed)
+    private void DrawDriftRow(EstateRecord record, ClaimedBed bed, List<PotObject> pots, bool actionable)
     {
+        var label = bed.IsPot ? $"Pot {bed.MapKey}" : $"Bed {bed.BedSlot + 1}";
         ImGui.TableNextColumn();
-        ImGui.Text($"Bed {bed.BedSlot + 1}");
+        ImGui.Text(label);
         ImGui.TableNextColumn();
-        ImGui.TextColored(Amber, $"Bed {bed.BedSlot + 1} reads empty now - replanted without me?");
+        // A pot's entry vanishing is what a HARVEST looks like (08-15 receipt) - normal
+        // life, not suspicion; a bed going empty behind our back is the odd one out.
+        ImGui.TextColored(Amber, bed.IsPot
+            ? $"{label} reads empty now - harvested?"
+            : $"{label} reads empty now - replanted without me?");
         ImGui.TableNextColumn();
         ImGui.TableNextColumn();
         ImGui.TableNextColumn();
 
-        var key = $"forget:{record.Key.BindingKey(bed.PatchOrdinal)}:{bed.BedSlot}";
+        // Replanting is exactly what an emptied pot wants next, so Plant lives here too.
+        var potIndex = bed.IsPot ? pots.FindIndex(p => p.MapKey == bed.MapKey) : -1;
+        if (potIndex >= 0 && pots[potIndex].InReach)
+        {
+            using (ImRaii.Disabled(plugin.AnyChainBusy || !actionable))
+            {
+                if (ImGui.SmallButton(plantPanelPot == PanelKey(pots[potIndex])
+                        ? "Plant (close)" : "Plant..."))
+                    TogglePlantPanel(pots[potIndex]);
+            }
+            BusyTip();
+            UnrosteredTip(actionable);
+            ImGui.SameLine();
+        }
+
+        var key = $"forget:{record.Key.BindingKey(bed.PatchOrdinal, bed.IsPot)}:{bed.BedSlot}";
         if (ArmedButton(key, "Forget record", "Forget - sure?", small: true))
         {
             Plugin.Garden.Census.Abandon(bed);
@@ -1079,11 +1102,16 @@ public class MainWindow : Window, IDisposable
 
     /// <summary>True only when a fresh read of THIS estate's map shows the slot vacant.
     /// Away from the estate there is no read at all, and "I cannot see it" is never
-    /// evidence that something is gone.</summary>
+    /// evidence that something is gone. Pots (08-16): the settled-object guard stands in
+    /// for the outdoor TryGetValue - an unsettled world answers false, never "empty".</summary>
     private static bool ReadsEmptyNow(ClaimedBed bed, bool isHere)
     {
-        if (!isHere || bed.IsPot)
+        if (!isHere)
             return false;
+        if (bed.IsPot)
+            return EstateSensor.IsInside()
+                && ObjectSensor.SawHousingObjects
+                && !CensusPump.LastIndoor.ContainsKey(bed.MapKey);
         if (!CensusPump.LastOutdoor.TryGetValue(bed.MapKey, out var readings))
             return false;
         return readings.FirstOrDefault(r => r.Slot == bed.BedSlot) is { Occupied: false };
@@ -1271,44 +1299,50 @@ public class MainWindow : Window, IDisposable
 
         using var indent = ImRaii.PushIndent();
 
+        // Real things first, the manual fallback last and in plain words (08-16 Sam:
+        // "Whatever's in the picker" as the default face read as debug text). Leaving a
+        // combo on the fallback keeps that slot's clicks the player's - same behavior,
+        // said like a sentence.
+        const string manualOption = "I'll pick at the game's menu";
+
         var soils = SoilsInBag();
         var chosenSoil = soils.FirstOrDefault(s => s.ItemId == plantSoilId);
         var soilLabel = plantSoilId == 0 || chosenSoil.ItemId == 0
-            ? "Whatever's in the picker"
-            : $"{chosenSoil.Name} ({chosenSoil.Count})";
+            ? manualOption
+            : $"{chosenSoil.Name} ({chosenSoil.Count} in bag)";
         ImGui.SetNextItemWidth(260f);
         using (var combo = ImRaii.Combo("Soil", soilLabel))
         {
             if (combo.Success)
             {
-                if (ImGui.Selectable("Whatever's in the picker", plantSoilId == 0))
-                    plantSoilId = 0;
                 foreach (var soil in soils)
                 {
-                    if (ImGui.Selectable($"{soil.Name} ({soil.Count})", soil.ItemId == plantSoilId))
+                    if (ImGui.Selectable($"{soil.Name} ({soil.Count} in bag)", soil.ItemId == plantSoilId))
                         plantSoilId = soil.ItemId;
                 }
+                if (ImGui.Selectable(manualOption, plantSoilId == 0))
+                    plantSoilId = 0;
             }
         }
 
         var seedLabel = plantSeedId == 0
-            ? "Whatever I pick in game"
+            ? manualOption
             : Plugin.Tables.CropBySeedId(plantSeedId)?.SeedName ?? $"seed {plantSeedId}";
         ImGui.SetNextItemWidth(260f);
-        using (var combo = ImRaii.Combo("Verify seed", seedLabel))
+        using (var combo = ImRaii.Combo("Seed", seedLabel))
         {
             if (combo.Success)
             {
-                if (ImGui.Selectable("Whatever I pick in game", plantSeedId == 0))
-                    plantSeedId = 0;
                 foreach (var crop in Plugin.Tables.Crops)
                 {
                     var have = InventoryCount(crop.SeedId);
                     if (have == 0 && crop.SeedId != plantSeedId)
                         continue;
-                    if (ImGui.Selectable($"{crop.SeedName} ({have})", crop.SeedId == plantSeedId))
+                    if (ImGui.Selectable($"{crop.SeedName} ({have} in bag)", crop.SeedId == plantSeedId))
                         plantSeedId = crop.SeedId;
                 }
+                if (ImGui.Selectable(manualOption, plantSeedId == 0))
+                    plantSeedId = 0;
             }
         }
 

@@ -287,6 +287,65 @@ internal static unsafe partial class PlantFlow
             DumpStrings(addon, name);
             if (DumpInts.Contains(name))
                 DumpIntValues(addon, name);
+            if (name == GardeningAddon)
+                DumpNodeTree(addon);
+        }
+    }
+
+    /// <summary>The picker's REAL component tree, once per open. The fill driver's premise
+    /// failed live (08-16: two full 3s budgets scanned 0 visible DragDrop components), so
+    /// whatever the two item slots actually are, this dump is the receipt the rewritten
+    /// ClickGardeningSlot gets written against - never another guessed component type.</summary>
+    private static void DumpNodeTree(AtkUnitBase* addon)
+    {
+        try
+        {
+            var uld = addon->UldManager;
+            Plugin.Log.Information($"[PlantRecon] node tree: {uld.NodeListCount} nodes");
+            for (var i = 0; i < uld.NodeListCount; i++)
+            {
+                var node = uld.NodeList[i];
+                if (node == null)
+                    continue;
+
+                var line = $"[PlantRecon]   [{i}] id={node->NodeId} type={node->Type}"
+                    + $" vis={node->IsVisible()} click={node->IsEventRegistered(AtkEventType.MouseClick)}"
+                    + $" pos=({node->ScreenX:F0},{node->ScreenY:F0}) size={node->Width}x{node->Height}";
+
+                if (node->Type != NodeType.Component)
+                {
+                    Plugin.Log.Information(line);
+                    continue;
+                }
+
+                var component = ((AtkComponentNode*)node)->Component;
+                if (component == null)
+                {
+                    Plugin.Log.Information(line + " comp=null");
+                    continue;
+                }
+
+                var children = component->UldManager;
+                Plugin.Log.Information(
+                    line + $" comp={component->GetComponentType()} children={children.NodeListCount}");
+
+                for (var c = 0; c < children.NodeListCount; c++)
+                {
+                    var child = children.NodeList[c];
+                    if (child == null)
+                        continue;
+                    var childLine = $"[PlantRecon]     .{c} id={child->NodeId} type={child->Type}"
+                        + $" vis={child->IsVisible()} click={child->IsEventRegistered(AtkEventType.MouseClick)}";
+                    if (child->Type == NodeType.Component
+                        && ((AtkComponentNode*)child)->Component is var cc && cc != null)
+                        childLine += $" comp={cc->GetComponentType()}";
+                    Plugin.Log.Information(childLine);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Plugin.Log.Warning($"[PlantRecon] node tree dump failed: {ex.Message}");
         }
     }
 
