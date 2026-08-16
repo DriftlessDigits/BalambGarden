@@ -803,8 +803,11 @@ public class MainWindow : Window, IDisposable
         // wide as its data - no stretch arithmetic to blow a column past the window edge
         // (08-15: one stretch column ate an ultrawide and shoved Stage/Ripe offscreen).
         // A wider window is quiet space on the right, and nothing ever clips.
+        // NoHostExtendX: without it the OUTER width still fills the window, so the last
+        // column drags every row's stripe to the far edge as one long empty tail.
         using (var table = ImRaii.Table($"beds{rollup.PatchOrdinal}", 5,
-                   ImGuiTableFlags.RowBg | ImGuiTableFlags.Borders | ImGuiTableFlags.SizingFixedFit))
+                   ImGuiTableFlags.RowBg | ImGuiTableFlags.Borders | ImGuiTableFlags.SizingFixedFit
+                   | ImGuiTableFlags.NoHostExtendX))
         {
             if (!table.Success)
                 return;
