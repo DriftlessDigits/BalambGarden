@@ -405,6 +405,14 @@ internal sealed unsafe class GardeningFill
         if (!PlantFlow.GardeningReady(out var picker))
             return;
 
+        // Arm the first step's budget the moment the picker exists. Live receipt (19:04:10,
+        // FC room): the addon reports ready in the same millisecond it opens, BEFORE its
+        // component tree is populated - the first slot scan saw 0 slots and a hard stop
+        // ended the attempt. Failures inside a step are retried until this deadline; only
+        // a budget's worth of empty reads hands the picker over.
+        if (stepDeadline == DateTime.MaxValue)
+            stepDeadline = DateTime.UtcNow.AddMilliseconds(PlantFlow.FillStepBudgetMS);
+
         switch (step)
         {
             case Step.OpenSoilSlot:
@@ -469,10 +477,13 @@ internal sealed unsafe class GardeningFill
 
     private void OpenSlot(AtkUnitBase* picker, int index, Step next)
     {
+        // Retry inside the budget, never hard-stop: an addon that just opened can read as
+        // ready with an empty component tree for a few frames (live receipt 19:04:10 - the
+        // first scan of a same-millisecond-old picker counted 0 slots).
         if (PlantFlow.ClickGardeningSlot(picker, index, out var why))
             Advance(next);
         else
-            Stop(why);
+            Expire(why);
     }
 
     private void Pick(string itemName, Step next)
@@ -483,10 +494,12 @@ internal sealed unsafe class GardeningFill
             return;
         }
 
+        // Same budgeted retry: a just-opened list can render its rows a frame late, and an
+        // item genuinely absent still hands over within the budget.
         if (PlantFlow.ClickIconMenuItem(menu, itemName, out var why))
             Advance(next);
         else
-            Stop(why);
+            Expire(why);
     }
 
     private void Advance(Step next)
