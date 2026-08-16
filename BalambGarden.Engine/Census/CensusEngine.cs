@@ -2,12 +2,11 @@ using BalambGarden.Engine.Ledger;
 
 namespace BalambGarden.Engine.Census;
 
-/// <summary>The join + claim brain. Claim-on-action is the only claim path (spec Frame 3,
-/// Sam's 08-13 design): you cannot claim what you cannot touch. No Claim() method exists.</summary>
+/// <summary>The join + census brain. Receipts and sightings are the only write paths (spec:
+/// Permission Architecture, 2026-08-15): a row exists because the game showed us something at
+/// an estate we are rostered for. No Claim() method exists.</summary>
 public sealed class CensusEngine(LedgerStore ledger)
 {
-    public bool ClaimOnAction { get; set; } = true;
-
     public IReadOnlyList<ClaimedBed> LedgerBeds => ledger.Beds;
 
     public void Bind(EstateKey estate, int patchOrdinal, int mapKey, bool isPot = false)
@@ -27,12 +26,10 @@ public sealed class CensusEngine(LedgerStore ledger)
 
         if (bed is null)
         {
-            if (!ClaimOnAction)
-                return null;
             bed = new ClaimedBed
             {
                 Estate = e.Estate, MapKey = mapKey, PatchOrdinal = e.PatchOrdinal,
-                BedSlot = e.BedSlot, IsPot = e.IsPot, ClaimedAt = e.At,
+                BedSlot = e.BedSlot, IsPot = e.IsPot, FirstRecorded = e.At,
             };
             ledger.Beds.Add(bed);
         }
@@ -43,14 +40,31 @@ public sealed class CensusEngine(LedgerStore ledger)
         return bed;
     }
 
-    /// <summary>Map sightings only ever land on already-claimed beds. Ward-visible
-    /// unclaimed data is ephemeral by design (Sam's distance ruling, 08-12). isPot keeps
-    /// an indoor read off an outdoor bed that happens to carry the same map key - one
-    /// estate key now spans both DataMaps.</summary>
+    /// <summary>Which ordinal a bound map key belongs to at this estate - the bindings are the
+    /// receipts, this only reads them backward. Null = not ours (ward-visible neighbor data).</summary>
+    public int? OrdinalOfKey(EstateKey estate, int mapKey, bool isPot = false)
+    {
+        for (var ordinal = 0; ordinal < 16; ordinal++)
+            if (BoundKey(estate, ordinal, isPot) == mapKey)
+                return ordinal;
+        return null;
+    }
+
+    /// <summary>Map sightings are census records now (spec 2026-08-15: no ceremony gates
+    /// tracking). With mayRecord - the caller vouching the estate is roster-covered - a
+    /// sighting CREATES rows: any occupied bed of a receipt-bound outdoor key, and any
+    /// occupied pot (the indoor map is house-scoped, 08-13, and furniture idx == key, 08-15,
+    /// so a pot sighting carries its own identity and binds on sight). An unbound outdoor
+    /// key stays ephemeral regardless - that is the neighbors' garden passing by.</summary>
     public int OnMapSighting(
         EstateKey estate, int mapKey, IReadOnlyList<Sensing.BedReading> beds, DateTimeOffset at,
-        bool isPot = false)
+        bool isPot = false, bool mayRecord = false)
     {
+        if (mayRecord && isPot && BoundKey(estate, mapKey, isPot: true) is null)
+            Bind(estate, mapKey, mapKey, isPot: true);
+
+        var ordinal = isPot ? mapKey : OrdinalOfKey(estate, mapKey);
+
         var count = 0;
         foreach (var reading in beds)
         {
@@ -60,7 +74,16 @@ public sealed class CensusEngine(LedgerStore ledger)
                 b.Estate == estate && b.IsPot == isPot
                 && b.MapKey == mapKey && b.BedSlot == reading.Slot);
             if (bed is null)
-                continue;
+            {
+                if (!mayRecord || ordinal is null)
+                    continue;
+                bed = new ClaimedBed
+                {
+                    Estate = estate, MapKey = mapKey, PatchOrdinal = ordinal.Value,
+                    BedSlot = reading.Slot, IsPot = isPot, FirstRecorded = at,
+                };
+                ledger.Beds.Add(bed);
+            }
             bed.Observe(new Observation(at, reading.SpeciesIndex, reading.Stage, ObservationSource.MapSighting));
             count++;
         }

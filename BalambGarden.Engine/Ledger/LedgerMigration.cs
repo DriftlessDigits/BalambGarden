@@ -184,7 +184,7 @@ public static class LedgerMigration
         var moved = new ClaimedBed
         {
             Estate = canonical, MapKey = bed.MapKey, PatchOrdinal = bed.PatchOrdinal,
-            BedSlot = bed.BedSlot, IsPot = bed.IsPot, ClaimedAt = bed.ClaimedAt,
+            BedSlot = bed.BedSlot, IsPot = bed.IsPot, FirstRecorded = bed.FirstRecorded,
             LastTended = bed.LastTended,
         };
         foreach (var o in bed.Ring)
@@ -198,7 +198,7 @@ public static class LedgerMigration
         {
             Estate = canonical, MapKey = keep.MapKey, PatchOrdinal = keep.PatchOrdinal,
             BedSlot = keep.BedSlot, IsPot = keep.IsPot,
-            ClaimedAt = keep.ClaimedAt <= other.ClaimedAt ? keep.ClaimedAt : other.ClaimedAt,
+            FirstRecorded = keep.FirstRecorded <= other.FirstRecorded ? keep.FirstRecorded : other.FirstRecorded,
             LastTended = Later(keep.LastTended, other.LastTended),
         };
         foreach (var o in keep.Ring.Concat(other.Ring))

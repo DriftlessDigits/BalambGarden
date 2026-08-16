@@ -41,7 +41,7 @@ public class EstateRosterTests
         store.Bindings[Chelsea.BindingKey(0)] = 110;
         store.Beds.Add(new ClaimedBed
         {
-            Estate = Chelsea, MapKey = 110, PatchOrdinal = 0, BedSlot = 3, ClaimedAt = T0,
+            Estate = Chelsea, MapKey = 110, PatchOrdinal = 0, BedSlot = 3, FirstRecorded = T0,
         });
 
         var restored = LedgerStore.FromJson(store.ToJson());

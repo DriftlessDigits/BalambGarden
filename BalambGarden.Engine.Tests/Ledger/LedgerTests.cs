@@ -12,7 +12,7 @@ public class LedgerTests
     private static ClaimedBed NewBed() => new()
     {
         Estate = Chelsea, MapKey = 110, PatchOrdinal = 0, BedSlot = 3,
-        IsPot = false, ClaimedAt = T0,
+        IsPot = false, FirstRecorded = T0,
     };
 
     [Fact] // 0-based raw storage, +1 display only (Frame 2 / probe-proven gotcha)

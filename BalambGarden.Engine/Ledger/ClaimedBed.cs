@@ -13,7 +13,8 @@ public sealed class ClaimedBed
     public required int PatchOrdinal { get; init; }
     public required int BedSlot { get; init; }
     public bool IsPot { get; init; }
-    public DateTimeOffset ClaimedAt { get; init; }
+    [System.Text.Json.Serialization.JsonPropertyName("ClaimedAt")]
+    public DateTimeOffset FirstRecorded { get; init; }
     public DateTimeOffset? LastTended { get; set; }
 
     public List<Observation> RingStorage { get; init; } = [];   // public for serialization

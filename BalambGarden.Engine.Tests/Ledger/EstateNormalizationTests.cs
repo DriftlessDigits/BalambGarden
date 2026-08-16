@@ -20,7 +20,7 @@ public class EstateNormalizationTests
         => new()
         {
             Estate = key, MapKey = mapKey, PatchOrdinal = ordinal, BedSlot = slot,
-            IsPot = isPot, ClaimedAt = T0,
+            IsPot = isPot, FirstRecorded = T0,
         };
 
     [Fact] // the bug itself: one physical plot, two rows
@@ -107,7 +107,7 @@ public class EstateNormalizationTests
         var twin = new ClaimedBed
         {
             Estate = Inside, MapKey = 1038, PatchOrdinal = 0, BedSlot = 1,
-            ClaimedAt = T0.AddHours(-1), LastTended = T0.AddHours(5),
+            FirstRecorded = T0.AddHours(-1), LastTended = T0.AddHours(5),
         };
         twin.Observe(new Observation(T0.AddHours(1), 44, 1, ObservationSource.TendReceipt));
         store.Beds.Add(kept);
@@ -117,7 +117,7 @@ public class EstateNormalizationTests
 
         var bed = Assert.Single(store.Beds);
         Assert.Equal(Outside, bed.Estate);
-        Assert.Equal(T0.AddHours(-1), bed.ClaimedAt);        // earliest claim is the receipt
+        Assert.Equal(T0.AddHours(-1), bed.FirstRecorded);        // earliest claim is the receipt
         Assert.Equal(T0.AddHours(5), bed.LastTended);        // latest tend wins
         Assert.Equal(2, bed.Ring.Count);
         Assert.Equal(T0.AddHours(1), bed.Ring[0].At);        // union, oldest first

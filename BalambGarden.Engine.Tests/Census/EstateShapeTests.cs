@@ -67,7 +67,7 @@ public class EstateShapeTests
         store.Beds.Add(new ClaimedBed
         {
             Estate = Apartment, MapKey = 0, PatchOrdinal = 0, BedSlot = 0,
-            IsPot = true, ClaimedAt = T0,
+            IsPot = true, FirstRecorded = T0,
         });
 
         var restored = LedgerStore.FromJson(store.ToJson());

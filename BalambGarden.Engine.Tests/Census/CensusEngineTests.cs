@@ -1,5 +1,6 @@
 using BalambGarden.Engine.Census;
 using BalambGarden.Engine.Ledger;
+using BalambGarden.Engine.Sensing;
 using Xunit;
 
 namespace BalambGarden.Engine.Tests.Census;
@@ -27,28 +28,6 @@ public class CensusEngineTests
         Assert.Equal(T0, bed.LastTended);
         var obs = Assert.Single(bed.Ring);
         Assert.Equal(ObservationSource.TendReceipt, obs.Source);
-    }
-
-    [Fact] // checkbox off: no new claims, receipt goes nowhere
-    public void ClaimOnActionOffDoesNotClaim()
-    {
-        var engine = new CensusEngine(new LedgerStore()) { ClaimOnAction = false };
-        engine.Bind(Chelsea, 0, 110);
-        Assert.Null(engine.OnReceipt(Tend(3)));
-        Assert.Empty(engine.LedgerBeds);
-    }
-
-    [Fact] // checkbox off but bed ALREADY claimed: observation still lands
-    public void AlreadyClaimedBedStillObservesWithCheckboxOff()
-    {
-        var engine = new CensusEngine(new LedgerStore());
-        engine.Bind(Chelsea, 0, 110);
-        engine.OnReceipt(Tend(3));
-
-        engine.ClaimOnAction = false;
-        var bed = engine.OnReceipt(Tend(3, stage: 2));
-        Assert.NotNull(bed);
-        Assert.Equal(2, bed!.Ring.Count);
     }
 
     [Fact] // no binding = no claim: a receipt can't attach to a patch we can't identify
@@ -118,5 +97,83 @@ public class CensusEngineTests
         var readings = new List<BalambGarden.Engine.Sensing.BedReading>
             { new(3, 0x41, 3, 0, true) };
         Assert.Equal(0, engine.OnMapSighting(Chelsea, mapKey: 116, readings, T0.AddDays(1)));
+    }
+
+    [Fact]
+    public void SightingCreatesRowsForABoundOutdoorKey()
+    {
+        var store = new LedgerStore();
+        var engine = new CensusEngine(store);
+        var estate = new EstateKey(340, 11, 32);
+        engine.Bind(estate, patchOrdinal: 1, mapKey: 116);
+
+        var landed = engine.OnMapSighting(estate, 116,
+            [new BedReading(0, 0x41, 4, 0, true), new BedReading(1, 0x11, 4, 0, true)],
+            DateTimeOffset.UtcNow, mayRecord: true);
+
+        Assert.Equal(2, landed);
+        Assert.Equal(2, store.Beds.Count);
+        Assert.All(store.Beds, b => Assert.Equal(1, b.PatchOrdinal));
+        Assert.Equal(4, store.Beds[0].Latest!.Stage);
+    }
+
+    [Fact]
+    public void SightingNeverCreatesRowsForAnUnboundKey()   // ward-visible neighbor data stays ephemeral
+    {
+        var store = new LedgerStore();
+        var engine = new CensusEngine(store);
+        var landed = engine.OnMapSighting(new EstateKey(340, 11, 32), 62,
+            [new BedReading(0, 0x41, 4, 0, true)], DateTimeOffset.UtcNow, mayRecord: true);
+        Assert.Equal(0, landed);
+        Assert.Empty(store.Beds);
+    }
+
+    [Fact]
+    public void SightingWithoutRecordRightsOnlyUpdatesExistingRows()
+    {
+        var store = new LedgerStore();
+        var engine = new CensusEngine(store);
+        var estate = new EstateKey(340, 11, 32);
+        engine.Bind(estate, 0, 110);
+        engine.OnMapSighting(estate, 110,
+            [new BedReading(0, 0x41, 2, 0, true)], DateTimeOffset.UtcNow, mayRecord: false);
+        Assert.Empty(store.Beds);
+    }
+
+    [Fact]
+    public void PotSightingBindsAndCreatesItsOwnRow()   // indoor map is house-scoped (08-13); idx==key (08-15)
+    {
+        var store = new LedgerStore();
+        var engine = new CensusEngine(store);
+        var estate = EstateKey.Apartment(979, 7, 0, 29);
+        var landed = engine.OnMapSighting(estate, 0,
+            [new BedReading(0, 44, 2, 0, true)], DateTimeOffset.UtcNow, isPot: true, mayRecord: true);
+        Assert.Equal(1, landed);
+        Assert.Equal(0, engine.BoundKey(estate, 0, isPot: true));
+        var bed = Assert.Single(store.Beds);
+        Assert.True(bed.IsPot);
+    }
+
+    [Fact]
+    public void EmptyBedsCreateNoRows()   // a bare bed has nothing to record
+    {
+        var store = new LedgerStore();
+        var engine = new CensusEngine(store);
+        var estate = new EstateKey(340, 11, 32);
+        engine.Bind(estate, 0, 110);
+        engine.OnMapSighting(estate, 110,
+            [new BedReading(0, 0, 0, 0, false)], DateTimeOffset.UtcNow, mayRecord: true);
+        Assert.Empty(store.Beds);
+    }
+
+    [Fact]
+    public void ReceiptAlwaysCreatesTheRow()   // the ClaimOnAction=false path is gone
+    {
+        var store = new LedgerStore();
+        var engine = new CensusEngine(store);
+        var estate = new EstateKey(340, 11, 32);
+        engine.Bind(estate, 0, 110);
+        var bed = engine.OnReceipt(new ReceiptEvent(estate, 0, 0, ReceiptVerb.Tend, 0x41, 2, DateTimeOffset.UtcNow));
+        Assert.NotNull(bed);
     }
 }
