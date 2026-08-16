@@ -590,20 +590,35 @@ public class MainWindow : Window, IDisposable
             ImGui.TextDisabled($"· {rollup.Unknown} unknown");
         }
 
-        // One window per species, earliest first (Task 2): a patch of two crops has two
-        // answers, and a single "next ripe" would quietly speak for the other one.
-        foreach (var species in rollup.RipeBySpecies)
+        // The collapsed line answers "when next" with the EARLIEST species only - every
+        // bed row under it carries its own window now, so the full per-species answer
+        // lives one click away instead of stretching the rollup across the window
+        // (08-16 Sam: "the time estimates make this very wide"). The other species are
+        // one hover away, never hidden.
+        if (rollup.RipeBySpecies.FirstOrDefault() is { } next)
         {
             ImGui.SameLine();
             var range = WindowFormat.Coarse(
-                species.Window.Earliest.ToLocalTime(), species.Window.Latest.ToLocalTime());
-            ImGui.TextDisabled($"· {Plugin.Tables.SpeciesName(species.SpeciesIndex)} ~{range}");
+                next.Window.Earliest.ToLocalTime(), next.Window.Latest.ToLocalTime());
+            ImGui.TextDisabled($"· {Plugin.Tables.SpeciesName(next.SpeciesIndex)} ~{range}");
             if (ImGui.IsItemHovered())
-                ImGui.SetTooltip(WindowTooltip(species.Window));
+                ImGui.SetTooltip(WindowTooltip(next.Window));
             ImGui.SameLine();
-            ImGui.TextDisabled(WindowFormat.Mark(species.Window.Provenance));
+            ImGui.TextDisabled(WindowFormat.Mark(next.Window.Provenance));
             if (ImGui.IsItemHovered())
-                ImGui.SetTooltip(WindowTooltip(species.Window));
+                ImGui.SetTooltip(WindowTooltip(next.Window));
+
+            var rest = rollup.RipeBySpecies.Skip(1).ToList();
+            if (rest.Count > 0)
+            {
+                ImGui.SameLine();
+                ImGui.TextDisabled($"+{rest.Count} more");
+                if (ImGui.IsItemHovered())
+                    ImGui.SetTooltip(string.Join("\n", rest.Select(s =>
+                        $"{Plugin.Tables.SpeciesName(s.SpeciesIndex)} ~"
+                        + WindowFormat.Coarse(s.Window.Earliest.ToLocalTime(), s.Window.Latest.ToLocalTime())
+                        + $" {WindowFormat.Mark(s.Window.Provenance)}")));
+            }
         }
     }
 
