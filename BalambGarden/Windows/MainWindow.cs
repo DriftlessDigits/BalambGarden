@@ -779,26 +779,47 @@ public class MainWindow : Window, IDisposable
         if (beds.Count == 0)
             return;
 
-        using var table = ImRaii.Table($"beds{rollup.PatchOrdinal}", 6,
-            ImGuiTableFlags.RowBg | ImGuiTableFlags.Borders | ImGuiTableFlags.SizingStretchProp);
-        if (!table.Success)
-            return;
-
-        ImGui.TableSetupColumn("Bed", ImGuiTableColumnFlags.WidthFixed, 120f);
-        ImGui.TableSetupColumn("Plant", ImGuiTableColumnFlags.WidthStretch);
-        ImGui.TableSetupColumn("Stage", ImGuiTableColumnFlags.WidthFixed, 90f);
-        ImGui.TableSetupColumn("Water", ImGuiTableColumnFlags.WidthFixed, 110f);
-        ImGui.TableSetupColumn("Ripe", ImGuiTableColumnFlags.WidthFixed, 150f);
-        ImGui.TableSetupColumn("##verbs", ImGuiTableColumnFlags.WidthFixed, 150f);
-        ImGui.TableHeadersRow();
-
         // The object read for the whole grid, once. A pot row matches its object by map
         // key, so one sweep answers every row - a scan per row would be an object-table
-        // walk per row per frame.
+        // walk per row per frame. It is swept before the table so the Plant panel below
+        // can find its pot in the same read the rows used.
         List<PotObject> pots = rollup.IsPots && isHere && EstateSensor.IsInside()
             ? ObjectSensor.NearbyPots()
             : [];
 
+        using (var table = ImRaii.Table($"beds{rollup.PatchOrdinal}", 6,
+                   ImGuiTableFlags.RowBg | ImGuiTableFlags.Borders | ImGuiTableFlags.SizingStretchProp))
+        {
+            if (!table.Success)
+                return;
+
+            ImGui.TableSetupColumn("Bed", ImGuiTableColumnFlags.WidthFixed, 120f);
+            ImGui.TableSetupColumn("Plant", ImGuiTableColumnFlags.WidthStretch);
+            ImGui.TableSetupColumn("Stage", ImGuiTableColumnFlags.WidthFixed, 90f);
+            ImGui.TableSetupColumn("Water", ImGuiTableColumnFlags.WidthFixed, 110f);
+            ImGui.TableSetupColumn("Ripe", ImGuiTableColumnFlags.WidthFixed, 150f);
+            ImGui.TableSetupColumn("##verbs", ImGuiTableColumnFlags.WidthFixed, 150f);
+            ImGui.TableHeadersRow();
+
+            DrawBedRows(record, beds, pots, patch, isHere, actionable, now);
+        }
+
+        // The Plant panel is a pair of 260f combos; a 150f verbs cell cannot hold it, so it
+        // renders below the whole grid at full width - the way the cycle panel renders under
+        // its patch row rather than inside it.
+        if (!rollup.IsPots || plantPanelPot is null)
+            return;
+
+        var open = pots.FindIndex(p => PanelKey(p) == plantPanelPot);
+        if (open >= 0)
+            DrawPlantPanel(pots[open]);
+    }
+
+    /// <summary>The rows themselves, inside the caller's table scope.</summary>
+    private void DrawBedRows(
+        EstateRecord record, List<ClaimedBed> beds, List<PotObject> pots, PatchGroup? patch,
+        bool isHere, bool actionable, DateTimeOffset now)
+    {
         foreach (var bed in beds)
         {
             // Every pot in an estate rolls up together and they all sit at BedSlot 0, so
@@ -979,7 +1000,6 @@ public class MainWindow : Window, IDisposable
         }
 
         BusyTip();
-        DrawPlantPanel(pot);
     }
 
     /// <summary>Forgetting a bed is manual and deliberate (spec): the ledger only ever
