@@ -838,7 +838,10 @@ public class MainWindow : Window, IDisposable
             var crop = latest is null ? null : Plugin.Tables.CropBySpeciesIndex(latest.SpeciesIndex);
 
             ImGui.TableNextColumn();
-            ImGui.Text(bed.IsPot ? $"Pot {bed.MapKey}" : $"Bed {bed.BedSlot + 1}");
+            ImGui.Selectable(bed.IsPot ? $"Pot {bed.MapKey}" : $"Bed {bed.BedSlot + 1}");
+            if (ImGui.IsItemHovered())
+                ImGui.SetTooltip("right-click to forget this record");
+            DrawForgetMenu(record, bed);
             if (bedObject is { InReach: true })
             {
                 ImGui.SameLine();
@@ -868,7 +871,7 @@ public class MainWindow : Window, IDisposable
             if (bed.IsPot)
                 DrawPotRowVerbs(bed, pots, actionable);
             else
-                DrawBedVerbs(record, bed, bedObject, actionable);
+                DrawBedVerbs(bedObject, actionable);
         }
     }
 
@@ -926,28 +929,25 @@ public class MainWindow : Window, IDisposable
             ImGui.SetTooltip(WindowFormat.MarkMeaning(window.Provenance));
     }
 
-    /// <summary>Tend appears only for a bed that is actually in reach. Abandon is always
-    /// there: forgetting a claim is a ledger act, and the ledger is readable from anywhere.</summary>
-    private void DrawBedVerbs(
-        EstateRecord record, ClaimedBed bed, BedObject? bedObject, bool actionable)
+    /// <summary>Tend appears only for a bed that is actually in reach - and it is the only
+    /// verb a bed row carries, because forgetting the record now lives on the row's name
+    /// under a right-click rather than beside every Tend.</summary>
+    private void DrawBedVerbs(BedObject? bedObject, bool actionable)
     {
-        if (bedObject is { InReach: true } target)
-        {
-            using (ImRaii.Disabled(plugin.AnyChainBusy || !actionable))
-            {
-                if (ImGui.SmallButton("Tend"))
-                {
-                    plugin.TendChain.TendOne(target);
-                    plugin.Launched(plugin.TendChain);
-                }
-            }
+        if (bedObject is not { InReach: true } target)
+            return;
 
-            BusyTip();
-            UnrosteredTip(actionable);
-            ImGui.SameLine();
+        using (ImRaii.Disabled(plugin.AnyChainBusy || !actionable))
+        {
+            if (ImGui.SmallButton("Tend"))
+            {
+                plugin.TendChain.TendOne(target);
+                plugin.Launched(plugin.TendChain);
+            }
         }
 
-        DrawAbandonButton(record, bed);
+        BusyTip();
+        UnrosteredTip(actionable);
     }
 
     /// <summary>A pot row's verbs, lit only when the pot object itself is in reach.
@@ -1002,16 +1002,24 @@ public class MainWindow : Window, IDisposable
         BusyTip();
     }
 
-    /// <summary>Forgetting a bed is manual and deliberate (spec): the ledger only ever
-    /// loses a claim because a human said so, twice.</summary>
-    private void DrawAbandonButton(EstateRecord record, ClaimedBed bed)
+    /// <summary>Forgetting a record is manual, deliberate, and now tucked behind a
+    /// right-click (UI ruling 2026-08-15): rows are game-grounded, so removing one is a
+    /// rare correction, not a per-row invitation. Still armed - two clicks, no modal.</summary>
+    private void DrawForgetMenu(EstateRecord record, ClaimedBed bed)
     {
-        var key = $"abandon:{record.Key.BindingKey(bed.PatchOrdinal)}:{bed.BedSlot}";
-        if (!ArmedButton(key, "Abandon", "Abandon - sure?", small: true))
+        if (!ImGui.BeginPopupContextItem($"forget{bed.MapKey}:{bed.BedSlot}"))
             return;
 
-        Plugin.Garden.Census.Abandon(bed);
-        Plugin.Garden.Save();
+        ImGui.TextDisabled("forgets Balamb's record only - the game is untouched");
+        if (ArmedButton($"forget:{record.Key.BindingKey(bed.PatchOrdinal)}:{bed.BedSlot}",
+                "Forget this record", "Forget - sure?", small: true))
+        {
+            Plugin.Garden.Census.Abandon(bed);
+            Plugin.Garden.Save();
+            ImGui.CloseCurrentPopup();
+        }
+
+        ImGui.EndPopup();
     }
 
     /// <summary>Drift: the ledger remembers a plant here, the map read a moment ago says
@@ -1027,7 +1035,13 @@ public class MainWindow : Window, IDisposable
         ImGui.TableNextColumn();
         ImGui.TableNextColumn();
         ImGui.TableNextColumn();
-        DrawAbandonButton(record, bed);
+
+        var key = $"forget:{record.Key.BindingKey(bed.PatchOrdinal)}:{bed.BedSlot}";
+        if (ArmedButton(key, "Forget record", "Forget - sure?", small: true))
+        {
+            Plugin.Garden.Census.Abandon(bed);
+            Plugin.Garden.Save();
+        }
     }
 
     /// <summary>True only when a fresh read of THIS estate's map shows the slot vacant.
