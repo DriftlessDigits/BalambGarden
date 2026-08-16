@@ -799,20 +799,21 @@ public class MainWindow : Window, IDisposable
             ? ObjectSensor.NearbyPots()
             : [];
 
+        // SizingFixedFit: every column hugs its own content and the table is exactly as
+        // wide as its data - no stretch arithmetic to blow a column past the window edge
+        // (08-15: one stretch column ate an ultrawide and shoved Stage/Ripe offscreen).
+        // A wider window is quiet space on the right, and nothing ever clips.
         using (var table = ImRaii.Table($"beds{rollup.PatchOrdinal}", 5,
-                   ImGuiTableFlags.RowBg | ImGuiTableFlags.Borders | ImGuiTableFlags.SizingStretchProp))
+                   ImGuiTableFlags.RowBg | ImGuiTableFlags.Borders | ImGuiTableFlags.SizingFixedFit))
         {
             if (!table.Success)
                 return;
 
-            // Fixed columns auto-fit their content (no hardcoded width); Plant is the one
-            // flex column, so dragging the window wider stretches the name, never a
-            // clipped ripe window or a half-drawn verb.
-            ImGui.TableSetupColumn("Bed", ImGuiTableColumnFlags.WidthFixed);
-            ImGui.TableSetupColumn("Plant", ImGuiTableColumnFlags.WidthStretch);
-            ImGui.TableSetupColumn("Stage", ImGuiTableColumnFlags.WidthFixed);
-            ImGui.TableSetupColumn("Ripe", ImGuiTableColumnFlags.WidthFixed);
-            ImGui.TableSetupColumn("##verbs", ImGuiTableColumnFlags.WidthFixed);
+            ImGui.TableSetupColumn("Bed");
+            ImGui.TableSetupColumn("Plant");
+            ImGui.TableSetupColumn("Stage");
+            ImGui.TableSetupColumn("Ripe");
+            ImGui.TableSetupColumn("##verbs");
             ImGui.TableHeadersRow();
 
             DrawBedRows(record, beds, pots, patch, isHere, actionable, now);
