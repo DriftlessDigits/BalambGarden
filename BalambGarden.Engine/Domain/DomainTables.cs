@@ -173,14 +173,28 @@ public sealed class DomainTables
     private static readonly string[] PigmentWords =
         ["Red", "Orange", "Yellow", "Blue", "Purple", "White", "Pink", "Green", "Black", "Rainbow"];
 
+    /// <summary>Talk names receipted in the field that differ from the species-table name
+    /// (Talk speaks the harvest ITEM name). Receipts-only: one entry per proven string,
+    /// never a pattern - and each maps to a LISTED species name, so an alias can reveal
+    /// an index but never invent one.</summary>
+    private static readonly Dictionary<string, string> TalkAliases = new(StringComparer.OrdinalIgnoreCase)
+    {
+        // Sam's yard beds 08-16 13:46 (4x unknown-species warnings) + Chelsea's /xllog.
+        ["Royal Kukuru Bean"] = "Royal Kukuru",
+    };
+
     /// <summary>Receipt joins: dialogue names a plant, the map speaks species indices.
-    /// Exact match first; else one leading pigment word strips ("Blue Lupins" -> Lupins,
-    /// 08-16: color is pigment, not species).</summary>
+    /// Exact match first; then the receipted alias table; else one leading pigment word
+    /// strips ("Blue Lupins" -> Lupins, 08-16: color is pigment, not species).</summary>
     public ushort? SpeciesIndexByName(string name)
     {
         var trimmed = name.Trim();
         if (indexByName.TryGetValue(trimmed, out var i))
             return i;
+
+        if (TalkAliases.TryGetValue(trimmed, out var canonical)
+            && indexByName.TryGetValue(canonical, out var aliased))
+            return aliased;
 
         foreach (var color in PigmentWords)
             if (trimmed.StartsWith(color + " ", StringComparison.OrdinalIgnoreCase)
