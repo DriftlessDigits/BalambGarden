@@ -82,6 +82,30 @@ public class IndoorMapTests
         Assert.Equal(0, pot.Color);
     }
 
+    // Papa's Krakka twins, 08-16 12:01 - the wilt lab's verdict. Byte-identical except
+    // offset +4, and exactly one wilts by Sam's eyes: b4 is the wilt flag. First pot-wilt
+    // receipt ever taken; pot-immortality dies for normal crops (flower tail unaffected).
+    private const string WiltingTwin =
+        "31 00 02 00 01 FF 00 00 00 00 00 FF 00 00 00 00 00 FF 00 00 00 00 00 FF " +
+        "00 00 00 00 00 7F 00 00 00 00 00 FF 00 00 00 00 00 01 00 00 00 00 00 00";
+
+    [Fact]
+    public void WiltByteDecodes()
+    {
+        var dry = MapFormat.DecodeIndoorEntry(Bytes(WiltingTwin), Known)!;
+        Assert.Equal(1, dry.Wilt);
+        var watered = MapFormat.DecodeIndoorEntry(
+            Bytes(WiltingTwin.Replace("31 00 02 00 01", "31 00 02 00 00")), Known)!;
+        Assert.Equal(0, watered.Wilt);
+    }
+
+    [Fact] // ripe flowers carry b4=2 everywhere (Mama's, FC) - a third state, kept raw
+    public void RipeFlowerThirdStateKeptRaw()
+    {
+        var pot = MapFormat.DecodeIndoorEntry(Bytes(BlueLupins), Known)!;
+        Assert.Equal(2, pot.Wilt);
+    }
+
     [Fact] // multi-slot furniture must be rejected, not misread as a pot
     public void MultiSlotFurnitureIsNotAPot()
         => Assert.Null(MapFormat.DecodeIndoorEntry(Bytes(MultiSlot), Known));

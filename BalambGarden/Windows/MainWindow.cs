@@ -881,14 +881,29 @@ public class MainWindow : Window, IDisposable
             // mostly reads "watered" spends the grid's widest real estate on the state
             // nobody has to act on. Only a bed actually asking for water says anything
             // here; the steady state is one word on the rollup line above.
-            var water = bed.IsPot ? WaterState.NotApplicable
-                : crop is null ? WaterState.Unknown
-                : Plugin.Garden.Wilt.StateFor(bed, crop, now);
-            if (water is WaterState.Due or WaterState.Overdue or WaterState.Danger)
+            //
+            // Pots are OBSERVED, not predicted: the map itself says wilting (byte[4]=1,
+            // 08-16 Papa's twins - pots DO wilt for normal crops; the flower no-wilt
+            // evidence stands separately). No clock model, just what the game showed us.
+            if (bed.IsPot)
             {
-                ImGui.SameLine();
-                ImGui.TextColored(water == WaterState.Danger ? Red : Amber,
-                    water == WaterState.Danger ? "· DANGER - water now" : "· thirsty");
+                if (CensusPump.LastIndoor.TryGetValue(bed.MapKey, out var livePot)
+                    && livePot.Wilt == 1)
+                {
+                    ImGui.SameLine();
+                    ImGui.TextColored(Amber, "· wilting - water now");
+                }
+            }
+            else
+            {
+                var water = crop is null ? WaterState.Unknown
+                    : Plugin.Garden.Wilt.StateFor(bed, crop, now);
+                if (water is WaterState.Due or WaterState.Overdue or WaterState.Danger)
+                {
+                    ImGui.SameLine();
+                    ImGui.TextColored(water == WaterState.Danger ? Red : Amber,
+                        water == WaterState.Danger ? "· DANGER - water now" : "· thirsty");
+                }
             }
 
             if (bedObject is { InReach: true })

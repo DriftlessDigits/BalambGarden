@@ -53,7 +53,9 @@ public static class MapFormat
         // split changes nothing. This is what made "Stage 20" nonsense: 20 was 0x14.
         var stage = (byte)(bytes[2] & 0xF);
         var pigment = (byte)(bytes[2] >> 4);
+        // byte[4]: the wilt flag (08-16, Papa's twins). Kept raw - see PotReading.Wilt.
         return new PotReading(
-            species, stage, pigment, bytes[3], Occupied: true, Recognized: knownSpecies(species));
+            species, stage, pigment, bytes[3], Occupied: true, Recognized: knownSpecies(species),
+            Wilt: bytes[4]);
     }
 }
