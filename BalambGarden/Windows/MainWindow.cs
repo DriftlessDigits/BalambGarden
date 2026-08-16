@@ -1322,6 +1322,8 @@ public class MainWindow : Window, IDisposable
 
         // Sow-flow recon: Sam plants by hand with this on, the log records what the
         // addons actually held. A recording, not a snapshot - so it keeps its own switch.
+        // The choice PERSISTS across reloads (08-15: hot-loads reset the runtime flag and
+        // cost us two captures in one day) - a recording you asked for stays asked-for.
         var watching = PlantFlow.Watching;
         if (ImGui.Checkbox("Watch plant flow", ref watching))
         {
@@ -1329,6 +1331,8 @@ public class MainWindow : Window, IDisposable
                 PlantFlow.StartWatching();
             else
                 PlantFlow.StopWatching();
+            Plugin.Configuration.WatchPlantFlow = watching;
+            Plugin.Configuration.Save();
         }
 
         ImGui.TextDisabled($"{beds.Count} beds within 40y");

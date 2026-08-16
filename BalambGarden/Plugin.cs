@@ -104,6 +104,13 @@ public sealed class Plugin : IDalamudPlugin
         // signal (capture 2026-08-15 F4), so the listener lives as long as the plugin does.
         Game.ObtainWatch.Start();
 
+#if DEBUG
+        // A recording the user asked for survives hot-loads (08-15: reset toggles cost two
+        // captures in one day). The checkbox writes this flag; startup honors it.
+        if (Configuration.WatchPlantFlow)
+            Chains.PlantFlow.StartWatching();
+#endif
+
         // Add a simple message to the log with level set to information
         // Use /xllog to open the log window in-game
         // Example Output: 00:57:54.959 | INF | [BalambGarden] ===A cool log message from Balamb Garden===

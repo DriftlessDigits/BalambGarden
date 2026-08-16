@@ -54,6 +54,12 @@ public class Configuration : IPluginConfiguration
     /// has always been, so turning this off costs nothing but the convenience.</summary>
     public bool AutoFillPicker { get; set; } = true;
 
+    /// <summary>Whether the plant-flow recon watcher is recording. Persisted because the
+    /// runtime flag dies on every hot-load (08-15: two captures lost in one day to reset
+    /// toggles) - a recording you asked for stays asked-for until you say otherwise. Only
+    /// read by debug builds; Release carries no watcher to start.</summary>
+    public bool WatchPlantFlow { get; set; }
+
     /// <summary>How far the working patch sweep looks, in yalms. Sam's ruling 08-14 set the
     /// 20y default (the neighbour's twin ordinal sat at 37.9y, and a far own patch simply
     /// reappears when you walk toward it); it is a setting because a sprawling plot and a
