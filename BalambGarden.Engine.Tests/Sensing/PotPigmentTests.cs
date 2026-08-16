@@ -13,13 +13,15 @@ public class PotPigmentTests
     {
         Assert.Equal("Blue", PotPigment.Name(1));
         Assert.Equal("Yellow", PotPigment.Name(2));
+        // 5 = Purple: FC cosmos, double receipt 08-16 - Sam's screenshot AND the game's
+        // own Talk line "Purple Cosmos - These flowers are in bloom."
+        Assert.Equal("Purple", PotPigment.Name(5));
     }
 
     [Fact]
     public void UnreceiptedPigmentsAreNull()
     {
         Assert.Null(PotPigment.Name(0));   // unpigmented crops
-        Assert.Null(PotPigment.Name(5));   // FC cosmos - pending Sam's eyes
         Assert.Null(PotPigment.Name(9));
     }
 }

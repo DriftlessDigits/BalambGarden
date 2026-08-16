@@ -12,7 +12,8 @@ public sealed record PotReading(
 
 /// <summary>Pigment nibble names, receipts only (08-16, Sam's eyes at three estates):
 /// 1 = Blue (lupins AND morning glories agreed), 2 = Yellow (daisies + item 17999
-/// "Yellow Daisies"). An unreceipted nibble answers null and the plant renders as the
+/// "Yellow Daisies"), 5 = Purple (FC cosmos - screenshot AND the game's own Talk line
+/// "Purple Cosmos"). An unreceipted nibble answers null and the plant renders as the
 /// bare species - a color is never guessed.</summary>
 public static class PotPigment
 {
@@ -20,6 +21,7 @@ public static class PotPigment
     {
         1 => "Blue",
         2 => "Yellow",
+        5 => "Purple",
         _ => null,
     };
 }
