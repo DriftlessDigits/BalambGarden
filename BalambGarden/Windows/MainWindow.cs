@@ -1302,9 +1302,10 @@ public class MainWindow : Window, IDisposable
             BagReader,
             (lo, hi) => WindowFormat.Coarse(lo.ToLocalTime(), hi.ToLocalTime()));
 
-        // "(!)" when something should be READ (ruling 2026-08-16) - the old counter
-        // counted furniture, and a number that is always there stops meaning anything.
-        var label = tips.Any(t => t.Attention) ? "Tips (!)###tips" : "Tips###tips";
+        // The label stays plain (ruling 2026-08-16 rev: no badge at all - the tab is a
+        // place you go, not a place that calls you). Attention still colors the tags
+        // inside so the line worth reading is findable at a glance.
+        const string label = "Tips###tips";
         using var tab = ImRaii.TabItem(label);
         if (!tab.Success)
             return;
