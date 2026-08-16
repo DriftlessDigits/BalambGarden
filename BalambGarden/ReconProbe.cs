@@ -143,6 +143,24 @@ internal static unsafe class ReconProbe
         var housing = Plugin.DataManager.GetExcelSheet<Lumina.Excel.Sheets.HousingFurniture>();
         var map = MapSensor.ReadRawEntries();
 
+        // Sheet reconnaissance (08-16): neither raw id nor low-word keyed either sheet,
+        // so walk the sheet itself - row range, then every Flowerpot row it holds. The
+        // mapping from furniture id to sheet row becomes arithmetic we can SEE.
+        Plugin.Log.Information(
+            $"[Probe] pot-gate sheets: Item rows={items.Count}, HousingFurniture rows={housing.Count}");
+        uint hfMin = uint.MaxValue, hfMax = 0;
+        foreach (var row in housing)
+        {
+            if (row.RowId < hfMin) hfMin = row.RowId;
+            if (row.RowId > hfMax) hfMax = row.RowId;
+            var name = row.Item.ValueNullable?.Name.ExtractText() ?? "";
+            if (name.Contains("Flowerpot", StringComparison.OrdinalIgnoreCase))
+                Plugin.Log.Information(
+                    $"[Probe] pot-gate HF row={row.RowId} itemRow={row.Item.RowId} "
+                    + $"name={name} cat={row.HousingItemCategory}");
+        }
+        Plugin.Log.Information($"[Probe] pot-gate HF row range: {hfMin}..{hfMax}");
+
         Plugin.Log.Information("[Probe] pot-gate: furniture x sheets x datamap");
         foreach (var pointer in furniture->FurnitureVector)
         {
@@ -150,9 +168,13 @@ internal static unsafe class ReconProbe
             if (item == null || item->Id == 0)
                 continue;
 
-            // Which sheet does item->Id key? Print both answers; the log gets to say.
+            // Which sheet does item->Id key? Print the answers; the log gets to say.
+            // 08-16 lead: real furniture ids all sit above 0x10000 - try the low word as
+            // a HousingFurniture row (65981 -> 445) alongside the raw id.
             var asItem = items.GetRowOrDefault(item->Id);
-            var asHousing = housing.GetRowOrDefault(item->Id);
+            // RECEIPT (08-16): furniture id + 0x20000 = HousingFurniture row. Oasis
+            // Flowerpot 65981 -> 197053, Riviera 65979 -> 197051, both receipted pots.
+            var asHousing = housing.GetRowOrDefault(item->Id + 0x20000u);
 
             var line = $"[Probe] pot-gate idx={item->Index} id={item->Id}"
                 + $" | Item: {(asItem is { } i ? i.Name.ExtractText() : "-")}"
