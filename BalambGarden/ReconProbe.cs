@@ -487,6 +487,7 @@ internal static unsafe class ReconProbe
                     Plugin.Log.Information(line.ToString());
                 }
 
+                DumpDrawObject(address);
                 dumped++;
             }
             catch (Exception ex)
@@ -496,6 +497,64 @@ internal static unsafe class ReconProbe
         }
 
         Plugin.Log.Information($"[Probe] dumped {dumped} objects ({windowBytes:X} bytes each)");
+    }
+
+    /// <summary>
+    /// Follows the object's DrawObject pointer into render territory and hex-dumps it,
+    /// plus one level of scene-graph children. The wilt hunt's next lab: housing data
+    /// (DataMap / EventObject / manager) is exhausted with zero wilt bytes, yet the
+    /// client renders the droop on zone-in - so the state the renderer uses lives
+    /// somewhere behind this pointer. Diff instrument, same technique as the pot
+    /// record: capture wilting vs healthy specimens (a wilting POT is self-labeling -
+    /// b4=1 in the DataMap beside the drooping draw object) and the alternating bytes
+    /// are the answer. Render layouts are unmapped and patch-fragile: anything found
+    /// here ships as an enhancement over the clock+prose floor, never instead of it.
+    /// </summary>
+    private static void DumpDrawObject(IntPtr gameObjectAddress)
+    {
+        const int drawWindow = 0x400;
+        const int childWindow = 0x100;
+        const int maxChildren = 8;
+
+        try
+        {
+            var native = (FFXIVClientStructs.FFXIV.Client.Game.Object.GameObject*)gameObjectAddress;
+            var draw = native->DrawObject;
+            if (draw == null)
+            {
+                Plugin.Log.Information("[Probe]   draw: null");
+                return;
+            }
+
+            Plugin.Log.Information($"[Probe]   draw addr={(nint)draw:X} type={draw->GetObjectType()}");
+            HexDump("draw", (byte*)draw, drawWindow);
+
+            var child = draw->Object.ChildObject;
+            for (var n = 0; child != null && n < maxChildren; n++)
+            {
+                Plugin.Log.Information($"[Probe]   draw child[{n}] addr={(nint)child:X} type={child->GetObjectType()}");
+                HexDump($"child[{n}]", (byte*)child, childWindow);
+                child = child->NextSiblingObject;
+                if (child == draw->Object.ChildObject) break; // sibling lists can be circular
+            }
+        }
+        catch (Exception ex)
+        {
+            Plugin.Log.Warning($"[Probe] draw object dump failed: {ex.Message}");
+        }
+
+        static void HexDump(string label, byte* start, int length)
+        {
+            var bytes = new byte[length];
+            for (var i = 0; i < length; i++) bytes[i] = start[i];
+            for (var offset = 0; offset < length; offset += 16)
+            {
+                var line = new StringBuilder($"[Probe]   {label} +{offset:X3}: ");
+                for (var i = 0; i < 16 && offset + i < length; i++)
+                    line.Append($"{bytes[offset + i]:X2} ");
+                Plugin.Log.Information(line.ToString());
+            }
+        }
     }
 }
 #endif
