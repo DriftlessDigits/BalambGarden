@@ -13,6 +13,13 @@ namespace BalambGarden.Game;
 /// Acting IS censusing: every chain completion lands here.</summary>
 internal static class CensusPump
 {
+    /// <summary>Whether the estate under our feet is game-granted (spec: the roster is the
+    /// census scope). Refreshed with the tick; false anywhere unrostered, and every ledger
+    /// write path below checks it - Balamb can SEE a stranger's garden, it does not KEEP it.</summary>
+    internal static bool CoveredHere { get; private set; }
+
+    private const string NotCovered = "not on your teleport list - Balamb doesn't track here";
+
     private static DateTime nextTickUtc = DateTime.MinValue;
     private static EstateKey? announcedEstate;
     private static bool announcedInside;
@@ -60,6 +67,8 @@ internal static class CensusPump
             return;
         }
 
+        CoveredHere = RosterSensor.Current().Covers(estate);
+
         // The front door no longer changes the estate key (08-15: one plot, one record), so
         // the inside/outside flip is its own sighting trigger - the two DataMaps are read by
         // different code paths and neither refreshes the other.
@@ -91,6 +100,12 @@ internal static class CensusPump
         // to resolve to.
         joinEvidence.Clear();
         pendingReceipts.Clear();
+
+        // An unrostered estate still announces above - the tick settles, the map still
+        // reads - but nothing about it enters the ledger and nothing nudges.
+        if (!CoveredHere)
+            return;
+
         Plugin.Garden.Ledger.UpsertEstate(estate, DateTimeOffset.UtcNow);
         Plugin.Garden.Save();
 
@@ -110,22 +125,29 @@ internal static class CensusPump
         if (estate is null)
             return;
 
+        // The pump refreshes CoveredHere every tick for the estate underfoot, so a
+        // non-null estate here can trust it as-is.
         var now = DateTimeOffset.UtcNow;
+        var landed = 0;
         if (EstateSensor.IsInside())
         {
             LastIndoor = MapSensor.ReadIndoor();
             foreach (var (key, pot) in LastIndoor)
             {
-                Plugin.Garden.Census.OnMapSighting(estate, key,
+                landed += Plugin.Garden.Census.OnMapSighting(estate, key,
                     [new BedReading(0, pot.SpeciesIndex, pot.Stage, pot.Extra, pot.Occupied)], now,
-                    isPot: true);
+                    isPot: true, mayRecord: CoveredHere);
             }
+            if (CoveredHere && landed > 0)
+                Plugin.Garden.Save();
         }
         else
         {
             LastOutdoor = MapSensor.ReadOutdoor();
             foreach (var (key, beds) in LastOutdoor)
-                Plugin.Garden.Census.OnMapSighting(estate, key, beds, now);
+                landed += Plugin.Garden.Census.OnMapSighting(estate, key, beds, now, mayRecord: CoveredHere);
+            if (CoveredHere && landed > 0)
+                Plugin.Garden.Save();
         }
     }
 
@@ -137,6 +159,9 @@ internal static class CensusPump
         var estate = EstateSensor.Current();
         if (estate is null)
             return "no estate identity - not recorded";
+
+        if (!CoveredHere)
+            return NotCovered;
 
         if (ReceiptParser.ParseBedHeader(bedHeader) is not { } parsed)
             return $"unparseable bed header '{bedHeader}' - not recorded";
@@ -267,6 +292,9 @@ internal static class CensusPump
         if (estate is null)
             return "no estate identity - not recorded";
 
+        if (!CoveredHere)
+            return NotCovered;
+
         SightNow();
         var species = Plugin.Tables.SpeciesIndexByName(plantName) ?? 0;
 
@@ -310,12 +338,17 @@ internal static class CensusPump
         if (estate is null || ReceiptParser.ParseBedHeader(bedHeader) is not { } parsed)
             return $"{bedHeader}: skipped (ripe?) - not recorded";
 
+        if (!CoveredHere)
+            return NotCovered;
+
+        SightNow();   // the sighting may have just created the row this skip records against
+
         var species = Plugin.Tables.SpeciesIndexByName(plantName) ?? 0;
         var bed = Plugin.Garden.Census.LedgerBeds.FirstOrDefault(b =>
             b.Estate == estate && b.PatchOrdinal == parsed.PatchOrdinal
             && b.BedSlot == parsed.BedSlot && !b.IsPot);
         if (bed is null)
-            return $"{bedHeader}: skipped (ripe, unclaimed - tend won't claim a bed it can't touch)";
+            return $"{bedHeader}: ripe - patch not identified yet (tend a growing bed here once and the whole patch joins)";
 
         bed.Observe(new Observation(
             DateTimeOffset.UtcNow,
@@ -333,7 +366,7 @@ internal static class CensusPump
         var bed = Plugin.Garden.Census.OnReceipt(receipt);
         Plugin.Garden.Save();
         return bed is null
-            ? $"{label} - done (not claimed: {(Plugin.Configuration.ClaimOnAction ? "patch unbound" : "claim-as-I-go off")})"
+            ? $"{label} - done (not recorded: patch not identified yet)"
             : $"{label} - done";
     }
 

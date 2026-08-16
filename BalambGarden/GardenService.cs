@@ -21,7 +21,7 @@ public sealed class GardenService
     {
         this.ledgerPath = ledgerPath;
         Ledger = ledger;
-        Census = new CensusEngine(ledger) { ClaimOnAction = Plugin.Configuration.ClaimOnAction };
+        Census = new CensusEngine(ledger);
         Trail = new DebugTrail(trailPath);
     }
 

@@ -39,8 +39,8 @@ public class Configuration : IPluginConfiguration
     public int PostTendDelayMS { get; set; } = 8000;
     public int PostTendJitterMS { get; set; } = 1000;
 
-    // v2 census behavior (spec: claim-on-action, arrival nudge, debug trail).
-    public bool ClaimOnAction { get; set; } = true;
+    // v2 census behavior (spec: arrival nudge, debug trail). Claim-as-I-go retired
+    // 2026-08-15 - the roster decides scope, sightings do the recording.
     public bool NudgeEnabled { get; set; } = true;
     public bool TrailEnabled { get; set; } = true;
 
