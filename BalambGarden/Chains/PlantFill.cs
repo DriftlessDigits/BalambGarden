@@ -242,7 +242,11 @@ internal static unsafe partial class PlantFlow
             for (var i = 0; i < uld.NodeListCount; i++)
             {
                 var node = uld.NodeList[i];
-                if (node == null || node->Type != NodeType.Component)
+                // A component node's Type is 1000 + a variant (the 08-16 tree receipt:
+                // the picker's slots are 1007, its buttons 1001), so equality against
+                // NodeType.Component matched NOTHING - this scan had never seen a
+                // component in any addon. >= 1000 is the ECommons-established test.
+                if (node == null || (ushort)node->Type < 1000)
                     continue;
                 if (visibleOnly && !node->IsVisible())
                     continue;

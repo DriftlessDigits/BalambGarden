@@ -312,7 +312,7 @@ internal static unsafe partial class PlantFlow
                     + $" vis={node->IsVisible()} click={node->IsEventRegistered(AtkEventType.MouseClick)}"
                     + $" pos=({node->ScreenX:F0},{node->ScreenY:F0}) size={node->Width}x{node->Height}";
 
-                if (node->Type != NodeType.Component)
+                if ((ushort)node->Type < 1000)   // component node = 1000 + variant
                 {
                     Plugin.Log.Information(line);
                     continue;
@@ -336,7 +336,7 @@ internal static unsafe partial class PlantFlow
                         continue;
                     var childLine = $"[PlantRecon]     .{c} id={child->NodeId} type={child->Type}"
                         + $" vis={child->IsVisible()} click={child->IsEventRegistered(AtkEventType.MouseClick)}";
-                    if (child->Type == NodeType.Component
+                    if ((ushort)child->Type >= 1000
                         && ((AtkComponentNode*)child)->Component is var cc && cc != null)
                         childLine += $" comp={cc->GetComponentType()}";
                     Plugin.Log.Information(childLine);
