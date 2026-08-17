@@ -84,6 +84,23 @@ public static class WindowFormat
             : $"{loDay} {loPart} - {hiDay} {hiPart}";
     }
 
+    /// <summary>Clamp-at-now voice: a front edge the reader has already lived through is
+    /// not spoken as if it were still coming ("Sat night - Wed morning" with Sat gone
+    /// reads like a claim about the past). Only the SPOKEN phrase clamps - the hover keeps
+    /// <see cref="Range"/>'s raw math, so the model's actual window is always one hover
+    /// away. A latest on the reader's own day drops its day name; a window entirely
+    /// behind now has no future edge left to speak.</summary>
+    public static string Coarse(DateTimeOffset earliest, DateTimeOffset latest, DateTimeOffset now)
+    {
+        if (now < earliest)
+            return Coarse(earliest, latest);
+        if (now >= latest)
+            return "any time now";
+
+        var day = latest.Date == now.Date ? "" : latest.ToString("ddd ", CultureInfo.InvariantCulture);
+        return $"any time now, by {day}{DayPart(latest)}";
+    }
+
     /// <summary>The small hours are "early morning", never a "night" that reads as the
     /// same date's evening.</summary>
     private static string DayPart(DateTimeOffset t) => t.Hour switch

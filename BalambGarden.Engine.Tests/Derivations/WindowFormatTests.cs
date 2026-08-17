@@ -93,6 +93,31 @@ public class WindowFormatTests
         Assert.Equal("Sun afternoon-evening", WindowFormat.Coarse(lo, lo.AddHours(5)));
     }
 
+    [Fact] // a window whose front edge is already behind the reader clamps at now: "ripens
+    // Sat night - Wed morning" with Sat gone reads like a claim about the past. The spoken
+    // phrase clamps; the hover (Range) keeps the raw math.
+    public void CoarseClampsAtNow()
+    {
+        var lo = DateTimeOffset.Parse("2026-08-15T21:30:00-05:00"); // Sat night
+        var hi = DateTimeOffset.Parse("2026-08-19T05:30:00-05:00"); // Wed morning
+
+        // now before the window: unchanged
+        var before = DateTimeOffset.Parse("2026-08-15T12:00:00-05:00");
+        Assert.Equal("Sat night - Wed morning", WindowFormat.Coarse(lo, hi, before));
+
+        // now inside the window: the past edge stops being spoken
+        var inside = DateTimeOffset.Parse("2026-08-16T19:00:00-05:00"); // Sun
+        Assert.Equal("any time now, by Wed morning", WindowFormat.Coarse(lo, hi, inside));
+
+        // latest lands on the reader's own day: the day name is noise
+        var sameDay = DateTimeOffset.Parse("2026-08-19T02:00:00-05:00"); // Wed small hours
+        Assert.Equal("any time now, by morning", WindowFormat.Coarse(lo, hi, sameDay));
+
+        // the whole window is behind now: no future edge left to speak
+        var after = DateTimeOffset.Parse("2026-08-19T12:00:00-05:00");
+        Assert.Equal("any time now", WindowFormat.Coarse(lo, hi, after));
+    }
+
     [Fact] // the small hours are "early morning", not a misleading "night" of the same date
     public void CoarseDayPartBoundaries()
     {

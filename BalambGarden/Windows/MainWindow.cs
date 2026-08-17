@@ -183,7 +183,7 @@ public class MainWindow : Window, IDisposable
     {
         var verdict = Verdicts.ForGarden(
             estates, Plugin.Garden.Census.LedgerBeds, Plugin.Tables, Plugin.Garden.Wilt, now,
-            w => WindowFormat.Coarse(w.Earliest.ToLocalTime(), w.Latest.ToLocalTime()));
+            w => WindowFormat.Coarse(w.Earliest.ToLocalTime(), w.Latest.ToLocalTime(), now.ToLocalTime()));
 
         ImGui.Text(verdict.Text);
 
@@ -202,6 +202,16 @@ public class MainWindow : Window, IDisposable
     private static string WindowTooltip(EtaWindow window)
         => WindowFormat.Range(window.Earliest.ToLocalTime(), window.Latest.ToLocalTime())
            + $"\n{WindowFormat.MarkMeaning(window.Provenance)}";
+
+    /// <summary>The spoken day-part window, clamped at now - and the "~" approx marker
+    /// only while there is still a future range to approximate ("~any time now" would be
+    /// hedging a hedge). The hover keeps the raw math either way.</summary>
+    private static string SpokenWindow(EtaWindow w, DateTimeOffset now, bool approxMark = false)
+    {
+        var local = now.ToLocalTime();
+        var phrase = WindowFormat.Coarse(w.Earliest.ToLocalTime(), w.Latest.ToLocalTime(), local);
+        return approxMark && local < w.Earliest.ToLocalTime() ? "~" + phrase : phrase;
+    }
 
     /// <summary>The two things the verdict cannot say: that no estate has a tab yet, and
     /// that we are standing somewhere the ledger has not finished writing down. Both are
@@ -532,7 +542,7 @@ public class MainWindow : Window, IDisposable
         }
 
         ImGui.SameLine();
-        DrawRollupSummary(rollup);
+        DrawRollupSummary(rollup, now);
 
         if (rollup.IsPots && isHere)
             DrawPotVerbs(beds, actionable);
@@ -566,7 +576,7 @@ public class MainWindow : Window, IDisposable
     /// <summary>The counts, quiet by default. Only the two things that want a decision now
     /// - ripe and thirst - come off TextDisabled, and thirst goes red only when the wilt
     /// clock is actually in the danger band.</summary>
-    private static void DrawRollupSummary(PatchRollup rollup)
+    private static void DrawRollupSummary(PatchRollup rollup, DateTimeOffset now)
     {
         ImGui.TextDisabled(rollup.IsPots
             ? $"{rollup.Claimed} recorded"
@@ -608,9 +618,8 @@ public class MainWindow : Window, IDisposable
         if (rollup.RipeBySpecies.FirstOrDefault() is { } next)
         {
             ImGui.SameLine();
-            var range = WindowFormat.Coarse(
-                next.Window.Earliest.ToLocalTime(), next.Window.Latest.ToLocalTime());
-            ImGui.TextDisabled($"· {Plugin.Tables.SpeciesName(next.SpeciesIndex)} ~{range}");
+            var range = SpokenWindow(next.Window, now, approxMark: true);
+            ImGui.TextDisabled($"· {Plugin.Tables.SpeciesName(next.SpeciesIndex)} {range}");
             if (ImGui.IsItemHovered())
                 ImGui.SetTooltip(WindowTooltip(next.Window));
             ImGui.SameLine();
@@ -625,8 +634,8 @@ public class MainWindow : Window, IDisposable
                 ImGui.TextDisabled($"+{rest.Count} more");
                 if (ImGui.IsItemHovered())
                     ImGui.SetTooltip(string.Join("\n", rest.Select(s =>
-                        $"{Plugin.Tables.SpeciesName(s.SpeciesIndex)} ~"
-                        + WindowFormat.Coarse(s.Window.Earliest.ToLocalTime(), s.Window.Latest.ToLocalTime())
+                        $"{Plugin.Tables.SpeciesName(s.SpeciesIndex)} "
+                        + SpokenWindow(s.Window, now, approxMark: true)
                         + $" {WindowFormat.Mark(s.Window.Provenance)}")));
             }
         }
@@ -1103,7 +1112,7 @@ public class MainWindow : Window, IDisposable
         // it reads disabled, and only "ripe now" (above) is bright. No per-row provenance
         // marker either: the rollup line carries the claim once per species, and the
         // hover here keeps the exact hours plus what kind of claim it is.
-        ImGui.TextDisabled(WindowFormat.Coarse(window.Earliest.ToLocalTime(), window.Latest.ToLocalTime()));
+        ImGui.TextDisabled(SpokenWindow(window, now));
         if (ImGui.IsItemHovered())
             ImGui.SetTooltip(WindowTooltip(window));
     }
@@ -1527,7 +1536,7 @@ public class MainWindow : Window, IDisposable
             key => Plugin.Garden.Ledger.Estates.FirstOrDefault(e => e.Key == key)?.DisplayName
                    ?? key.DisplayLabel(),
             BagReader,
-            (lo, hi) => WindowFormat.Coarse(lo.ToLocalTime(), hi.ToLocalTime()));
+            (lo, hi) => WindowFormat.Coarse(lo.ToLocalTime(), hi.ToLocalTime(), now.ToLocalTime()));
 
         // The label stays plain (ruling 2026-08-16 rev: no badge at all - the tab is a
         // place you go, not a place that calls you). Attention still colors the tags
