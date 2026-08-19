@@ -664,7 +664,9 @@ public class MainWindow : Window, IDisposable
             var bed = isPots
                 ? beds.FirstOrDefault(b => b.MapKey == cell.Slot)
                 : beds.FirstOrDefault(b => b.BedSlot == cell.Slot);
-            var drifted = bed is not null && ReadsEmptyNow(bed, isHere);
+            // Drift paint is for a claim the map contradicts; once the reconcile has
+            // emptied the row (Latest null) the cell is a plain empty, not a warning.
+            var drifted = bed is { Latest: not null } && ReadsEmptyNow(bed, isHere);
 
             // An invisible button owns the rect: it reserves the layout space AND gives
             // the cell a hover target, so the drawlist only has to paint inside it.
@@ -699,11 +701,15 @@ public class MainWindow : Window, IDisposable
         if (drifted)
             return new Vector4(0.22f, 0.17f, 0.09f, 1f);
 
+        // Ripe is BLUE, not yellow (2026-08-18 ruling: green/amber/red carry the health
+        // gradient, so yellow reads as a warning - and ripe is a payoff, not a caution.
+        // Ripe answers "is there something to collect?", a different question, so it
+        // stays off the gradient entirely. Chelsea likes blue.)
         return cell.Fill switch
         {
             CellFill.Unclaimed => new Vector4(0.13f, 0.13f, 0.13f, 1f),
             CellFill.Unknown => new Vector4(0.30f, 0.30f, 0.30f, 1f),
-            CellFill.Ripe => new Vector4(0.86f, 0.72f, 0.26f, 1f),
+            CellFill.Ripe => new Vector4(0.22f, 0.45f, 0.80f, 1f),
             _ => GrowShade(cell.Stage),
         };
     }
@@ -721,7 +727,7 @@ public class MainWindow : Window, IDisposable
         if (drifted)
             return Amber;
         return cell.Fill == CellFill.Ripe
-            ? new Vector4(1f, 0.88f, 0.45f, 1f)
+            ? new Vector4(0.52f, 0.72f, 1f, 1f)
             : new Vector4(0.32f, 0.32f, 0.32f, 1f);
     }
 
@@ -762,17 +768,26 @@ public class MainWindow : Window, IDisposable
         if (bed is null)
             return $"{name}: {UntrackedTag}";
         if (drifted)
-            return $"{name}: reads empty now - replanted without me?";
+            return bed.Latest is null
+                ? $"{name}: empty"
+                : $"{name}: reads empty now - replanted without me?";
 
         var latest = bed.Latest;
         if (latest is null)
-            return $"{name}: recorded, nothing seen in it yet";
+            return $"{name}: recorded, nothing growing in it last we looked";
 
         var line = $"{name}: {Plugin.Tables.SpeciesName(latest.SpeciesIndex)}"
                    + $"\nstage {latest.Stage} · seen {WindowFormat.Ago(latest.At, now)}";
         line += isPots
             ? cell.Water == WaterState.Danger ? "\nwilting - water now" : ""
             : $"\nwater {WindowFormat.Water(cell.Water)}";
+
+        // Past the predicted wilt line the sentence carries the stakes too - the same
+        // deadline the grid row speaks (2026-08-18, the melons).
+        if (!isPots && cell.Water is WaterState.Overdue or WaterState.Danger
+            && Plugin.Tables.CropBySpeciesIndex(latest.SpeciesIndex) is { } crop
+            && ClockWiltSource.DiesAt(bed, crop) is { } dies)
+            line += $" · dies ~{WindowFormat.Coarse(dies.ToLocalTime(), dies.ToLocalTime())}";
 
         if (latest.Stage >= 4)
             return $"{line}\nripe now";
@@ -1049,8 +1064,25 @@ public class MainWindow : Window, IDisposable
                 if (water is WaterState.Due or WaterState.Overdue or WaterState.Danger)
                 {
                     ImGui.SameLine();
+
+                    // Wilt is a countdown, not an end state (2026-08-18: the Allagan
+                    // Melons died while the row only said "water now") - once the clock
+                    // is past the wilt line the row says what is actually at stake and
+                    // when. Due is still just thirst; the deadline claim starts where
+                    // the predicted wilt does.
+                    var dies = ClockWiltSource.DiesAt(bed, crop!);
+                    var deadline = water is not WaterState.Due && dies is { } d
+                        ? $" · dies ~{WindowFormat.Coarse(d.ToLocalTime(), d.ToLocalTime())}"
+                        : "";
                     ImGui.TextColored(water == WaterState.Danger ? Red : Amber,
-                        water == WaterState.Danger ? "· DANGER - water now" : "· thirsty");
+                        water == WaterState.Danger
+                            ? $"· DANGER - water now{deadline}"
+                            : $"· thirsty{deadline}");
+                    if (dies is { } dd && ImGui.IsItemHovered())
+                        ImGui.SetTooltip(
+                            $"unwatered {WindowFormat.Ago(bed.LastTended!.Value, now)}"
+                            + $"\nwilts at {crop!.WiltHours}h dry · dead at {crop.WitherHours}h dry"
+                            + $"\ndies ~{WindowFormat.Range(dd.ToLocalTime(), dd.ToLocalTime())}");
                 }
             }
 
@@ -1359,11 +1391,17 @@ public class MainWindow : Window, IDisposable
         ImGui.TableNextColumn();
         ImGui.Text(label);
         ImGui.TableNextColumn();
+        // Once the reconcile has run the ledger AGREES it is empty - that is a plain
+        // state, not a discrepancy, so it reads quiet (2026-08-18: the game wins on
+        // content mismatch; amber suspicion is only for a claim the map contradicts).
         // A pot's entry vanishing is what a HARVEST looks like (08-15 receipt) - normal
         // life, not suspicion; a bed going empty behind our back is the odd one out.
-        ImGui.TextColored(Amber, bed.IsPot
-            ? $"{label} reads empty now - harvested?"
-            : $"{label} reads empty now - replanted without me?");
+        if (bed.Latest is null)
+            ImGui.TextDisabled($"{label} · empty");
+        else
+            ImGui.TextColored(Amber, bed.IsPot
+                ? $"{label} reads empty now - harvested?"
+                : $"{label} reads empty now - replanted without me?");
         ImGui.TableNextColumn();
         ImGui.TableNextColumn();
         ImGui.TableNextColumn();
