@@ -20,12 +20,18 @@ public sealed class ClockWiltSource : IWiltSource
 
     public WaterState StateFor(ClaimedBed bed, Crop crop, DateTimeOffset now)
     {
-        // No pot has ever been SEEN to wilt, but the evidence base is flower seeds only
-        // (Sam's table + our unwatered sunflower, both flowers) - whether that is a pot
-        // mechanic or a flower oddity is what the dry-vs-watered twins labs are running
-        // to decide (08-15). Until they report, the clock does not run on pots: a Danger
-        // march would assert a mechanic nothing has receipted.
+        // Pots DO wilt (08-16, Papa's Krakka twins), but they also BROADCAST it - the
+        // live map's b4=1 is the game's own claim, so pot wilt is observed, never
+        // clocked. The prediction machinery below is for beds, where the byte hunt
+        // closed refuted and a clock is all there is.
         if (bed.IsPot)
+            return WaterState.NotApplicable;
+
+        // A fully grown crop cannot wilt or die (the same community table the wilt hours
+        // come from), so a bed last SEEN ripe makes no water claim however stale its tend
+        // clock - the live stage read outranks the derived clock (2026-08-18, the
+        // "DANGER · ripe now" screenshot: Chelsea's watering was invisible to the ledger).
+        if (bed.Latest is { Stage: >= 4 })
             return WaterState.NotApplicable;
 
         if (bed.LastTended is not { } tended)
@@ -42,4 +48,14 @@ public sealed class ClockWiltSource : IWiltSource
             _ => WaterState.Danger,
         };
     }
+
+    /// <summary>When this bed's plant becomes unrecoverable if nobody waters: tend +
+    /// WitherHours (2026-08-18, the Allagan Melons - wilt is a countdown, not an end
+    /// state, and the deadline deserves saying out loud). Null wherever the clock makes
+    /// no claim: pots (observed, not clocked), ripe beds (cannot die), no tend receipt
+    /// (no clock to run).</summary>
+    public static DateTimeOffset? DiesAt(ClaimedBed bed, Crop crop)
+        => bed.IsPot || bed.Latest is { Stage: >= 4 } || bed.LastTended is not { } tended
+            ? null
+            : tended.AddHours(crop.WitherHours);
 }
