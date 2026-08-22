@@ -1,8 +1,8 @@
-name: Sample PR Builder for BalambGarden
+name: PR Builder for BalambGarden
 
 on:
   pull_request:
-    branches: [ master ]
+    branches: [ main ]
 
 jobs:
 
