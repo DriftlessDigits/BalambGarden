@@ -11,11 +11,11 @@ namespace BalambGarden.Game;
 ///
 /// <para>The receipted three (Riviera 65979, Glade 65980, Oasis 65981) are the floor: the
 /// derived set must contain them, and does even if a sheet or name ever drifts - drift
-/// logs loudly instead of silently untracking Sam's pots. A fourth Flowerpot item, should
+/// logs loudly instead of silently untracking Drift's pots. A fourth Flowerpot item, should
 /// one ever ship, walks in through the name scan.</para></summary>
 internal static class FlowerpotSheet
 {
-    // Riviera 197051, Glade 197052, Oasis 197053 - all receipted in Sam's pots. The same
+    // Riviera 197051, Glade 197052, Oasis 197053 - all receipted in Drift's pots. The same
     // rows appear as GameObject.BaseId on a placed pot's object (08-16, four FC pots all
     // read 0x301BD = Oasis), which is what the object sensor gates on.
     private static readonly uint[] Receipted = [197051, 197052, 197053];

@@ -134,7 +134,7 @@ for (const [resultName, pairs] of Object.entries(crossbreeding)) {
 // path runs. Deliberately NOT aliased: how variants should be learned is a design
 // question waiting on bench evidence, not something to guess into the generator.
 // Colorless BASE names (08-16 receipt: color is pot pigment - b2 high nibble - not
-// species; Sam's blue lupins were wearing "Red"). 82/93 receipted in his pots, item
+// species; Drift's blue lupins were wearing "Red"). 82/93 receipted in his pots, item
 // names xivapi-verified 08-16 (17999 "Yellow Daisies", 30371 "Purple Cosmos").
 const SPECIES_NAME_OVERRIDES = {
   82: 'Daisies',

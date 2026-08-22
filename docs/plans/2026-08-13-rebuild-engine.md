@@ -12,7 +12,7 @@
 
 ## Global Constraints
 
-- Work on the `rebuild` branch (create from `main` in Task 1). Never commit to `main`; merges to `main` are Sam's save points.
+- Work on the `rebuild` branch (create from `main` in Task 1). Never commit to `main`; merges to `main` are Drift's save points.
 - Commit messages: plain, no AI co-authorship line (repo convention).
 - `BalambGarden.Engine` and `BalambGarden.Engine.Tests` must never reference Dalamud, ECommons, or the plugin project.
 - 0-based ward/plot values are stored raw everywhere; +1 conversion happens only in display helpers, never in storage.
@@ -436,7 +436,7 @@ git add -A && git commit -m "Domain data: name the indoor species tail (100/102/
   - `record BedReading(int Slot, ushort SpeciesIndex, byte Stage, byte Extra, bool Occupied)` - `Extra` = raw byte 3 (indoor pigment suspect; preserved, never interpreted).
   - `static class MapFormat` with `IReadOnlyList<BedReading> DecodeOutdoorEntry(ReadOnlySpan<byte> bytes)` (expects exactly 48 bytes, 8 slots x 6-byte stride: `[species u16 LE][stage][b3][b4][b5]`; slot occupied when species != 0) and `bool LooksEmpty(ReadOnlySpan<byte> bytes)` (all species zero).
 
-- [ ] **Step 1: Write the failing tests** (fixture bytes verbatim from `captures/2026-08-13-chelsea-fc-probe.log`)
+- [ ] **Step 1: Write the failing tests** (fixture bytes verbatim from `captures/2026-08-13-gardener-fc-probe.log`)
 
 `BalambGarden.Engine.Tests/Sensing/OutdoorMapTests.cs`:
 
@@ -452,7 +452,7 @@ public class OutdoorMapTests
         => hex.Split(' ', StringSplitOptions.RemoveEmptyEntries)
               .Select(h => Convert.ToByte(h, 16)).ToArray();
 
-    // key=110 (Chelsea 1st Patch, 08-13 19:56 dump): fresh Fig x Mirror replant, stage 1
+    // key=110 (Gardener 1st Patch, 08-13 19:56 dump): fresh Fig x Mirror replant, stage 1
     private const string Key110 =
         "41 00 01 00 00 10 11 00 01 00 00 51 41 00 01 00 00 00 11 00 01 00 00 00 " +
         "41 00 01 00 00 A7 11 00 01 00 00 69 41 00 01 00 00 00 11 00 01 00 00 00";
@@ -468,7 +468,7 @@ public class OutdoorMapTests
         "00 00 00 00 00 02 00 00 00 00 00 00 00 00 00 00 00 CD 00 00 00 00 00 00";
 
     [Fact]
-    public void ChelseaFirstPatchDecodesFigMirrorAlternation()
+    public void GardenerFirstPatchDecodesFigMirrorAlternation()
     {
         var beds = MapFormat.DecodeOutdoorEntry(Bytes(Key110));
         Assert.Equal(8, beds.Count);
@@ -735,8 +735,8 @@ public class JoinTests
         Assert.Equal(0x3927, g.PatchId);
     }
 
-    [Fact] // capture 08-13: 0x0200200A = bed 2, ordinal 0, patch-id 0x200A (Chelsea)
-    public void GimmickDecodesChelseaBed()
+    [Fact] // capture 08-13: 0x0200200A = bed 2, ordinal 0, patch-id 0x200A (Gardener)
+    public void GimmickDecodesGardenerBed()
     {
         var g = GimmickId.Decode(0x0200200A);
         Assert.Equal(2, g.BedIndex);
@@ -744,12 +744,12 @@ public class JoinTests
         Assert.Equal(0x200A, g.PatchId);
     }
 
-    // Ward keys observed 08-13 at the shared Chelsea/FC ward (subset with both estates present)
+    // Ward keys observed 08-13 at the shared Gardener/FC ward (subset with both estates present)
     private static readonly int[] WardKeys =
         [62, 110, 116, 117, 285, 286, 290, 365, 447, 891, 1067, 1150, 1293, 1313, 1319];
 
-    [Fact] // Chelsea: patch-ids 0x200A/0x2010/0x2011, diffs +6,+1 -> keys 110/116/117
-    public void ChelseaDiffPatternShortlists()
+    [Fact] // Gardener: patch-ids 0x200A/0x2010/0x2011, diffs +6,+1 -> keys 110/116/117
+    public void GardenerDiffPatternShortlists()
     {
         var candidates = JoinShortlist.Candidates([0x200A, 0x2010, 0x2011], WardKeys);
         Assert.Contains(candidates, c => c.SequenceEqual([110, 116, 117]));
@@ -766,7 +766,7 @@ public class JoinTests
     public void NoMatchMeansEmptyShortlist()
         => Assert.Empty(JoinShortlist.Candidates([0x1000, 0x1003, 0x1009], WardKeys));
 
-    [Fact] // single-patch estates (Sam's house) have no diffs: every key is a candidate
+    [Fact] // single-patch estates (Drift's house) have no diffs: every key is a candidate
     public void SinglePatchShortlistsEveryKey()
         => Assert.Equal(WardKeys.Length, JoinShortlist.Candidates([0x200A], WardKeys).Count);
 }
@@ -878,18 +878,18 @@ namespace BalambGarden.Engine.Tests.Ledger;
 
 public class LedgerTests
 {
-    private static readonly EstateKey Chelsea = new(TerritoryId: 340, Ward: 11, Plot: 32);
+    private static readonly EstateKey Gardener = new(TerritoryId: 340, Ward: 11, Plot: 32);
     private static readonly DateTimeOffset T0 = DateTimeOffset.Parse("2026-08-13T19:10:00Z");
 
     private static ClaimedBed NewBed() => new()
     {
-        Estate = Chelsea, MapKey = 110, PatchOrdinal = 0, BedSlot = 3,
+        Estate = Gardener, MapKey = 110, PatchOrdinal = 0, BedSlot = 3,
         IsPot = false, ClaimedAt = T0,
     };
 
     [Fact] // 0-based raw storage, +1 display only (Frame 2 / probe-proven gotcha)
     public void DisplayConvertsZeroBasedToHuman()
-        => Assert.Equal("Ward 12 Plot 33", Chelsea.DisplayWardPlot());
+        => Assert.Equal("Ward 12 Plot 33", Gardener.DisplayWardPlot());
 
     [Fact]
     public void RingKeepsNewestEight()
@@ -910,17 +910,17 @@ public class LedgerTests
         bed.Observe(new Observation(T0, 0x41, 1, ObservationSource.PlantReceipt));
         bed.LastTended = T0;
         store.Beds.Add(bed);
-        store.Bindings[$"{Chelsea.TerritoryId}:{Chelsea.Ward}:{Chelsea.Plot}:-1#0"] = 110;
+        store.Bindings[$"{Gardener.TerritoryId}:{Gardener.Ward}:{Gardener.Plot}:-1#0"] = 110;
 
         var restored = LedgerStore.FromJson(store.ToJson());
         var rb = Assert.Single(restored.Beds);
-        Assert.Equal(Chelsea, rb.Estate);
+        Assert.Equal(Gardener, rb.Estate);
         Assert.Equal(110, rb.MapKey);
         Assert.Equal(3, rb.BedSlot);
         Assert.Equal(T0, rb.LastTended);
         var obs = Assert.Single(rb.Ring);
         Assert.Equal(ObservationSource.PlantReceipt, obs.Source);
-        Assert.Equal(110, restored.Bindings[$"{Chelsea.TerritoryId}:{Chelsea.Ward}:{Chelsea.Plot}:-1#0"]);
+        Assert.Equal(110, restored.Bindings[$"{Gardener.TerritoryId}:{Gardener.Ward}:{Gardener.Plot}:-1#0"]);
     }
 }
 ```
@@ -1068,18 +1068,18 @@ namespace BalambGarden.Engine.Tests.Census;
 
 public class CensusEngineTests
 {
-    private static readonly EstateKey Chelsea = new(340, 11, 32);
+    private static readonly EstateKey Gardener = new(340, 11, 32);
     private static readonly DateTimeOffset T0 = DateTimeOffset.Parse("2026-08-13T19:00:00Z");
 
     private static ReceiptEvent Tend(int slot, byte stage = 1) =>
-        new(Chelsea, PatchOrdinal: 0, BedSlot: slot, ReceiptVerb.Tend,
+        new(Gardener, PatchOrdinal: 0, BedSlot: slot, ReceiptVerb.Tend,
             SpeciesIndex: 0x41, Stage: stage, At: T0);
 
     [Fact] // claim-on-action: a completed tend on a bound patch claims the bed
     public void TendReceiptClaimsAndObserves()
     {
         var engine = new CensusEngine(new LedgerStore());
-        engine.Bind(Chelsea, 0, mapKey: 110);
+        engine.Bind(Gardener, 0, mapKey: 110);
 
         var bed = engine.OnReceipt(Tend(slot: 3));
 
@@ -1095,7 +1095,7 @@ public class CensusEngineTests
     public void ClaimOnActionOffDoesNotClaim()
     {
         var engine = new CensusEngine(new LedgerStore()) { ClaimOnAction = false };
-        engine.Bind(Chelsea, 0, 110);
+        engine.Bind(Gardener, 0, 110);
         Assert.Null(engine.OnReceipt(Tend(3)));
         Assert.Empty(engine.LedgerBeds);
     }
@@ -1104,7 +1104,7 @@ public class CensusEngineTests
     public void AlreadyClaimedBedStillObservesWithCheckboxOff()
     {
         var engine = new CensusEngine(new LedgerStore());
-        engine.Bind(Chelsea, 0, 110);
+        engine.Bind(Gardener, 0, 110);
         engine.OnReceipt(Tend(3));
 
         engine.ClaimOnAction = false;
@@ -1125,16 +1125,16 @@ public class CensusEngineTests
     public void RebindOverwrites()
     {
         var engine = new CensusEngine(new LedgerStore());
-        engine.Bind(Chelsea, 0, 110);
-        engine.Bind(Chelsea, 0, 116);
-        Assert.Equal(116, engine.BoundKey(Chelsea, 0));
+        engine.Bind(Gardener, 0, 110);
+        engine.Bind(Gardener, 0, 116);
+        Assert.Equal(116, engine.BoundKey(Gardener, 0));
     }
 
     [Fact]
     public void AbandonRemoves()
     {
         var engine = new CensusEngine(new LedgerStore());
-        engine.Bind(Chelsea, 0, 110);
+        engine.Bind(Gardener, 0, 110);
         var bed = engine.OnReceipt(Tend(3))!;
         engine.Abandon(bed);
         Assert.Empty(engine.LedgerBeds);
@@ -1144,7 +1144,7 @@ public class CensusEngineTests
     public void SecondReceiptOnSameBedDoesNotDuplicate()
     {
         var engine = new CensusEngine(new LedgerStore());
-        engine.Bind(Chelsea, 0, 110);
+        engine.Bind(Gardener, 0, 110);
         engine.OnReceipt(Tend(3));
         engine.OnReceipt(Tend(3, stage: 2));
         Assert.Single(engine.LedgerBeds);
@@ -1184,7 +1184,7 @@ using BalambGarden.Engine.Ledger;
 namespace BalambGarden.Engine.Census;
 
 /// <summary>The join + claim brain. Claim-on-action is the only claim path (spec Frame 3,
-/// Sam's 08-13 design): you cannot claim what you cannot touch. No Claim() method exists.</summary>
+/// Drift's 08-13 design): you cannot claim what you cannot touch. No Claim() method exists.</summary>
 public sealed class CensusEngine(LedgerStore ledger)
 {
     public bool ClaimOnAction { get; set; } = true;
@@ -1263,7 +1263,7 @@ git add -A && git commit -m "Engine: census engine - receipts bind, claim-on-act
     public void MapSightingObservesClaimedOnly()
     {
         var engine = new CensusEngine(new LedgerStore());
-        engine.Bind(Chelsea, 0, 110);
+        engine.Bind(Gardener, 0, 110);
         engine.OnReceipt(Tend(3));   // claims slot 3 only
 
         var readings = Enumerable.Range(0, 8)
@@ -1271,7 +1271,7 @@ git add -A && git commit -m "Engine: census engine - receipts bind, claim-on-act
                 i, (ushort)(i % 2 == 0 ? 0x41 : 0x11), 2, 0, true))
             .ToList();
 
-        var count = engine.OnMapSighting(Chelsea, mapKey: 110, readings, T0.AddDays(1));
+        var count = engine.OnMapSighting(Gardener, mapKey: 110, readings, T0.AddDays(1));
 
         Assert.Equal(1, count);   // only the claimed bed
         var bed = Assert.Single(engine.LedgerBeds);
@@ -1284,11 +1284,11 @@ git add -A && git commit -m "Engine: census engine - receipts bind, claim-on-act
     public void MapSightingWrongKeyIgnored()
     {
         var engine = new CensusEngine(new LedgerStore());
-        engine.Bind(Chelsea, 0, 110);
+        engine.Bind(Gardener, 0, 110);
         engine.OnReceipt(Tend(3));
         var readings = new List<BalambGarden.Engine.Sensing.BedReading>
             { new(3, 0x41, 3, 0, true) };
-        Assert.Equal(0, engine.OnMapSighting(Chelsea, mapKey: 116, readings, T0.AddDays(1)));
+        Assert.Equal(0, engine.OnMapSighting(Gardener, mapKey: 116, readings, T0.AddDays(1)));
     }
 ```
 
@@ -1298,7 +1298,7 @@ git add -A && git commit -m "Engine: census engine - receipts bind, claim-on-act
 
 ```csharp
     /// <summary>Map sightings only ever land on already-claimed beds. Ward-visible
-    /// unclaimed data is ephemeral by design (Sam's distance ruling, 08-12).</summary>
+    /// unclaimed data is ephemeral by design (Drift's distance ruling, 08-12).</summary>
     public int OnMapSighting(
         EstateKey estate, int mapKey, IReadOnlyList<Sensing.BedReading> beds, DateTimeOffset at)
     {
@@ -1647,14 +1647,14 @@ namespace BalambGarden.Engine.Tests.Derivations;
 public class RollupTests
 {
     private static readonly DomainTables T = DomainTables.Load();
-    private static readonly EstateKey Chelsea = new(340, 11, 32);
+    private static readonly EstateKey Gardener = new(340, 11, 32);
     private static readonly DateTimeOffset Now = DateTimeOffset.Parse("2026-08-14T18:00:00Z");
 
     private static ClaimedBed Bed(int slot, byte stage, double tendedHoursAgo)
     {
         var bed = new ClaimedBed
         {
-            Estate = Chelsea, MapKey = 110, PatchOrdinal = 0, BedSlot = slot,
+            Estate = Gardener, MapKey = 110, PatchOrdinal = 0, BedSlot = slot,
             LastTended = Now.AddHours(-tendedHoursAgo),
         };
         // Krakka Root (0x31): 24h wilt tier - drives the wilt states below
@@ -1674,7 +1674,7 @@ public class RollupTests
             Bed(3, stage: 2, tendedHoursAgo: 30),   // overdue (>= 24h)
         };
 
-        var rollup = Assert.Single(Rollups.ForEstate(Chelsea, beds, T, new ClockWiltSource(), Now));
+        var rollup = Assert.Single(Rollups.ForEstate(Gardener, beds, T, new ClockWiltSource(), Now));
         Assert.Equal(4, rollup.Claimed);
         Assert.Equal(1, rollup.Ripe);
         Assert.Equal(1, rollup.Due);
@@ -1685,9 +1685,9 @@ public class RollupTests
     [Fact]
     public void NudgeSpeaksWhenAttentionNeeded()
     {
-        var rollups = Rollups.ForEstate(Chelsea,
+        var rollups = Rollups.ForEstate(Gardener,
             [Bed(0, 4, 1), Bed(2, 2, 20)], T, new ClockWiltSource(), Now);
-        var line = Rollups.ArrivalNudge(Chelsea, rollups);
+        var line = Rollups.ArrivalNudge(Gardener, rollups);
         Assert.NotNull(line);
         Assert.Contains("1 ripe", line);
         Assert.Contains("1", line);   // one thirsty
@@ -1696,8 +1696,8 @@ public class RollupTests
     [Fact] // all watered, nothing ripe: silence over filler
     public void NudgeSilentWhenAllQuiet()
     {
-        var rollups = Rollups.ForEstate(Chelsea, [Bed(1, 2, 1)], T, new ClockWiltSource(), Now);
-        Assert.Null(Rollups.ArrivalNudge(Chelsea, rollups));
+        var rollups = Rollups.ForEstate(Gardener, [Bed(1, 2, 1)], T, new ClockWiltSource(), Now);
+        Assert.Null(Rollups.ArrivalNudge(Gardener, rollups));
     }
 }
 ```
@@ -1818,9 +1818,9 @@ namespace BalambGarden.Engine.Tests.Derivations;
 public class PipelineTests
 {
     private static readonly DomainTables T = DomainTables.Load();
-    private static readonly EstateKey ChelseaHouse = new(340, 11, 32);
+    private static readonly EstateKey GardenerHouse = new(340, 11, 32);
     private static readonly EstateKey FcHouse = new(340, 11, 57);
-    private static readonly EstateKey SamHouse = new(641, 3, 10);
+    private static readonly EstateKey DriftHouse = new(641, 3, 10);
     private static readonly DateTimeOffset Now = DateTimeOffset.Parse("2026-08-14T18:00:00Z");
 
     private static List<ClaimedBed> Patch(EstateKey estate, int ordinal, int mapKey,
@@ -1843,9 +1843,9 @@ public class PipelineTests
     private static List<ClaimedBed> Household()
     {
         var beds = new List<ClaimedBed>();
-        beds.AddRange(Patch(ChelseaHouse, 0, 110, 0x41, 0x11, stage: 1)); // Fig x Mirror
+        beds.AddRange(Patch(GardenerHouse, 0, 110, 0x41, 0x11, stage: 1)); // Fig x Mirror
         beds.AddRange(Patch(FcHouse, 0, 1293, 0x31, 0x11, stage: 1));     // Krakka x Mirror
-        beds.AddRange(Patch(SamHouse, 0, 1038, 0x24, 0x2C, stage: 3));    // Kukuru x Curiel
+        beds.AddRange(Patch(DriftHouse, 0, 1038, 0x24, 0x2C, stage: 3));    // Kukuru x Curiel
         return beds;
     }
 
@@ -1854,7 +1854,7 @@ public class PipelineTests
     {
         var intents = PipelineReader.RecognizeIntents(Household(), T);
         Assert.Equal(3, intents.Count);
-        var onionIntent = intents.Single(i => i.Estate == SamHouse);
+        var onionIntent = intents.Single(i => i.Estate == DriftHouse);
         Assert.Contains("Thavnairian Onion", T.CropBySeedId(onionIntent.ResultSeedId)!.Name);
     }
 
@@ -1877,7 +1877,7 @@ public class PipelineTests
     [Fact] // one bed off-pattern: anomaly, phrased as a question, never a correction
     public void BrokenAlternationIsAnAnomaly()
     {
-        var beds = Patch(ChelseaHouse, 0, 110, 0x41, 0x11, 1);
+        var beds = Patch(GardenerHouse, 0, 110, 0x41, 0x11, 1);
         beds[5].Observe(new Observation(Now.AddHours(-1), 0x31, 1, ObservationSource.TendReceipt));
 
         var tips = PipelineReader.Tips(beds, T, Now);
@@ -1887,7 +1887,7 @@ public class PipelineTests
     [Fact] // a single-species patch is not a cross - no intent, no tips noise
     public void MonocultureProducesNoIntent()
     {
-        var beds = Patch(ChelseaHouse, 0, 110, 0x31, 0x31, 2);
+        var beds = Patch(GardenerHouse, 0, 110, 0x31, 0x31, 2);
         Assert.Empty(PipelineReader.RecognizeIntents(beds, T));
     }
 }
@@ -2148,9 +2148,9 @@ In `MainWindow.cs`, find the draw method and add near the top (temporary, Plan B
 
 Run: `dotnet build BalambGarden.sln -c Debug -p:Platform=x64` -> Expected: clean.
 
-- [ ] **Step 4: Bench check (Sam, in game)**
+- [ ] **Step 4: Bench check (Drift, in game)**
 
-Load the dev plugin; `/garden`. Expected: the disabled-text line reads "Engine v2 loaded - Royal Kukuru Bean says hi" and dalamud.log shows `[Engine] domain tables loaded: sunflower check = Garden Sunflower`. This is the only in-game step in Plan A; if Sam is not available, note it as pending and do not block the commit.
+Load the dev plugin; `/garden`. Expected: the disabled-text line reads "Engine v2 loaded - Royal Kukuru Bean says hi" and dalamud.log shows `[Engine] domain tables loaded: sunflower check = Garden Sunflower`. This is the only in-game step in Plan A; if Drift is not available, note it as pending and do not block the commit.
 
 - [ ] **Step 5: Commit + hand off**
 

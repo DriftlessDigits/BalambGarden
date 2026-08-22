@@ -185,7 +185,7 @@ internal sealed unsafe class PotChain : ChainBase
     }
 
     /// <summary>The pot twin of CycleChain's post-run settle (same last-actor exposure,
-    /// 08-16 Chelsea field report): the bind polls read the map directly and never touch
+    /// 08-16 Gardener field report): the bind polls read the map directly and never touch
     /// the UI-facing LastIndoor, so a just-replanted pot can sit on a "reads empty" drift
     /// row until something else sights. Poll the DISPLAY read until every replanted key
     /// is back in the map, then let go - the receipts landed long ago.</summary>

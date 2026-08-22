@@ -48,7 +48,7 @@ public class IndoorMapTests
         Assert.Equal(0x01, pot.Extra);
     }
 
-    // key=126 at Mama's Place (08-16 10:34): Sam's eyes say BLUE Lupins, ripe. b2=0x14:
+    // key=126 at Mama's Place (08-16 10:34): Drift's eyes say BLUE Lupins, ripe. b2=0x14:
     // pigment in the high nibble (1=blue), stage in the low (4=ripe). Same split receipted
     // at three estates: yellow daisies 0x24, FC cosmos 0x54, unpigmented crops 0x01/0x02.
     private const string BlueLupins =
@@ -83,7 +83,7 @@ public class IndoorMapTests
     }
 
     // Papa's Krakka twins, 08-16 12:01 - the wilt lab's verdict. Byte-identical except
-    // offset +4, and exactly one wilts by Sam's eyes: b4 is the wilt flag. First pot-wilt
+    // offset +4, and exactly one wilts by Drift's eyes: b4 is the wilt flag. First pot-wilt
     // receipt ever taken; pot-immortality dies for normal crops (flower tail unaffected).
     private const string WiltingTwin =
         "31 00 02 00 01 FF 00 00 00 00 00 FF 00 00 00 00 00 FF 00 00 00 00 00 FF " +

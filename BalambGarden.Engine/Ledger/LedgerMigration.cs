@@ -13,7 +13,7 @@ public sealed record MigrationReport(
 /// <summary>Repairs ledgers written before estate identity was the physical plot.
 ///
 /// The bug (live receipt, 08-15): EstateSensor keyed on ClientState.TerritoryType, so a
-/// house INTERIOR (641 -> 649 Shirogane, 340 -> 344 Lavender Beds in Sam's own file) minted
+/// house INTERIOR (641 -> 649 Shirogane, 340 -> 344 Lavender Beds in Drift's own file) minted
 /// a SECOND estate record for the same ward/plot - the dashboard showed one physical plot
 /// as two rows. Ward and plot always read correctly indoors; only the territory split.
 ///

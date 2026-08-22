@@ -4,7 +4,7 @@ using Xunit;
 
 namespace BalambGarden.Engine.Tests.Census;
 
-/// <summary>The three estate shapes, all built from the 08-15 live receipts: Sam's house
+/// <summary>The three estate shapes, all built from the 08-15 live receipts: Drift's house
 /// plot, his FC private chamber (HouseId 0x0037015401CB0039 -> district 340, ward 11, plot
 /// 57, room 7), and his apartment (HouseId 0x003703D307470080 -> building territory 979,
 /// ward 7, division 0, room 29).</summary>
@@ -84,7 +84,7 @@ public class EstateShapeTests
         Assert.Equal(Apartment, Assert.Single(restored.Beds).Estate);
     }
 
-    [Fact] // the binding-key string is what Sam's live ledger already holds - do not move it
+    [Fact] // the binding-key string is what Drift's live ledger already holds - do not move it
     public void BindingKeyShapeIsUnchangedForHouses()
     {
         Assert.Equal("340:11:57:-1#0", House.BindingKey(0));

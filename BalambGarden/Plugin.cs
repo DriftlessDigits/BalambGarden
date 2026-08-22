@@ -166,13 +166,13 @@ public sealed class Plugin : IDalamudPlugin
     }
 
 #if DEBUG
-    /// <summary>How close to a pot counts as "about to garden" (Sam's spec, 08-15).
+    /// <summary>How close to a pot counts as "about to garden" (Drift's spec, 08-15).
     /// Internal so the recon readout can quote the real number, not a copy of it.</summary>
     internal const float WatcherArmRangeY = 4.6f;
 
     private DateTime nextWatcherCheckUtc = DateTime.MinValue;
 
-    /// <summary>Scoped recording (Sam's ruling 08-15): with the config flag on, the
+    /// <summary>Scoped recording (Drift's ruling 08-15): with the config flag on, the
     /// plant-flow watcher arms itself when a pot is within reach and disarms on every
     /// rezone/teleport - so captures hold gardening, not a night of quest dialogue.
     /// Debug builds only; Release has no watcher at all.</summary>

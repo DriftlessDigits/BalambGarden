@@ -173,7 +173,7 @@ internal static class CensusPump
 
             // A harvested pot's entry VANISHES from the map (08-15), so the loop above
             // never hears about it - absence from a SETTLED read is the emptying receipt
-            // (2026-08-18: Sam's harvested pots kept showing their old contents). The
+            // (2026-08-18: Drift's harvested pots kept showing their old contents). The
             // settled-object guard is the same one the drift row trusts: an unsettled
             // world answers nothing, never "empty".
             if (CoveredHere && ObjectSensor.SawHousingObjects)

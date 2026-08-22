@@ -15,8 +15,8 @@ public class JoinTests
         Assert.Equal(0x3927, g.PatchId);
     }
 
-    [Fact] // capture 08-13: 0x0200200A = bed 2, ordinal 0, patch-id 0x200A (Chelsea)
-    public void GimmickDecodesChelseaBed()
+    [Fact] // capture 08-13: 0x0200200A = bed 2, ordinal 0, patch-id 0x200A (Gardener)
+    public void GimmickDecodesGardenerBed()
     {
         var g = GimmickId.Decode(0x0200200A);
         Assert.Equal(2, g.BedIndex);
@@ -24,12 +24,12 @@ public class JoinTests
         Assert.Equal(0x200A, g.PatchId);
     }
 
-    // Ward keys observed 08-13 at the shared Chelsea/FC ward (subset with both estates present)
+    // Ward keys observed 08-13 at the shared Gardener/FC ward (subset with both estates present)
     private static readonly int[] WardKeys =
         [62, 110, 116, 117, 285, 286, 290, 365, 447, 891, 1067, 1150, 1293, 1313, 1319];
 
-    [Fact] // Chelsea: patch-ids 0x200A/0x2010/0x2011, diffs +6,+1 -> keys 110/116/117
-    public void ChelseaDiffPatternShortlists()
+    [Fact] // Gardener: patch-ids 0x200A/0x2010/0x2011, diffs +6,+1 -> keys 110/116/117
+    public void GardenerDiffPatternShortlists()
     {
         var candidates = JoinShortlist.Candidates([0x200A, 0x2010, 0x2011], WardKeys);
         Assert.Contains(candidates, c => c.SequenceEqual([110, 116, 117]));
@@ -46,7 +46,7 @@ public class JoinTests
     public void NoMatchMeansEmptyShortlist()
         => Assert.Empty(JoinShortlist.Candidates([0x1000, 0x1003, 0x1009], WardKeys));
 
-    [Fact] // single-patch estates (Sam's house) have no diffs: every key is a candidate
+    [Fact] // single-patch estates (Drift's house) have no diffs: every key is a candidate
     public void SinglePatchShortlistsEveryKey()
         => Assert.Equal(WardKeys.Length, JoinShortlist.Candidates([0x200A], WardKeys).Count);
 }

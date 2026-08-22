@@ -102,8 +102,8 @@ public class DomainTablesTests
         Assert.Equal(forward, reversed);   // same results, same (sorted) order
     }
 
-    [Fact] // 08-16 receipt (Sam's blue lupins wearing "Red"): color is pot PIGMENT, not
-    // species - species names are the colorless base plant. 82/93 receipted in Sam's pots
+    [Fact] // 08-16 receipt (Drift's blue lupins wearing "Red"): color is pot PIGMENT, not
+    // species - species names are the colorless base plant. 82/93 receipted in Drift's pots
     // (Yellow Daisies item 17999, Purple Cosmos item 30371, xivapi 08-16).
     public void FlowerSpeciesNamesAreColorless()
     {
@@ -128,8 +128,8 @@ public class DomainTablesTests
     }
 
     [Fact] // Talk speaks the harvest ITEM name where it differs from the species name:
-    // "Royal Kukuru Bean" receipted on Sam's yard beds (4x unknown-species warnings,
-    // 08-16 13:46 dalamud.log) and in Chelsea's /xllog. Receipts-only alias table -
+    // "Royal Kukuru Bean" receipted on Drift's yard beds (4x unknown-species warnings,
+    // 08-16 13:46 dalamud.log) and in Gardener's /xllog. Receipts-only alias table -
     // one entry per proven string, never a pattern.
     public void ReceiptedItemNameAliasesResolve()
     {

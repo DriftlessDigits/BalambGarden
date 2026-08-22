@@ -10,7 +10,7 @@
 #    in room 7 (0x0037015401CB0039). Room-bit mask receipt: hall 0x...000B0039 vs chambers
 #    0x...01CB0039 (room bits isolated in that byte pair).
 # F4 HasHousePermissions() = INDOORS bool. False outside at EVERY estate (incl. own house, incl.
-#    Chelsea's where grants provably exist); True inside all four. Useless for outdoor gardening
+#    Gardener's where grants provably exist); True inside all four. Useless for outdoor gardening
 #    advisory - DEMOTED as a GardenRights source.
 # F5 Negative clean: rando plot (raw W3 P50 Shirogane, 0x0037028100030032) matches nothing in
 #    roster or owned reads.
@@ -35,8 +35,8 @@
 [Roster] owned ApartmentRoom: 0x003703D307470080
 #
 # The nine "here" lines (the equality + HasHousePermissions receipts):
-20:38:28 here: currentHouseId=0x00370154000B0020 ward=11 plot=32 room=0 inside=False hasHousePermissions=False   # Chelsea outside
-20:38:50 here: currentHouseId=0x00370154000B0020 inside=True hasHousePermissions=True  indoor=SAME               # Chelsea inside
+20:38:28 here: currentHouseId=0x00370154000B0020 ward=11 plot=32 room=0 inside=False hasHousePermissions=False   # Gardener outside
+20:38:50 here: currentHouseId=0x00370154000B0020 inside=True hasHousePermissions=True  indoor=SAME               # Gardener inside
 20:39:40 here: currentHouseId=0x00370154000B0039 ward=11 plot=57 room=0 inside=False hasHousePermissions=False   # FC yard
 20:39:50 here: currentHouseId=0x00370154000B0039 inside=True hasHousePermissions=True  indoor=SAME               # FC hall
 20:40:07 here: currentHouseId=0x0037015401CB0039 ward=11 plot=57 room=7 inside=True hasHousePermissions=True     # FC chambers (room 7)

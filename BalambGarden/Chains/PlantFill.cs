@@ -13,7 +13,7 @@ namespace BalambGarden.Chains;
 /// presses its Confirm, so a cycle stops asking the player to type the order twice (once
 /// in our dropdown, once in the game's picker).
 ///
-/// <para>MECHANISM (Sam's lateral, 08-16): with the picker open, right-click the item in
+/// <para>MECHANISM (Drift's lateral, 08-16): with the picker open, right-click the item in
 /// the inventory and pick Use - the game routes it into the matching slot itself. Driven
 /// LITERALLY: OpenForItemSlot opens the item's real context menu and the Use entry is
 /// clicked by name (Scrooge's ItemPricingPipeline pattern). The shortcut was refuted
@@ -42,7 +42,7 @@ internal static unsafe partial class PlantFlow
 
     /// <summary>Before the FIRST action after the picker opens. A person spends a beat
     /// reaching for the inventory, and the game agrees: an immediate UseItem got "unable
-    /// to execute at this time" live (08-16, Sam) - the picker reads ready before the
+    /// to execute at this time" live (08-16, Drift) - the picker reads ready before the
     /// interaction transition has finished.</summary>
     internal const int FillSettleMS = 1_200;
 
@@ -98,7 +98,7 @@ internal static unsafe partial class PlantFlow
         }
     }
 
-    /// <summary>Sam's manual flow, verbatim: open the item's own context menu. Both
+    /// <summary>Drift's manual flow, verbatim: open the item's own context menu. Both
     /// UseItem shapes were refuted live (08-16: located args = three silent no-ops;
     /// Scrooge's default shape = same - UseItem routes through "is this item usable?",
     /// which soil and seeds fail outside their picker context; Scrooge's coffers pass).
@@ -212,7 +212,7 @@ internal static unsafe partial class PlantFlow
             // ECommons' own click, not an imitation: it replays the OwnerNode's FIRST
             // registered event whatever its type - buttons actuate on ButtonClick, not
             // MouseClick (08-16: a hand-rolled MouseClick replay on the collision child
-            // 'succeeded' and moved nothing; Sam's manual Cancel receipted the real
+            // 'succeeded' and moved nothing; Drift's manual Cancel receipted the real
             // event: 'receive ButtonClick param=5').
             button->ClickAddonButton(picker);
             why = "";
@@ -416,7 +416,7 @@ internal sealed unsafe class GardeningFill
             Expire($"could not open {itemName}'s menu");
     }
 
-    /// <summary>Waits for the context menu, then clicks its Use - the way Sam's hand does
+    /// <summary>Waits for the context menu, then clicks its Use - the way Drift's hand does
     /// it. Menu not up yet = keep waiting on the budget; menu up without Use = refusal.</summary>
     private void ClickUse(string itemName, Step next)
     {

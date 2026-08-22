@@ -69,7 +69,7 @@ public static class PipelineReader
         var intents = RecognizeIntents(beds, tables);
 
         // Stock: three patches running the same cross are ONE fact about the garden -
-        // one line per (estate, pair), patches listed together (08-16 Sam: 13 lines of
+        // one line per (estate, pair), patches listed together (08-16 Drift: 13 lines of
         // the tab restating the same census).
         foreach (var pair in intents.GroupBy(i => (i.Estate, i.SpeciesA, i.SpeciesB)))
         {
@@ -103,7 +103,7 @@ public static class PipelineReader
 
         // One line per real relationship: every feeder PATCH of the same (estate, seed,
         // consumer) is the same supply edge - the patches list together. Sentence shape
-        // (08-16 Sam: the dash-chain read as clause soup): lead with who needs what,
+        // (08-16 Drift: the dash-chain read as clause soup): lead with who needs what,
         // clauses on "·" like the rest of the UI, the time range LAST so its internal
         // dash never collides with a clause break. The consumer is named by PLACE - the
         // stock line above already says what it makes.

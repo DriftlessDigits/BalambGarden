@@ -6,7 +6,7 @@ namespace BalambGarden.Engine.Census;
 public sealed record RosterEstate(EstateKey Key, string Kind);
 
 /// <summary>The access roster (spec: Permission Architecture, 2026-08-15). Presence here is
-/// the game saying "you can act at this estate" (Sam's v1 ruling: rostered = assume
+/// the game saying "you can act at this estate" (Drift's v1 ruling: rostered = assume
 /// actionable; the composed menu refuses per-verb weirdness gracefully at act time).
 /// Coverage is also the census scope: an estate not covered is not tracked at all.</summary>
 public sealed class AccessRoster(IReadOnlyList<RosterEstate> estates)
@@ -16,7 +16,7 @@ public sealed class AccessRoster(IReadOnlyList<RosterEstate> estates)
     public static readonly AccessRoster Empty = new([]);
 
     /// <summary>From a HouseId's own decoded fields. Receipt (roster recon 2026-08-15):
-    /// the embedded HouseId carries RAW ward/plot - Chelsea's row read ward=11 plot=32,
+    /// the embedded HouseId carries RAW ward/plot - Gardener's row read ward=11 plot=32,
     /// already the ledger convention - and room 0 is the house itself. Null for anything
     /// that fits no receipted shape: a row we cannot name is dropped loudly by the caller,
     /// never misfiled quietly here.</summary>

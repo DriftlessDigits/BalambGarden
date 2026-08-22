@@ -57,7 +57,7 @@ internal sealed class ReplantPlan
 /// the soil and seed columns above are the order form, and the chain clicks the two slots,
 /// picks those two items and presses Confirm. When any of that does not look like the picker
 /// it was written against, it stops clicking and the step is the HYBRID one it has always
-/// been (Sam's ruling, 2026-08-15) - picker open, "waiting" in the feed, the player fills it.
+/// been (Drift's ruling, 2026-08-15) - picker open, "waiting" in the feed, the player fills it.
 /// Either way the chain then reads the confirmation prompt the game builds from the filled
 /// slots, checks it against the plan, and answers Yes only when it matches. That check is now
 /// guarding our own fill as well as a human's, which is exactly why it stays.</para>
@@ -268,7 +268,7 @@ internal sealed unsafe class CycleChain : ChainBase
             }
         }
 
-        // The last bed has nobody after it to refresh the map (Chelsea's field report,
+        // The last bed has nobody after it to refresh the map (Gardener's field report,
         // 08-16: bed 8 read empty on her screen until "something else" re-read - every
         // earlier bed gets refreshed by the next bed's work, the final one waits). Poll
         // the DISPLAY read until every cycled slot shows occupied, then let go: the

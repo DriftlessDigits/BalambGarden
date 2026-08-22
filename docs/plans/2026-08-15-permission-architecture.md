@@ -8,17 +8,17 @@
 
 **Tech Stack:** C# / .NET 9, Dalamud plugin (FFXIVClientStructs), xUnit for `BalambGarden.Engine.Tests`.
 
-**Spec:** vault `Book Of Holding/Planet Express/Deliveries/Balamb Garden/Balamb Garden - Permission Architecture.md` (mirrored rulings in `.superpowers/sdd/2026-08-14-rebuild-plan-b/progress.md`). Ground-truth captures: `captures/2026-08-15-roster-recon.log` (HouseId equality, roster shape), `captures/2026-08-13-chelsea-fc-probe.log`.
+**Spec:** vault `Book Of Holding/Planet Express/Deliveries/Balamb Garden/Balamb Garden - Permission Architecture.md` (mirrored rulings in `.superpowers/sdd/2026-08-14-rebuild-plan-b/progress.md`). Ground-truth captures: `captures/2026-08-15-roster-recon.log` (HouseId equality, roster shape), `captures/2026-08-13-gardener-fc-probe.log`.
 
 ## Global Constraints
 
-- **NEVER build or run the plugin project (`BalambGarden/BalambGarden.csproj`).** Any build of it hot-loads into Sam's RUNNING GAME. Implementers verify plugin-side files by careful reading only; Fable builds at checkpoint on Sam's explicit go. Engine work is verified with `dotnet test BalambGarden.Engine.Tests -c Debug` — that project is safe to build and MUST be green before every commit.
+- **NEVER build or run the plugin project (`BalambGarden/BalambGarden.csproj`).** Any build of it hot-loads into Drift's RUNNING GAME. Implementers verify plugin-side files by careful reading only; Fable builds at checkpoint on Drift's explicit go. Engine work is verified with `dotnet test BalambGarden.Engine.Tests -c Debug` — that project is safe to build and MUST be green before every commit.
 - Verify green THEN commit, as separate steps. Check the exit code, never pipe build output through anything that masks it.
 - No AI co-authorship lines in commits. Work on branch `rebuild`. One commit per completed task.
-- V1 ruling (Sam, 2026-08-15): rostered estate ⇒ assume all verbs actionable. NO grant-observation machinery. Permission refusals surface at act time from the composed menu, worded as permission answers, not errors.
+- V1 ruling (Drift, 2026-08-15): rostered estate ⇒ assume all verbs actionable. NO grant-observation machinery. Permission refusals surface at act time from the composed menu, worded as permission answers, not errors.
 - Fail closed everywhere: anything that fits no receipted shape is refused loudly with the raw value in the log.
 - Comment style: constraints and receipts (dates), never narration of the next line. Match the existing files.
-- Sam's live ledger is sacred. No task rewrites `ledger-v2.json` on disk; the one serialization change (Task 2) keeps the JSON field name via attribute so the file is byte-stable.
+- Drift's live ledger is sacred. No task rewrites `ledger-v2.json` on disk; the one serialization change (Task 2) keeps the JSON field name via attribute so the file is byte-stable.
 
 ## File Structure
 
@@ -56,7 +56,7 @@ namespace BalambGarden.Engine.Tests.Census;
 public class AccessRosterTests
 {
     // Receipts, captures/2026-08-15-roster-recon.log: roster HouseIds decode to RAW
-    // ward/plot (Chelsea ward=11 plot=32; FC ward=11 plot=57; Papa's t641 w3 p51;
+    // ward/plot (Gardener ward=11 plot=32; FC ward=11 plot=57; Papa's t641 w3 p51;
     // apartment t979 w7 room=29 div=0).
     private static AccessRoster SamsRoster() => new([
         new RosterEstate(new EstateKey(340, 11, 32), "SharedEstate"),
@@ -131,7 +131,7 @@ namespace BalambGarden.Engine.Census;
 public sealed record RosterEstate(EstateKey Key, string Kind);
 
 /// <summary>The access roster (spec: Permission Architecture, 2026-08-15). Presence here is
-/// the game saying "you can act at this estate" (Sam's v1 ruling: rostered = assume
+/// the game saying "you can act at this estate" (Drift's v1 ruling: rostered = assume
 /// actionable; the composed menu refuses per-verb weirdness gracefully at act time).
 /// Coverage is also the census scope: an estate not covered is not tracked at all.</summary>
 public sealed class AccessRoster(IReadOnlyList<RosterEstate> estates)
@@ -141,7 +141,7 @@ public sealed class AccessRoster(IReadOnlyList<RosterEstate> estates)
     public static readonly AccessRoster Empty = new([]);
 
     /// <summary>From a HouseId's own decoded fields. Receipt (roster recon 2026-08-15):
-    /// the embedded HouseId carries RAW ward/plot - Chelsea's row read ward=11 plot=32,
+    /// the embedded HouseId carries RAW ward/plot - Gardener's row read ward=11 plot=32,
     /// already the ledger convention - and room 0 is the house itself. Null for anything
     /// that fits no receipted shape: a row we cannot name is dropped loudly by the caller,
     /// never misfiled quietly here.</summary>
@@ -296,7 +296,7 @@ Expected: FAIL — no `mayRecord` parameter, `ClaimOnAction` deletions break the
 
 - [ ] **Step 3: Implement**
 
-In `ClaimedBed.cs`, rename the property, keep the wire name (Sam's live ledger stays byte-stable):
+In `ClaimedBed.cs`, rename the property, keep the wire name (Drift's live ledger stays byte-stable):
 
 ```csharp
 [System.Text.Json.Serialization.JsonPropertyName("ClaimedAt")]
@@ -400,11 +400,11 @@ namespace BalambGarden.Game;
 /// HouseId-shaped: the teleport list (raw Telepo - the SAME route the recon probe proved,
 /// one instrument, one app, one truth) and HousingManager's owned-estate answers (which
 /// also carry the chambers no teleport row names). The union is the set of estates the
-/// game says Sam can reach; per Sam's v1 ruling that set is assumed actionable, and the
+/// game says Drift can reach; per Drift's v1 ruling that set is assumed actionable, and the
 /// composed menu handles any per-verb weirdness gracefully at act time.
 ///
 /// <para>Fail-open on staleness, fail-closed on shape: a refused refresh keeps the last
-/// good roster (an estate does not stop being Sam's because a read misfired), but a row
+/// good roster (an estate does not stop being Drift's because a read misfired), but a row
 /// that fits no receipted shape is dropped with its raw HouseId in the log.</para>
 /// </summary>
 internal static unsafe class RosterSensor
@@ -538,7 +538,7 @@ and gate the visit write (the `UpsertEstate`/`Save`/nudge block, lines ~94–104
 
 - [ ] **Step 2: Gate the sighting deliveries**
 
-In `SightNow()` both `OnMapSighting` calls gain the flag (this is what populates Chelsea's 24 beds on arrival):
+In `SightNow()` both `OnMapSighting` calls gain the flag (this is what populates Gardener's 24 beds on arrival):
 
 ```csharp
 Plugin.Garden.Census.OnMapSighting(estate, key, ..., isPot: true, mayRecord: CoveredHere);
@@ -689,18 +689,18 @@ git commit -m "Tabs are the game-granted roster plus where you stand; unrostered
 
 ---
 
-## Checkpoint (Fable + Sam, after Task 6)
+## Checkpoint (Fable + Drift, after Task 6)
 
-1. Fable reviews every diff, then builds Debug x64 on Sam's explicit go (hot-load warning: it deploys live).
+1. Fable reviews every diff, then builds Debug x64 on Drift's explicit go (hot-load warning: it deploys live).
 2. Live shakeout, in order:
    - **Papa's Place / apartment**: tabs render from the roster; pots now auto-record on sight (the wilt-lab twins should appear as records without any ceremony).
-   - **Chelsea's estate**: arrival populates 24 bed records from one sighting (patch 110 was already claimed; 116/117 fill in). Verdict line lights up with the ripe wall.
-   - **THE ACCEPTANCE TEST**: one Cycle press on one ripe Chelsea bed — menu offers Harvest, obtain line lands, ledger receipt records. Then the rest at Sam's pace.
+   - **Gardener's estate**: arrival populates 24 bed records from one sighting (patch 110 was already claimed; 116/117 fill in). Verdict line lights up with the ripe wall.
+   - **THE ACCEPTANCE TEST**: one Cycle press on one ripe Gardener bed — menu offers Harvest, obtain line lands, ledger receipt records. Then the rest at Drift's pace.
    - **Rando's plot**: tab says display-only, no verbs, nothing written.
-3. Merge `rebuild` → `main` when Sam calls the save point.
+3. Merge `rebuild` → `main` when Drift calls the save point.
 
 ## Explicitly deferred (spec records why)
 
-- GardenRights source 1 (direct grant read) and source 2 (banked menu observations) — Sam's v1 ruling: rostered = assume actionable.
+- GardenRights source 1 (direct grant read) and source 2 (banked menu observations) — Drift's v1 ruling: rostered = assume actionable.
 - Auto-fill slot-click fix (separate queue item; FC pot 2 stays the acceptance test).
 - `ClaimedBed` the TYPE keeps its name this pass — meaning documented in its header; renaming is churn across 20+ files with no behavior change.

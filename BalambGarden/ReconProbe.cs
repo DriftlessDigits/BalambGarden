@@ -88,7 +88,7 @@ internal static unsafe class ReconProbe
 
     private static byte[]? managerSnapshot;
 
-    /// <summary>The wilt hunt's last unsearched room (Sam's push, 08-16: "hard to believe
+    /// <summary>The wilt hunt's last unsearched room (Drift's push, 08-16: "hard to believe
     /// wilting isn't stored in data somewhere" - he was right to push; the DataMap entry
     /// and the whole 0x1C0 EventObject were both exhausted honestly, but
     /// HousingObjectManager is 0x12E8 bytes and ClientStructs maps 0x18 of it). Two-press
@@ -316,9 +316,9 @@ internal static unsafe class ReconProbe
     /// <summary>
     /// Key&lt;-&gt;patch binding (2026-08-12, two-estate verified): GimmickId =
     /// [bed 0-7][patch ordinal][patch-id u16]. Map keys preserve the patch-ids'
-    /// PAIRWISE DIFFS per estate (Chelsea +6,+1 -&gt; keys 110/116/117; FC +20,+6
+    /// PAIRWISE DIFFS per estate (Gardener +6,+1 -&gt; keys 110/116/117; FC +20,+6
     /// -&gt; 1293/1313/1319) with a per-plot offset. The earlier low-byte-equality
-    /// rule was an FC offset coincidence - killed at Chelsea's. Census join:
+    /// rule was an FC offset coincidence - killed at Gardener's. Census join:
     /// diff-pattern shortlist, confirm with one tend receipt, cache (keys stable).
     /// <para>Recon keeps the wide 40y sweep on purpose; the working sensor caps at
     /// <see cref="ObjectSensor.PatchSweepRange"/>.</para>

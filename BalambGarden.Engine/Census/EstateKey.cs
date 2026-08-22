@@ -11,7 +11,7 @@ namespace BalambGarden.Engine.Census;
 /// (08-15 fix). Room 0 - a house's main floor - IS the house, so it keys as Room = -1.</item>
 ///
 /// <item><b>Private room in a house</b> - (district, ward, plot, Room = 1..N). Its own
-/// estate, distinct from the house it sits in (Sam's ruling 08-15: an FC private chamber
+/// estate, distinct from the house it sits in (Drift's ruling 08-15: an FC private chamber
 /// gets its own tab; its pots are nobody else's). Receipt: FC chamber HouseId
 /// 0x0037015401CB0039 -> territory 340 (Lavender Beds exterior), ward 11, plot 57, room 7,
 /// IsApartment=False - the same receipt that finally confirms a house HouseId's
@@ -23,7 +23,7 @@ namespace BalambGarden.Engine.Census;
 /// division 0, room 29, IsApartment=True. Apartments have no plot, so <see cref="Plot"/>
 /// carries the division instead, as a NEGATIVE sentinel: Plot = -1 - division (division 0 ->
 /// -1, the subdivision's building -> -2). Why a sentinel and not a fifth field: <see
-/// cref="BindingKey"/> strings are already written into Sam's live ledger, and widening the
+/// cref="BindingKey"/> strings are already written into Drift's live ledger, and widening the
 /// key would orphan every binding in it. A real plot is never negative, so the two shapes
 /// can never collide, and two divisions of one ward stay distinct keys.</item>
 /// </list></summary>

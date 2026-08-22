@@ -9,7 +9,7 @@ namespace BalambGarden.Engine.Tests.Derivations;
 public class VerdictTests
 {
     private static readonly DomainTables T = DomainTables.Load();
-    private static readonly EstateKey Chelsea = new(340, 11, 32);
+    private static readonly EstateKey Gardener = new(340, 11, 32);
     private static readonly EstateKey Fc = new(641, 3, 51);
     private static readonly DateTimeOffset Now = DateTimeOffset.Parse("2026-08-14T18:00:00Z");
 
@@ -50,12 +50,12 @@ public class VerdictTests
     {
         List<ClaimedBed> beds =
         [
-            Bed(Chelsea, 1, 0, 2, 20), Bed(Chelsea, 1, 1, 2, 20), Bed(Chelsea, 1, 2, 2, 20),
-            Bed(Chelsea, 0, 0, 2, 1),
+            Bed(Gardener, 1, 0, 2, 20), Bed(Gardener, 1, 1, 2, 20), Bed(Gardener, 1, 2, 2, 20),
+            Bed(Gardener, 0, 0, 2, 1),
         ];
 
         var verdict = Verdicts.ForGarden(
-            [Estate(Chelsea, "Papa's Place")], beds, T, new ClockWiltSource(), Now);
+            [Estate(Gardener, "Papa's Place")], beds, T, new ClockWiltSource(), Now);
 
         Assert.Equal("Patch 2 at Papa's Place: 3 beds thirsty", verdict.Text);
     }
@@ -65,12 +65,12 @@ public class VerdictTests
     {
         List<ClaimedBed> beds =
         [
-            Bed(Chelsea, 0, 0, 2, 20),
+            Bed(Gardener, 0, 0, 2, 20),
             Bed(Fc, 0, 0, 4, 1), Bed(Fc, 0, 1, 4, 1), Bed(Fc, 0, 2, 4, 1),
         ];
 
         var verdict = Verdicts.ForGarden(
-            [Estate(Chelsea, "Papa's Place"), Estate(Fc, "FC")], beds, T, new ClockWiltSource(), Now);
+            [Estate(Gardener, "Papa's Place"), Estate(Fc, "FC")], beds, T, new ClockWiltSource(), Now);
 
         Assert.StartsWith("Patch 1 at Papa's Place: 1 bed thirsty", verdict.Text);
     }
@@ -80,12 +80,12 @@ public class VerdictTests
     {
         List<ClaimedBed> beds =
         [
-            Bed(Chelsea, 0, 0, 2, 500),
+            Bed(Gardener, 0, 0, 2, 500),
             Bed(Fc, 0, 0, 2, 20), Bed(Fc, 0, 1, 2, 20), Bed(Fc, 0, 2, 2, 20),
         ];
 
         var verdict = Verdicts.ForGarden(
-            [Estate(Chelsea, "Papa's Place"), Estate(Fc, "FC")], beds, T, new ClockWiltSource(), Now);
+            [Estate(Gardener, "Papa's Place"), Estate(Fc, "FC")], beds, T, new ClockWiltSource(), Now);
 
         Assert.StartsWith("Patch 1 at Papa's Place: 1 bed thirsty (1 critical)", verdict.Text);
         Assert.Contains("3 more thirsty elsewhere", verdict.Text);
@@ -97,10 +97,10 @@ public class VerdictTests
         var beds = new List<ClaimedBed>();
         for (var slot = 0; slot < 8; slot++)
             beds.Add(Bed(Fc, 0, slot, 4, 1));
-        beds.Add(Bed(Chelsea, 0, 0, 4, 1));
+        beds.Add(Bed(Gardener, 0, 0, 4, 1));
 
         var verdict = Verdicts.ForGarden(
-            [Estate(Chelsea, "Papa's Place"), Estate(Fc, "FC")], beds, T, new ClockWiltSource(), Now);
+            [Estate(Gardener, "Papa's Place"), Estate(Fc, "FC")], beds, T, new ClockWiltSource(), Now);
 
         Assert.StartsWith("8 beds ripe at FC", verdict.Text);
         Assert.Contains("1 more ripe elsewhere", verdict.Text);
@@ -110,7 +110,7 @@ public class VerdictTests
     public void QuietGardenQuotesTheNextWindow()
     {
         var verdict = Verdicts.ForGarden(
-            [Estate(Chelsea, "Papa's Place")], [Bed(Chelsea, 0, 0, 2, 1)], T,
+            [Estate(Gardener, "Papa's Place")], [Bed(Gardener, 0, 0, 2, 1)], T,
             new ClockWiltSource(), Now, _ => "Fri 09:00");
 
         Assert.Equal("Nothing to do but wait - next window ~Fri 09:00", verdict.Text);
@@ -121,7 +121,7 @@ public class VerdictTests
     public void PotsNeverReadAsThirsty()
     {
         var verdict = Verdicts.ForGarden(
-            [Estate(Chelsea, "Papa's Place")], [Bed(Chelsea, 0, 0, 2, 500, isPot: true)], T,
+            [Estate(Gardener, "Papa's Place")], [Bed(Gardener, 0, 0, 2, 500, isPot: true)], T,
             new ClockWiltSource(), Now);
 
         Assert.DoesNotContain("thirsty", verdict.Text);

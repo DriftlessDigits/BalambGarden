@@ -10,7 +10,7 @@ public sealed record PotReading(
     ushort SpeciesIndex, byte Stage, byte Color, byte Extra, bool Occupied, bool Recognized,
     byte Wilt = 0);
 
-/// <summary>Pigment nibble names, receipts only (08-16, Sam's eyes at three estates):
+/// <summary>Pigment nibble names, receipts only (08-16, Drift's eyes at three estates):
 /// 1 = Blue (lupins AND morning glories agreed), 2 = Yellow (daisies + item 17999
 /// "Yellow Daisies"), 5 = Purple (FC cosmos - screenshot AND the game's own Talk line
 /// "Purple Cosmos"). An unreceipted nibble answers null and the plant renders as the

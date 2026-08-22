@@ -34,7 +34,7 @@ public class Configuration : IPluginConfiguration
     public int JitterMS { get; set; } = 400;
 
     // Between beds: the watering animation outlives the dialogue, so the gap from one
-    // bed's tend to the next bed's reach is its own, much longer delay (Sam's ruling
+    // bed's tend to the next bed's reach is its own, much longer delay (Drift's ruling
     // 2026-08-11: 8s +/- 1s).
     public int PostTendDelayMS { get; set; } = 8000;
     public int PostTendJitterMS { get; set; } = 1000;
@@ -48,7 +48,7 @@ public class Configuration : IPluginConfiguration
     /// room; the name we speak under in it is theirs to set.</summary>
     public string NudgeLabel { get; set; } = "Balamb";
 
-    /// <summary>How the dashboard tells time: 12-hour with am/pm (Sam's default) or 24h.
+    /// <summary>How the dashboard tells time: 12-hour with am/pm (Drift's default) or 24h.
     /// Display only - every stored timestamp stays UTC regardless.</summary>
     public bool TwelveHourClock { get; set; } = true;
 
@@ -59,13 +59,13 @@ public class Configuration : IPluginConfiguration
     public bool AutoFillPicker { get; set; } = true;
 
     /// <summary>The plant-flow recon INTENT: "record when I'm gardening." Debug builds arm
-    /// the watcher within 4.6y of a pot and drop it on rezone (Sam's ruling 08-15), so a
+    /// the watcher within 4.6y of a pot and drop it on rezone (Drift's ruling 08-15), so a
     /// capture holds gardening rather than a night of quest dialogue. Persisted because
     /// the runtime flag dies on every hot-load (two captures lost in one day to reset
     /// toggles). Release carries no watcher at all.</summary>
     public bool WatchPlantFlow { get; set; }
 
-    /// <summary>How far the working patch sweep looks, in yalms. Sam's ruling 08-14 set the
+    /// <summary>How far the working patch sweep looks, in yalms. Drift's ruling 08-14 set the
     /// 20y default (the neighbour's twin ordinal sat at 37.9y, and a far own patch simply
     /// reappears when you walk toward it); it is a setting because a sprawling plot and a
     /// small one want different answers. Recon keeps its own fixed 40y view on purpose.</summary>

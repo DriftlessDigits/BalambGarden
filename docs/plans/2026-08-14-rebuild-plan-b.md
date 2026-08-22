@@ -12,7 +12,7 @@
 
 ## Global Constraints
 
-- Work on the `rebuild` branch. Never commit to `main`; merges to `main` are Sam's save points (three planned: end of Stage 1, 2, 3).
+- Work on the `rebuild` branch. Never commit to `main`; merges to `main` are Drift's save points (three planned: end of Stage 1, 2, 3).
 - Commit messages: plain, no AI co-authorship line (repo convention).
 - `BalambGarden.Engine` / `.Engine.Tests` never reference Dalamud, ECommons, or the plugin project.
 - Receipts-only is structural: no code path may bind a key or claim a bed from a pattern alone. Shortlists propose; only a receipt confirms.
@@ -21,7 +21,7 @@
 - Every ETA is a window with provenance; UI renders provenance as a glyph, never color alone.
 - Fail closed, report honest: sensors log + skip + surface "N unreadable"; chains refuse pre-flight or stop clean at a bed boundary with a stated reason. Status surfaces mark at confirmation, never at fire.
 - Chains pace at human tempo (existing knobs: TendPaceMS 750 +/- 400, PostTendDelayMS 8000 +/- 1000); TaskManager TimeLimitMS derived above the longest tunable step, never racing it.
-- **Bench discipline: never test chains on Chelsea's garden.** Bench checkpoints run at Sam's own house/pots. Chelsea's beds are production.
+- **Bench discipline: never test chains on Gardener's garden.** Bench checkpoints run at Drift's own house/pots. Gardener's beds are production.
 - Build: `dotnet build BalambGarden.sln -c Debug -p:Platform=x64`. Test: `dotnet test BalambGarden.Engine.Tests/BalambGarden.Engine.Tests.csproj`. A stale DLL means the x64 flag was dropped.
 - All Engine timestamps `DateTimeOffset` (UTC). Plugin-side `DateTime.UtcNow` converts at the boundary via `DateTimeOffset.UtcNow`.
 - The POC ledger (`Configuration.Ledger`) is never read or migrated. The v2 ledger is a fresh file `ledger-v2.json` in the plugin config directory.
@@ -70,7 +70,7 @@ BalambGarden/
 
 ## Stage 1 - The read side + the tend loop (save point A)
 
-After Task 7 the plugin senses estates, joins receipts to map keys, claims on tend, persists the v2 ledger, and shows a minimal live dashboard. Sam merges to `main`.
+After Task 7 the plugin senses estates, joins receipts to map keys, claims on tend, persists the v2 ledger, and shows a minimal live dashboard. Drift merges to `main`.
 
 ### Task 1: Engine - ReceiptParser + SpeciesIndexByName
 
@@ -403,18 +403,18 @@ namespace BalambGarden.Engine.Tests.Ledger;
 
 public class EstateRosterTests
 {
-    private static readonly EstateKey Chelsea = new(340, 11, 32);
+    private static readonly EstateKey Gardener = new(340, 11, 32);
     private static readonly DateTimeOffset T0 = DateTimeOffset.Parse("2026-08-14T18:00:00Z");
 
     [Fact] // Frame 2: estates discovered on visit and remembered
     public void UpsertCreatesThenUpdates()
     {
         var store = new LedgerStore();
-        var first = store.UpsertEstate(Chelsea, T0);
+        var first = store.UpsertEstate(Gardener, T0);
         Assert.Equal(T0, first.FirstSeen);
         Assert.Equal(T0, first.LastVisited);
 
-        var second = store.UpsertEstate(Chelsea, T0.AddDays(1));
+        var second = store.UpsertEstate(Gardener, T0.AddDays(1));
         Assert.Same(first, second);
         Assert.Single(store.Estates);
         Assert.Equal(T0, second.FirstSeen);
@@ -424,28 +424,28 @@ public class EstateRosterTests
     [Fact]
     public void NicknameWinsDisplay()
     {
-        var record = new EstateRecord { Key = Chelsea, FirstSeen = T0, LastVisited = T0 };
+        var record = new EstateRecord { Key = Gardener, FirstSeen = T0, LastVisited = T0 };
         Assert.Equal("Ward 12 Plot 33", record.DisplayName);
-        record.Nickname = "Chelsea's";
-        Assert.Equal("Chelsea's", record.DisplayName);
+        record.Nickname = "Gardener's";
+        Assert.Equal("Gardener's", record.DisplayName);
     }
 
     [Fact] // the roster must survive the JSON round trip with beds and bindings intact
     public void RosterRoundTripsThroughJson()
     {
         var store = new LedgerStore();
-        store.UpsertEstate(Chelsea, T0).Nickname = "Chelsea's";
-        store.Bindings[Chelsea.BindingKey(0)] = 110;
+        store.UpsertEstate(Gardener, T0).Nickname = "Gardener's";
+        store.Bindings[Gardener.BindingKey(0)] = 110;
         store.Beds.Add(new ClaimedBed
         {
-            Estate = Chelsea, MapKey = 110, PatchOrdinal = 0, BedSlot = 3, ClaimedAt = T0,
+            Estate = Gardener, MapKey = 110, PatchOrdinal = 0, BedSlot = 3, ClaimedAt = T0,
         });
 
         var restored = LedgerStore.FromJson(store.ToJson());
         var estate = Assert.Single(restored.Estates);
-        Assert.Equal("Chelsea's", estate.Nickname);
-        Assert.Equal(Chelsea, estate.Key);
-        Assert.Equal(110, restored.Bindings[Chelsea.BindingKey(0)]);
+        Assert.Equal("Gardener's", estate.Nickname);
+        Assert.Equal(Gardener, estate.Key);
+        Assert.Equal(110, restored.Bindings[Gardener.BindingKey(0)]);
         Assert.Equal(3, Assert.Single(restored.Beds).BedSlot);
     }
 }
@@ -605,7 +605,7 @@ In `Configuration.cs`, bump `Version` to `1` and add below the pacing knobs:
     public bool TrailEnabled { get; set; } = true;
 ```
 
-Leave `Ledger` (the POC list) in place, unread - deleting the property would throw away Chelsea's existing config file shape for no gain.
+Leave `Ledger` (the POC list) in place, unread - deleting the property would throw away Gardener's existing config file shape for no gain.
 
 - [ ] **Step 3: Wire into Plugin**
 
@@ -1391,14 +1391,14 @@ Expected: all pass.
 git add -A && git commit -m "Chains: ChainBase framework + TendChain v2 emitting census receipts; minimal v2 dashboard"
 ```
 
-- [ ] **Step 6: BENCH CHECKPOINT A (Sam at the keyboard, Sam's own garden)**
+- [ ] **Step 6: BENCH CHECKPOINT A (Drift at the keyboard, Drift's own garden)**
 
-Reload the plugin, then at Sam's house:
+Reload the plugin, then at Drift's house:
 1. `/garden` - estate line shows the right ward/plot; no beds claimed yet.
-2. Run Water Patch on Sam's patch. Expected: run log narrates; after the run, beds appear in the claimed table with plant names, stage, and "just now" ages; `ledger-v2.json` exists in the config dir with bindings + beds.
+2. Run Water Patch on Drift's patch. Expected: run log narrates; after the run, beds appear in the claimed table with plant names, stage, and "just now" ages; `ledger-v2.json` exists in the config dir with bindings + beds.
 3. Re-open after a `/xlplugins` reload: claims persist.
 4. Zone out and back in: arrival nudge prints one line if anything is Due/ripe, silence otherwise.
-5. Sam rules the save point: merge `rebuild` -> `main`.
+5. Drift rules the save point: merge `rebuild` -> `main`.
 
 ---
 
@@ -1513,9 +1513,9 @@ git add -A && git commit -m "Data: soils table generated from xivapi, embedded i
 git add -A && git commit -m "Recon: plant-flow addon watcher (debug builds)"
 ```
 
-- [ ] **Step 3: BENCH RECON (Sam, his own garden/pot, one manual plant + one manual pot plant)**
+- [ ] **Step 3: BENCH RECON (Drift, his own garden/pot, one manual plant + one manual pot plant)**
 
-Sam turns on the watcher, then by hand: harvests one ripe bed of his own (or uses an empty bed), plants a seed in it (soil + seed via the game UI), and plants/waters one indoor pot. Deliverables, appended to `captures/` as `YYYY-MM-DD-plant-flow.log` and committed:
+Drift turns on the watcher, then by hand: harvests one ripe bed of his own (or uses an empty bed), plants a seed in it (soil + seed via the game UI), and plants/waters one indoor pot. Deliverables, appended to `captures/` as `YYYY-MM-DD-plant-flow.log` and committed:
 - The SelectString option text for planting on an empty bed (exact wording).
 - `HousingGardening` AtkValues before/after choosing soil and seed; which Callback-visible values identify the two slots and the confirm button.
 - `ContextIconMenu` values while the soil/seed picker is open (does selection carry the item id?).
@@ -1591,13 +1591,13 @@ git add -A && git commit -m "Chains: harvest->replant cycle with fail-closed pre
 git add -A && git commit -m "Chains: pot verbs (water/plant/harvest) on the chain framework"
 ```
 
-- [ ] **Step 3: BENCH CHECKPOINT B (Sam, his own garden + his own pot - never Chelsea's)**
+- [ ] **Step 3: BENCH CHECKPOINT B (Drift, his own garden + his own pot - never Gardener's)**
 
-1. Cycle a ripe patch of Sam's with default plan: pre-flight numbers print honestly; interleave visible in the run log; ledger shows Harvest + Plant receipts, new anchored windows.
+1. Cycle a ripe patch of Drift's with default plan: pre-flight numbers print honestly; interleave visible in the run log; ledger shows Harvest + Plant receipts, new anchored windows.
 2. Deliberately under-stock soil -> launch refuses with the exact shortfall.
 3. Abort mid-run -> stops at a bed boundary, reports "stopped at N/M - <reason>".
-4. Pot: water Sam's sunflower pot -> claim lands via species-uniqueness bind (key 129 expected).
-5. Sam rules save point B: merge to `main`.
+4. Pot: water Drift's sunflower pot -> claim lands via species-uniqueness bind (key 129 expected).
+5. Drift rules save point B: merge to `main`.
 
 ---
 
@@ -1662,7 +1662,7 @@ Structure (all code in the task, summarized here by section):
 
 The `probe` branch carries the instrument and the extended species work that never landed on `rebuild`:
 
-- [ ] **Step 1**: `git checkout probe -- BalambGarden/ReconProbe.cs tools/build-domain-data.mjs tools/source/lotlab_seeds.json tools/source/lotlab_times.json captures/2026-08-13-chelsea-fc-probe.log`
+- [ ] **Step 1**: `git checkout probe -- BalambGarden/ReconProbe.cs tools/build-domain-data.mjs tools/source/lotlab_seeds.json tools/source/lotlab_times.json captures/2026-08-13-gardener-fc-probe.log`
 - [ ] **Step 2**: Diff `probe:Data/SpeciesIndex.json` against `rebuild`'s copy. Take the superset (probe's has the 100-107 tail named via xivapi, 08-13). Fold in the 08-13 follow-ups: names for 100/102/103/107 must be present; add id 108 as unknown-but-listed if absent. Run the Engine tests - `SpeciesIndexByName` and species tests must still pass.
 - [ ] **Step 3**: Wrap `ReconProbe.cs` entirely in `#if DEBUG` / `#endif`. Rewrite its map-reading half to go through `MapSensor.ReadRawEntries` semantics where possible (instrument and app must not disagree about what was seen - spec); keep the raw hex dump as-is. Delete its `SpeciesTable` dependency (`SpeciesTable.g.cs` is superseded by Engine `DomainTables`): decoded lines use `Plugin.Tables.SpeciesName`.
 - [ ] **Step 4**: Recon section of MainWindow (`#if DEBUG`): buttons `Log housing`, `Dump records`, `Dump bed structs`, `Watch plant flow` calling the probe + PlantFlow watcher. Release builds compile all of it out - verify with `dotnet build -c Release -p:Platform=x64` (zero probe symbols; a `#if !DEBUG` compile is the check).
@@ -1676,11 +1676,11 @@ The `probe` branch carries the instrument and the extended species work that nev
 
 - [ ] **Step 1**: Version bump + README; build Release x64 clean; all Engine tests green.
 - [ ] **Step 2**: Commit: `git add -A && git commit -m "v0.2.0.0: the rebuild ships - suite of tools on the five-layer engine"`
-- [ ] **Step 3: FINAL BENCH (Sam)** - the acceptance walk, at the household estates in production use (read-only surfaces plus Sam's own garden for verbs):
-  1. Dashboard shows the estate roster with Chelsea's, FC, Sam's; rollup lines read like the spec example.
+- [ ] **Step 3: FINAL BENCH (Drift)** - the acceptance walk, at the household estates in production use (read-only surfaces plus Drift's own garden for verbs):
+  1. Dashboard shows the estate roster with Gardener's, FC, Drift's; rollup lines read like the spec example.
   2. The Onion pipeline appears in Tips (stock + bottleneck lines) once the claimed plantings cover it - user story #1.
   3. Windows and provenance glyphs behave; nudge fires once per arrival; run log reports clean stops.
-  4. Sam rules save point C: merge to `main`, tag, DalamudPluginRepo update, Chelsea installs v0.2.0.0 over the POC (fresh ledger; one tend run per estate re-censuses).
+  4. Drift rules save point C: merge to `main`, tag, DalamudPluginRepo update, Gardener installs v0.2.0.0 over the POC (fresh ledger; one tend run per estate re-censuses).
 
 ---
 
