@@ -29,4 +29,14 @@ public sealed class ClaimedBed
         if (RingStorage.Count > RingCapacity)
             RingStorage.RemoveRange(0, RingStorage.Count - RingCapacity);
     }
+
+    /// <summary>New tenancy: the live map contradicted the ledger's idea of what grows here
+    /// (2026-08-18 ruling: the game wins on content mismatch), so every claim about the OLD
+    /// plant - its observations, its tend clock - leaves with it. The row itself survives;
+    /// the bed is still ours, it just holds something we haven't watched grow.</summary>
+    public void Rebase()
+    {
+        RingStorage.Clear();
+        LastTended = null;
+    }
 }

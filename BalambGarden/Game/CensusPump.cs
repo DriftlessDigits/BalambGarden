@@ -170,6 +170,21 @@ internal static class CensusPump
                     [new BedReading(0, pot.SpeciesIndex, pot.Stage, pot.Extra, pot.Occupied)], now,
                     isPot: true, mayRecord: CoveredHere);
             }
+
+            // A harvested pot's entry VANISHES from the map (08-15), so the loop above
+            // never hears about it - absence from a SETTLED read is the emptying receipt
+            // (2026-08-18: Sam's harvested pots kept showing their old contents). The
+            // settled-object guard is the same one the drift row trusts: an unsettled
+            // world answers nothing, never "empty".
+            if (CoveredHere && ObjectSensor.SawHousingObjects)
+            {
+                var emptied = Plugin.Garden.Census.ReconcileAbsentPots(estate, LastIndoor.Keys.ToList());
+                if (emptied > 0)
+                    Plugin.Log.Information(
+                        $"[Census] {emptied} pot(s) read absent (harvested?) - contents cleared at {estate.DisplayLabel()}");
+                landed += emptied;
+            }
+
             if (CoveredHere && (landed > 0 || pruned > 0))
                 Plugin.Garden.Save();
         }

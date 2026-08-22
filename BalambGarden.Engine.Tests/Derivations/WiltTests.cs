@@ -50,4 +50,51 @@ public class WiltTests
     [Fact] // ...and an untended pot is Not Applicable too, never a hedged Unknown
     public void UntendedPotIsNotApplicable()
         => Assert.Equal(WaterState.NotApplicable, Source.StateFor(Pot(null), Krakka, T0));
+
+    // ------------------------------------------------------------- ripe suppression
+    // 2026-08-18 (Sam's screenshot: "DANGER - water now · ripe now" on the same row).
+    // A fully grown crop cannot wilt or die - the community table the wilt hours came
+    // from says so - so a bed whose latest sighting is stage 4 makes no water claim,
+    // however stale its tend clock. The live stage read outranks the derived clock.
+
+    private static ClaimedBed RipeBed(DateTimeOffset tended, byte stage)
+    {
+        var bed = Bed(tended);
+        bed.Observe(new Observation(tended, 0x41, stage, ObservationSource.MapSighting));
+        return bed;
+    }
+
+    [Theory]
+    [InlineData(25)]     // clock says Overdue
+    [InlineData(37)]     // clock says Danger
+    [InlineData(500)]    // clock says long dead - and the plant is still fine
+    public void RipeBedMakesNoWaterClaim(int hoursSinceTend)
+        => Assert.Equal(WaterState.NotApplicable,
+            Source.StateFor(RipeBed(T0, stage: 4), Krakka, T0.AddHours(hoursSinceTend)));
+
+    [Fact] // stage 3 is still on the clock - suppression is stage 4 only
+    public void GrowingBedStillRunsTheClock()
+        => Assert.Equal(WaterState.Danger,
+            Source.StateFor(RipeBed(T0, stage: 3), Krakka, T0.AddHours(37)));
+
+    // ------------------------------------------------------------------ death clock
+    // 2026-08-18 (Sam's Allagan Melons died): wilt is a countdown, not an end state.
+    // WitherHours is hours-dry until the plant is unrecoverable; the deadline is a
+    // plain derivation the surfaces can finally say out loud.
+
+    [Fact]
+    public void DiesAtIsTendPlusWitherHours()
+        => Assert.Equal(T0.AddHours(48), ClockWiltSource.DiesAt(Bed(T0), Krakka));
+
+    [Fact] // no tend receipt = no clock = no deadline claim
+    public void DiesAtUnknownWithoutTend()
+        => Assert.Null(ClockWiltSource.DiesAt(Bed(null), Krakka));
+
+    [Fact] // pot wilt is observed, never clocked - a pot claims no deadline either
+    public void DiesAtNotApplicableForPots()
+        => Assert.Null(ClockWiltSource.DiesAt(Pot(T0), Krakka));
+
+    [Fact] // a ripe bed cannot die - the deadline claim retires with the wilt claim
+    public void DiesAtNullOnRipeBed()
+        => Assert.Null(ClockWiltSource.DiesAt(RipeBed(T0, stage: 4), Krakka));
 }

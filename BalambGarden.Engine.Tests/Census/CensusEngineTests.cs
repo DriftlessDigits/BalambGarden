@@ -215,4 +215,145 @@ public class CensusEngineTests
         var bed = engine.OnReceipt(new ReceiptEvent(estate, 0, 0, ReceiptVerb.Tend, 0x41, 2, DateTimeOffset.UtcNow));
         Assert.NotNull(bed);
     }
+
+    // ---------------------------------------------------------------- reconcile
+    // 2026-08-18 ruling: the game wins on content mismatch. A live read that contradicts
+    // the ledger's idea of what is growing means the row's tenancy changed while nobody
+    // was watching (a housemate harvested or replanted) - the old ring and tend clock
+    // describe a plant that is gone, so they rebase rather than argue.
+
+    private static ClaimedBed TendedBed(CensusEngine engine, byte stage = 2)
+    {
+        engine.Bind(Chelsea, 0, 110);
+        return engine.OnReceipt(Tend(slot: 3, stage))!;
+    }
+
+    [Fact] // different species live = new tenancy: ring and tend clock rebase, row survives
+    public void SightingWithDifferentSpeciesRebasesTheRow()
+    {
+        var engine = new CensusEngine(new LedgerStore());
+        var bed = TendedBed(engine);
+
+        engine.OnMapSighting(Chelsea, 110,
+            [new BedReading(3, 0x30, 1, 0, true)], T0.AddDays(1), mayRecord: true);
+
+        Assert.Single(engine.LedgerBeds);
+        var obs = Assert.Single(bed.Ring);           // old observations left with the old plant
+        Assert.Equal(0x30, obs.SpeciesIndex);
+        Assert.Null(bed.LastTended);                 // our watering receipt watered the OLD plant
+    }
+
+    [Fact] // stage went BACKWARD on the same species = replanted same crop: also a new tenancy
+    public void SightingWithRegressedStageRebasesTheRow()
+    {
+        var engine = new CensusEngine(new LedgerStore());
+        var bed = TendedBed(engine, stage: 3);
+
+        engine.OnMapSighting(Chelsea, 110,
+            [new BedReading(3, 0x41, 1, 0, true)], T0.AddDays(1), mayRecord: true);
+
+        var obs = Assert.Single(bed.Ring);
+        Assert.Equal(1, obs.Stage);
+        Assert.Null(bed.LastTended);
+    }
+
+    [Fact] // same species, stage moved forward: normal life - ring grows, anchors survive
+    public void SightingThatAgreesKeepsRingAndTendClock()
+    {
+        var engine = new CensusEngine(new LedgerStore());
+        var bed = TendedBed(engine, stage: 2);
+
+        engine.OnMapSighting(Chelsea, 110,
+            [new BedReading(3, 0x41, 3, 0, true)], T0.AddDays(1), mayRecord: true);
+
+        Assert.Equal(2, bed.Ring.Count);
+        Assert.Equal(T0, bed.LastTended);
+    }
+
+    [Fact] // reads empty on a row with contents: the plant is gone; the row empties, stays
+    public void SightingThatReadsEmptyEmptiesTheRow()
+    {
+        var engine = new CensusEngine(new LedgerStore());
+        var bed = TendedBed(engine);
+
+        var landed = engine.OnMapSighting(Chelsea, 110,
+            [new BedReading(3, 0, 0, 0, Occupied: false)], T0.AddDays(1), mayRecord: true);
+
+        Assert.Single(engine.LedgerBeds);            // the bed is still ours...
+        Assert.Empty(bed.Ring);                      // ...but nothing grows in it
+        Assert.Null(bed.LastTended);
+        Assert.Equal(1, landed);                     // the rebase is a change worth saving
+    }
+
+    [Fact] // an empty read against an already-empty row is silence, not a change
+    public void EmptyReadOnEmptyRowLandsNothing()
+    {
+        var engine = new CensusEngine(new LedgerStore());
+        var bed = TendedBed(engine);
+        engine.OnMapSighting(Chelsea, 110,
+            [new BedReading(3, 0, 0, 0, Occupied: false)], T0.AddDays(1), mayRecord: true);
+
+        var landed = engine.OnMapSighting(Chelsea, 110,
+            [new BedReading(3, 0, 0, 0, Occupied: false)], T0.AddDays(2), mayRecord: true);
+
+        Assert.Equal(0, landed);
+        Assert.Empty(bed.Ring);
+    }
+
+    [Fact] // rebase is destructive, so it gates on mayRecord; unvouched sightings stay
+    public void ReconcileRequiresMayRecord()      // additive-only (existing rows still observe)
+    {
+        var engine = new CensusEngine(new LedgerStore());
+        var bed = TendedBed(engine);
+
+        engine.OnMapSighting(Chelsea, 110,
+            [new BedReading(3, 0, 0, 0, Occupied: false)], T0.AddDays(1));
+        engine.OnMapSighting(Chelsea, 110,
+            [new BedReading(3, 0x30, 1, 0, true)], T0.AddDays(1));
+
+        Assert.Equal(2, bed.Ring.Count);             // observed, never rebased
+        Assert.Equal(T0, bed.LastTended);            // the tend clock survived
+    }
+
+    [Fact] // a harvested pot's map entry VANISHES (08-15): absent from a settled read = emptied
+    public void AbsentPotKeyRebasesItsRow()
+    {
+        var engine = new CensusEngine(new LedgerStore());
+        var estate = new EstateKey(344, 24, 41);
+        foreach (var key in new[] { 126, 127 })
+            engine.OnMapSighting(estate, key, [new BedReading(0, 44, 3, 0, true)],
+                T0, isPot: true, mayRecord: true);
+
+        var rebased = engine.ReconcileAbsentPots(estate, presentKeys: [127]);
+
+        Assert.Equal(1, rebased);
+        Assert.Equal(2, engine.LedgerBeds.Count);    // both rows survive
+        Assert.Empty(engine.LedgerBeds.First(b => b.MapKey == 126).Ring);
+        Assert.NotEmpty(engine.LedgerBeds.First(b => b.MapKey == 127).Ring);
+    }
+
+    [Fact] // an already-empty row is already right - absence is not news twice
+    public void AbsentPotReconcileIsIdempotent()
+    {
+        var engine = new CensusEngine(new LedgerStore());
+        var estate = new EstateKey(344, 24, 41);
+        engine.OnMapSighting(estate, 126, [new BedReading(0, 44, 3, 0, true)],
+            T0, isPot: true, mayRecord: true);
+        engine.ReconcileAbsentPots(estate, presentKeys: []);
+
+        Assert.Equal(0, engine.ReconcileAbsentPots(estate, presentKeys: []));
+    }
+
+    [Fact] // unknown species live (0) is a shrug, not a contradiction - never rebases
+    public void UnknownLiveSpeciesDoesNotRebase()
+    {
+        var engine = new CensusEngine(new LedgerStore());
+        var bed = TendedBed(engine, stage: 2);
+
+        engine.OnMapSighting(Chelsea, 110,
+            [new BedReading(3, 0, 2, 0, true)], T0.AddDays(1), mayRecord: true);
+
+        Assert.Equal(2, bed.Ring.Count);
+        Assert.Equal(T0, bed.LastTended);
+    }
 }
