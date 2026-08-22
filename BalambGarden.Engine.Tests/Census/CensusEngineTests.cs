@@ -7,18 +7,18 @@ namespace BalambGarden.Engine.Tests.Census;
 
 public class CensusEngineTests
 {
-    private static readonly EstateKey Chelsea = new(340, 11, 32);
+    private static readonly EstateKey Gardener = new(340, 11, 32);
     private static readonly DateTimeOffset T0 = DateTimeOffset.Parse("2026-08-13T19:00:00Z");
 
     private static ReceiptEvent Tend(int slot, byte stage = 1) =>
-        new(Chelsea, PatchOrdinal: 0, BedSlot: slot, ReceiptVerb.Tend,
+        new(Gardener, PatchOrdinal: 0, BedSlot: slot, ReceiptVerb.Tend,
             SpeciesIndex: 0x41, Stage: stage, At: T0);
 
     [Fact] // claim-on-action: a completed tend on a bound patch claims the bed
     public void TendReceiptClaimsAndObserves()
     {
         var engine = new CensusEngine(new LedgerStore());
-        engine.Bind(Chelsea, 0, mapKey: 110);
+        engine.Bind(Gardener, 0, mapKey: 110);
 
         var bed = engine.OnReceipt(Tend(slot: 3));
 
@@ -42,16 +42,16 @@ public class CensusEngineTests
     public void RebindOverwrites()
     {
         var engine = new CensusEngine(new LedgerStore());
-        engine.Bind(Chelsea, 0, 110);
-        engine.Bind(Chelsea, 0, 116);
-        Assert.Equal(116, engine.BoundKey(Chelsea, 0));
+        engine.Bind(Gardener, 0, 110);
+        engine.Bind(Gardener, 0, 116);
+        Assert.Equal(116, engine.BoundKey(Gardener, 0));
     }
 
     [Fact]
     public void AbandonRemoves()
     {
         var engine = new CensusEngine(new LedgerStore());
-        engine.Bind(Chelsea, 0, 110);
+        engine.Bind(Gardener, 0, 110);
         var bed = engine.OnReceipt(Tend(3))!;
         engine.Abandon(bed);
         Assert.Empty(engine.LedgerBeds);
@@ -61,7 +61,7 @@ public class CensusEngineTests
     public void SecondReceiptOnSameBedDoesNotDuplicate()
     {
         var engine = new CensusEngine(new LedgerStore());
-        engine.Bind(Chelsea, 0, 110);
+        engine.Bind(Gardener, 0, 110);
         engine.OnReceipt(Tend(3));
         engine.OnReceipt(Tend(3, stage: 2));
         Assert.Single(engine.LedgerBeds);
@@ -71,7 +71,7 @@ public class CensusEngineTests
     public void MapSightingObservesClaimedOnly()
     {
         var engine = new CensusEngine(new LedgerStore());
-        engine.Bind(Chelsea, 0, 110);
+        engine.Bind(Gardener, 0, 110);
         engine.OnReceipt(Tend(3));   // claims slot 3 only
 
         var readings = Enumerable.Range(0, 8)
@@ -79,7 +79,7 @@ public class CensusEngineTests
                 i, (ushort)(i % 2 == 0 ? 0x41 : 0x11), 2, 0, true))
             .ToList();
 
-        var count = engine.OnMapSighting(Chelsea, mapKey: 110, readings, T0.AddDays(1));
+        var count = engine.OnMapSighting(Gardener, mapKey: 110, readings, T0.AddDays(1));
 
         Assert.Equal(1, count);   // only the claimed bed
         var bed = Assert.Single(engine.LedgerBeds);
@@ -92,11 +92,11 @@ public class CensusEngineTests
     public void MapSightingWrongKeyIgnored()
     {
         var engine = new CensusEngine(new LedgerStore());
-        engine.Bind(Chelsea, 0, 110);
+        engine.Bind(Gardener, 0, 110);
         engine.OnReceipt(Tend(3));
         var readings = new List<BalambGarden.Engine.Sensing.BedReading>
             { new(3, 0x41, 3, 0, true) };
-        Assert.Equal(0, engine.OnMapSighting(Chelsea, mapKey: 116, readings, T0.AddDays(1)));
+        Assert.Equal(0, engine.OnMapSighting(Gardener, mapKey: 116, readings, T0.AddDays(1)));
     }
 
     [Fact]
@@ -224,7 +224,7 @@ public class CensusEngineTests
 
     private static ClaimedBed TendedBed(CensusEngine engine, byte stage = 2)
     {
-        engine.Bind(Chelsea, 0, 110);
+        engine.Bind(Gardener, 0, 110);
         return engine.OnReceipt(Tend(slot: 3, stage))!;
     }
 
@@ -234,7 +234,7 @@ public class CensusEngineTests
         var engine = new CensusEngine(new LedgerStore());
         var bed = TendedBed(engine);
 
-        engine.OnMapSighting(Chelsea, 110,
+        engine.OnMapSighting(Gardener, 110,
             [new BedReading(3, 0x30, 1, 0, true)], T0.AddDays(1), mayRecord: true);
 
         Assert.Single(engine.LedgerBeds);
@@ -249,7 +249,7 @@ public class CensusEngineTests
         var engine = new CensusEngine(new LedgerStore());
         var bed = TendedBed(engine, stage: 3);
 
-        engine.OnMapSighting(Chelsea, 110,
+        engine.OnMapSighting(Gardener, 110,
             [new BedReading(3, 0x41, 1, 0, true)], T0.AddDays(1), mayRecord: true);
 
         var obs = Assert.Single(bed.Ring);
@@ -263,7 +263,7 @@ public class CensusEngineTests
         var engine = new CensusEngine(new LedgerStore());
         var bed = TendedBed(engine, stage: 2);
 
-        engine.OnMapSighting(Chelsea, 110,
+        engine.OnMapSighting(Gardener, 110,
             [new BedReading(3, 0x41, 3, 0, true)], T0.AddDays(1), mayRecord: true);
 
         Assert.Equal(2, bed.Ring.Count);
@@ -276,7 +276,7 @@ public class CensusEngineTests
         var engine = new CensusEngine(new LedgerStore());
         var bed = TendedBed(engine);
 
-        var landed = engine.OnMapSighting(Chelsea, 110,
+        var landed = engine.OnMapSighting(Gardener, 110,
             [new BedReading(3, 0, 0, 0, Occupied: false)], T0.AddDays(1), mayRecord: true);
 
         Assert.Single(engine.LedgerBeds);            // the bed is still ours...
@@ -290,10 +290,10 @@ public class CensusEngineTests
     {
         var engine = new CensusEngine(new LedgerStore());
         var bed = TendedBed(engine);
-        engine.OnMapSighting(Chelsea, 110,
+        engine.OnMapSighting(Gardener, 110,
             [new BedReading(3, 0, 0, 0, Occupied: false)], T0.AddDays(1), mayRecord: true);
 
-        var landed = engine.OnMapSighting(Chelsea, 110,
+        var landed = engine.OnMapSighting(Gardener, 110,
             [new BedReading(3, 0, 0, 0, Occupied: false)], T0.AddDays(2), mayRecord: true);
 
         Assert.Equal(0, landed);
@@ -306,9 +306,9 @@ public class CensusEngineTests
         var engine = new CensusEngine(new LedgerStore());
         var bed = TendedBed(engine);
 
-        engine.OnMapSighting(Chelsea, 110,
+        engine.OnMapSighting(Gardener, 110,
             [new BedReading(3, 0, 0, 0, Occupied: false)], T0.AddDays(1));
-        engine.OnMapSighting(Chelsea, 110,
+        engine.OnMapSighting(Gardener, 110,
             [new BedReading(3, 0x30, 1, 0, true)], T0.AddDays(1));
 
         Assert.Equal(2, bed.Ring.Count);             // observed, never rebased
@@ -350,7 +350,7 @@ public class CensusEngineTests
         var engine = new CensusEngine(new LedgerStore());
         var bed = TendedBed(engine, stage: 2);
 
-        engine.OnMapSighting(Chelsea, 110,
+        engine.OnMapSighting(Gardener, 110,
             [new BedReading(3, 0, 2, 0, true)], T0.AddDays(1), mayRecord: true);
 
         Assert.Equal(2, bed.Ring.Count);

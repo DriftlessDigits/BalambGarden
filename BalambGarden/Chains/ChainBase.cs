@@ -134,7 +134,7 @@ internal abstract class ChainBase : IDisposable
     internal void RequestStop() => stopRequested = true;
 
     /// <summary>For a chain's long WAITING states (the human-fill wait can sit for
-    /// minutes and a one-unit run has no next boundary - 08-16, Sam's stop did nothing).
+    /// minutes and a one-unit run has no next boundary - 08-16, Drift's stop did nothing).
     /// Waiting on the player is not mid-dialogue, so stopping there is always clean;
     /// wait steps poll this and abort themselves.</summary>
     protected bool StopRequested => stopRequested;

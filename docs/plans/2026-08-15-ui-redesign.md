@@ -8,7 +8,7 @@
 
 **Tech Stack:** C# / Dalamud ImGui (Dalamud.Bindings.ImGui + ImRaii), xUnit for Engine.
 
-**Spec:** The Design Rulings section below (ruled by Sam, 2026-08-15 evening, in conversation). Permission background: vault `Deliveries/Balamb Garden/Balamb Garden - Permission Architecture.md`.
+**Spec:** The Design Rulings section below (ruled by Drift, 2026-08-15 evening, in conversation). Permission background: vault `Deliveries/Balamb Garden/Balamb Garden - Permission Architecture.md`.
 
 ## Design Rulings (the spec)
 
@@ -25,11 +25,11 @@
 
 ## Global Constraints
 
-- **Agents NEVER build or run the plugin project** (`BalambGarden/BalambGarden.csproj`). A build hot-loads into Sam's running game. Engine work only: `dotnet build BalambGarden.Engine.Tests` and `dotnet test BalambGarden.Engine.Tests` are the only build/test commands permitted. Fable builds the plugin on Sam's explicit "go", never an agent.
+- **Agents NEVER build or run the plugin project** (`BalambGarden/BalambGarden.csproj`). A build hot-loads into Drift's running game. Engine work only: `dotnet build BalambGarden.Engine.Tests` and `dotnet test BalambGarden.Engine.Tests` are the only build/test commands permitted. Fable builds the plugin on Drift's explicit "go", never an agent.
 - The plugin project may be non-compilable mid-sequence (Task 1 changes a grouping the UI consumes until Task 3 catches up). Pre-ruled acceptable; the checkpoint build at the end proves it out.
 - **Verify green THEN commit, as separate steps, checking exit codes.** Never pipe a build into anything that can mask its exit code.
 - **No AI co-authorship lines in commits.**
-- Branch: a new branch `ui-redesign` off `rebuild` (execution starts only after Sam calls it; the permission-architecture shakeout and its merge to `main` come first).
+- Branch: a new branch `ui-redesign` off `rebuild` (execution starts only after Drift calls it; the permission-architecture shakeout and its merge to `main` come first).
 - The ledger file (`ledger-v2.json`) is sacred: no schema or serialization changes in this plan.
 - Copy rules: user-facing strings use " - " never em-dashes; "recorded"/"record" vocabulary, never "claim"/"abandon".
 
@@ -662,4 +662,4 @@ git commit -m "Exception-first water, ripe windows per species, pot copy stops o
 
 ## Checkpoint (Fable, not agents)
 
-After Task 5: Fable builds the plugin on Sam's explicit "go" (`dotnet build BalambGarden -c Debug -p:Platform=x64`), verifies green, hot-load lands live. Shakeout script (Sam's hands): one Pots section per indoor tab with verbs on rows; empty pot shows Plant; Plant panel opens/fills/plants; right-click forget works and no Abandon buttons remain; a thirsty bed reads amber inline; a steady patch reads "all watered"; a two-species patch shows both ripe windows.
+After Task 5: Fable builds the plugin on Drift's explicit "go" (`dotnet build BalambGarden -c Debug -p:Platform=x64`), verifies green, hot-load lands live. Shakeout script (Drift's hands): one Pots section per indoor tab with verbs on rows; empty pot shows Plant; Plant panel opens/fills/plants; right-click forget works and no Abandon buttons remain; a thirsty bed reads amber inline; a steady patch reads "all watered"; a two-species patch shows both ripe windows.

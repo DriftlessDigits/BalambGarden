@@ -1,5 +1,5 @@
 # Plant-flow capture - 2026-08-15 (Task 9 bench recon)
-# Source: dalamud.log [PlantRecon] watcher, Sam's indoor flowerpot (own house, Ward 12 Plot 33 interior)
+# Source: dalamud.log [PlantRecon] watcher, Drift's indoor flowerpot (own house, Ward 12 Plot 33 interior)
 # Flow: harvest ripe Red Sunflowers -> plant daisy (1 potting soil + 1 daisy seed), NOT watered.
 # Times local (UTC-05:00). Non-BalambGarden log noise stripped; AtkValue text verbatim.
 
@@ -34,7 +34,7 @@ These flowers are in bloom.'
 #     -> SelectString['Plant Seeds'] -> HousingGardening -> SelectYesno[Yes].
 # F2. HousingGardening (the soil/seed picker) exposes ZERO AtkValues. It is
 #     TWO EMPTY SLOTS (soil left, seed right) the player fills FROM INVENTORY,
-#     then Confirm (Sam, live). No text at the addon layer because selection
+#     then Confirm (Drift, live). No text at the addon layer because selection
 #     happens inventory-side; the SelectYesno prompt is generated from the
 #     filled slots. For the chain: filling those slots is an inventory-item
 #     interaction against the addon, not a menu pick. The ONLY text identifying
@@ -43,7 +43,7 @@ These flowers are in bloom.'
 # F3. The game calls a flowerpot a "bed" in the plant prompt. Dialogue text can
 #     NEVER distinguish pot vs outdoor bed - sensor side only.
 # F4. Harvest has NO yes/no confirm and NO completion Talk; it fires on the
-#     SelectString selection itself. COMPLETION RECEIPT IS IN CHAT (Sam, live):
+#     SelectString selection itself. COMPLETION RECEIPT IS IN CHAT (Drift, live):
 #     "You obtain a bouquet of red sunflowers." - the obtain line is the
 #     harvest-completed signal. Chain should key harvest completion on the chat
 #     obtain message (passive chat parsing, Scrooge-style), not an addon event.

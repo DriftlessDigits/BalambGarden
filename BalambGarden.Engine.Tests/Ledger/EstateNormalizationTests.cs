@@ -4,7 +4,7 @@ using Xunit;
 
 namespace BalambGarden.Engine.Tests.Ledger;
 
-/// <summary>The 08-15 split-estate repair. Shapes here are Sam's live ledger: Shirogane
+/// <summary>The 08-15 split-estate repair. Shapes here are Drift's live ledger: Shirogane
 /// W4 P52 filed as 641 outdoors and 649 indoors, Lavender Beds W12 P33 as 340 / 344.</summary>
 public class EstateNormalizationTests
 {

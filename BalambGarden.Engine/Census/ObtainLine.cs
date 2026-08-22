@@ -14,7 +14,7 @@ namespace BalambGarden.Engine.Census;
 /// </summary>
 public static partial class ObtainLine
 {
-    // Live receipt (Sam, 2026-08-15): "You obtain a bouquet of red sunflowers."
+    // Live receipt (Drift, 2026-08-15): "You obtain a bouquet of red sunflowers."
     // Quantities and articles vary ("You obtain 3 kukuru beans."), the stem does not.
     [GeneratedRegex(@"^You obtain (?:an?\s+|the\s+|\d+\s+)?(.+?)\.$", RegexOptions.IgnoreCase)]
     private static partial Regex Obtain();

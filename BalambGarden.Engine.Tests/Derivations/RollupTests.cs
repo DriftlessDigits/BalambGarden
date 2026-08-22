@@ -9,14 +9,14 @@ namespace BalambGarden.Engine.Tests.Derivations;
 public class RollupTests
 {
     private static readonly DomainTables T = DomainTables.Load();
-    private static readonly EstateKey Chelsea = new(340, 11, 32);
+    private static readonly EstateKey Gardener = new(340, 11, 32);
     private static readonly DateTimeOffset Now = DateTimeOffset.Parse("2026-08-14T18:00:00Z");
 
     private static ClaimedBed Bed(int slot, byte stage, double tendedHoursAgo)
     {
         var bed = new ClaimedBed
         {
-            Estate = Chelsea, MapKey = 110, PatchOrdinal = 0, BedSlot = slot,
+            Estate = Gardener, MapKey = 110, PatchOrdinal = 0, BedSlot = slot,
             LastTended = Now.AddHours(-tendedHoursAgo),
         };
         // Krakka Root (0x31): 24h wilt tier - drives the wilt states below
@@ -36,7 +36,7 @@ public class RollupTests
             Bed(3, stage: 2, tendedHoursAgo: 30),   // overdue (>= 24h)
         };
 
-        var rollup = Assert.Single(Rollups.ForEstate(Chelsea, beds, T, new ClockWiltSource(), Now));
+        var rollup = Assert.Single(Rollups.ForEstate(Gardener, beds, T, new ClockWiltSource(), Now));
         Assert.Equal(4, rollup.Claimed);
         Assert.Equal(1, rollup.Ripe);
         Assert.Equal(1, rollup.Due);
@@ -49,10 +49,10 @@ public class RollupTests
     public void FlowerPotWithPlantReceiptProjectsAWindow()
     {
         var pot = new ClaimedBed
-            { Estate = Chelsea, MapKey = 129, PatchOrdinal = 0, BedSlot = 0, IsPot = true };
+            { Estate = Gardener, MapKey = 129, PatchOrdinal = 0, BedSlot = 0, IsPot = true };
         pot.Observe(new Observation(Now.AddHours(-2), 82, 1, ObservationSource.PlantReceipt));
 
-        var rollup = Assert.Single(Rollups.ForEstate(Chelsea, [pot], T, new ClockWiltSource(), Now));
+        var rollup = Assert.Single(Rollups.ForEstate(Gardener, [pot], T, new ClockWiltSource(), Now));
         var daisy = Assert.Single(rollup.RipeBySpecies);
         Assert.Equal(82, daisy.SpeciesIndex);
         Assert.Equal(Now.AddHours(22), daisy.Window.Earliest);   // plant + 24h, anchored
@@ -62,9 +62,9 @@ public class RollupTests
     [Fact]
     public void NudgeSpeaksWhenAttentionNeeded()
     {
-        var rollups = Rollups.ForEstate(Chelsea,
+        var rollups = Rollups.ForEstate(Gardener,
             [Bed(0, 4, 1), Bed(2, 2, 20)], T, new ClockWiltSource(), Now);
-        var line = Rollups.ArrivalNudge(Chelsea, rollups);
+        var line = Rollups.ArrivalNudge(Gardener, rollups);
         Assert.NotNull(line);
         Assert.Contains("1 ripe", line);
         Assert.Contains("1", line);   // one thirsty
@@ -73,18 +73,18 @@ public class RollupTests
     [Fact] // the name it speaks under is the caller's setting, not a constant in here
     public void NudgePrefixIsTheCallersToChoose()
     {
-        var rollups = Rollups.ForEstate(Chelsea, [Bed(0, 4, 1)], T, new ClockWiltSource(), Now);
+        var rollups = Rollups.ForEstate(Gardener, [Bed(0, 4, 1)], T, new ClockWiltSource(), Now);
 
-        Assert.StartsWith("Balamb: ", Rollups.ArrivalNudge(Chelsea, rollups));
-        Assert.StartsWith("Garden: ", Rollups.ArrivalNudge(Chelsea, rollups, "Garden"));
-        Assert.StartsWith("1 ripe", Rollups.ArrivalNudge(Chelsea, rollups, ""));
+        Assert.StartsWith("Balamb: ", Rollups.ArrivalNudge(Gardener, rollups));
+        Assert.StartsWith("Garden: ", Rollups.ArrivalNudge(Gardener, rollups, "Garden"));
+        Assert.StartsWith("1 ripe", Rollups.ArrivalNudge(Gardener, rollups, ""));
     }
 
     [Fact] // all watered, nothing ripe: silence over filler
     public void NudgeSilentWhenAllQuiet()
     {
-        var rollups = Rollups.ForEstate(Chelsea, [Bed(1, 2, 1)], T, new ClockWiltSource(), Now);
-        Assert.Null(Rollups.ArrivalNudge(Chelsea, rollups));
+        var rollups = Rollups.ForEstate(Gardener, [Bed(1, 2, 1)], T, new ClockWiltSource(), Now);
+        Assert.Null(Rollups.ArrivalNudge(Gardener, rollups));
     }
 
     // Same patch, one pre-ripe sighting of the named species. 0x32 Thavnairian Onion grows
@@ -93,7 +93,7 @@ public class RollupTests
     {
         var bed = new ClaimedBed
         {
-            Estate = Chelsea, MapKey = 110, PatchOrdinal = 0, BedSlot = slot,
+            Estate = Gardener, MapKey = 110, PatchOrdinal = 0, BedSlot = slot,
             LastTended = Now.AddHours(-1),
         };
         bed.Observe(new Observation(Now.AddHours(-1), species, 2, ObservationSource.TendReceipt));
@@ -115,7 +115,7 @@ public class RollupTests
             BedWithSpecies(slot: 2, speciesA),   // duplicate species: still one entry
         };
 
-        var rollup = Assert.Single(Rollups.ForEstate(Chelsea, beds, T, new ClockWiltSource(), Now));
+        var rollup = Assert.Single(Rollups.ForEstate(Gardener, beds, T, new ClockWiltSource(), Now));
 
         Assert.Equal(2, rollup.RipeBySpecies.Count);
         Assert.Equal(speciesB, rollup.RipeBySpecies[0].SpeciesIndex);
@@ -128,7 +128,7 @@ public class RollupTests
     {
         var pot = new ClaimedBed
         {
-            Estate = Chelsea, MapKey = mapKey, PatchOrdinal = mapKey, BedSlot = 0, IsPot = true,
+            Estate = Gardener, MapKey = mapKey, PatchOrdinal = mapKey, BedSlot = 0, IsPot = true,
             LastTended = Now.AddHours(-tendedHoursAgo),
         };
         pot.Observe(new Observation(Now.AddHours(-tendedHoursAgo), 0x31, stage,
@@ -140,7 +140,7 @@ public class RollupTests
     public void AncientPotContributesNoThirst()
     {
         var rollup = Assert.Single(
-            Rollups.ForEstate(Chelsea, [Pot(3, 2, 720)], T, new ClockWiltSource(), Now));
+            Rollups.ForEstate(Gardener, [Pot(3, 2, 720)], T, new ClockWiltSource(), Now));
         Assert.True(rollup.IsPots);
         Assert.Equal(1, rollup.Claimed);
         Assert.Equal(0, rollup.Due);
@@ -153,8 +153,8 @@ public class RollupTests
     public void NudgeSilentWhenOnlyPotsAreStale()
     {
         var rollups = Rollups.ForEstate(
-            Chelsea, [Pot(3, 2, 720), Pot(4, 1, 500)], T, new ClockWiltSource(), Now);
-        Assert.Null(Rollups.ArrivalNudge(Chelsea, rollups));
+            Gardener, [Pot(3, 2, 720), Pot(4, 1, 500)], T, new ClockWiltSource(), Now);
+        Assert.Null(Rollups.ArrivalNudge(Gardener, rollups));
     }
 
     [Fact] // an estate's pots are ONE group, whatever per-pot ordinals the ledger rows hold
@@ -167,7 +167,7 @@ public class RollupTests
             Pot(181, stage: 2, tendedHoursAgo: 1),
         };
 
-        var rollups = Rollups.ForEstate(Chelsea, beds, T, new ClockWiltSource(), Now);
+        var rollups = Rollups.ForEstate(Gardener, beds, T, new ClockWiltSource(), Now);
 
         var pots = Assert.Single(rollups, r => r.IsPots);
         Assert.Equal(2, pots.Claimed);
@@ -178,8 +178,8 @@ public class RollupTests
     public void RipePotStillCounts()
     {
         var rollups = Rollups.ForEstate(
-            Chelsea, [Pot(3, 4, 720)], T, new ClockWiltSource(), Now);
+            Gardener, [Pot(3, 4, 720)], T, new ClockWiltSource(), Now);
         Assert.Equal(1, rollups.Sum(r => r.Ripe));
-        Assert.Contains("1 ripe", Rollups.ArrivalNudge(Chelsea, rollups));
+        Assert.Contains("1 ripe", Rollups.ArrivalNudge(Gardener, rollups));
     }
 }

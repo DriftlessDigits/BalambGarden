@@ -15,7 +15,7 @@ namespace BalambGarden.Game;
 /// </list>
 ///
 /// <para>08-15 fix: the key used to take its territory from ClientState.TerritoryType, which
-/// indoors is the HOUSE INTERIOR zone, not the district (Sam's ledger: 641 outside / 649
+/// indoors is the HOUSE INTERIOR zone, not the district (Drift's ledger: 641 outside / 649
 /// inside for Shirogane W4 P52; 340 / 344 for Lavender Beds W12 P33). Every walk indoors
 /// minted a second estate record for the same plot. Worse, interior ids are shared
 /// TEMPLATES - the same small-house interior id serves every district - so an interior id
@@ -23,7 +23,7 @@ namespace BalambGarden.Game;
 ///
 /// <para>Indoors the district comes from HousingManager.GetCurrentIndoorHouseId(): HouseId
 /// packs (WorldId, TerritoryTypeId, ward, plot/division, room) in 8 bytes. That its territory
-/// is the EXTERIOR district is now RECEIPT-CONFIRMED (08-15, Sam's FC private chamber:
+/// is the EXTERIOR district is now RECEIPT-CONFIRMED (08-15, Drift's FC private chamber:
 /// HouseId 0x0037015401CB0039 -> territory 340 = the Lavender Beds exterior district, while
 /// the zone we were standing in was 385). The validation below stays anyway - it is three
 /// comparisons, and it is what would catch the day the packing changes.</para>
@@ -92,7 +92,7 @@ internal static unsafe class EstateSensor
                 $"HouseId says ward {houseId.WardIndex} plot {houseId.PlotIndex}, "
                 + $"HousingManager says ward {ward} plot {plot}");
 
-        // A private room is its own estate (Sam's ruling 08-15 - an FC chamber's pots are
+        // A private room is its own estate (Drift's ruling 08-15 - an FC chamber's pots are
         // nobody else's), and both readers agreed on the number in the one receipt we have
         // (chamber: manager room 7, HouseId room 7), so a disagreement is a surprise worth
         // refusing over. Room 0 is the main floor, which IS the house.

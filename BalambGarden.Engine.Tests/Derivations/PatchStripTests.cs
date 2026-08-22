@@ -9,14 +9,14 @@ namespace BalambGarden.Engine.Tests.Derivations;
 public class PatchStripTests
 {
     private static readonly DomainTables T = DomainTables.Load();
-    private static readonly EstateKey Chelsea = new(340, 11, 32);
+    private static readonly EstateKey Gardener = new(340, 11, 32);
     private static readonly DateTimeOffset Now = DateTimeOffset.Parse("2026-08-14T18:00:00Z");
 
     private static ClaimedBed Bed(int slot, byte stage, double tendedHoursAgo, bool isPot = false)
     {
         var bed = new ClaimedBed
         {
-            Estate = Chelsea, MapKey = 110, PatchOrdinal = 0, BedSlot = slot, IsPot = isPot,
+            Estate = Gardener, MapKey = 110, PatchOrdinal = 0, BedSlot = slot, IsPot = isPot,
             LastTended = Now.AddHours(-tendedHoursAgo),
         };
         // Krakka Root (0x31): 24h wilt tier - same fixture the rollup tests use.
@@ -81,7 +81,7 @@ public class PatchStripTests
     {
         var pot = new ClaimedBed
         {
-            Estate = Chelsea, MapKey = key, PatchOrdinal = 0, BedSlot = 0, IsPot = true,
+            Estate = Gardener, MapKey = key, PatchOrdinal = 0, BedSlot = 0, IsPot = true,
         };
         pot.Observe(new Observation(Now.AddHours(-1), 0x31, stage,
             ObservationSource.TendReceipt));
@@ -116,7 +116,7 @@ public class PatchStripTests
     {
         var bare = new ClaimedBed
         {
-            Estate = Chelsea, MapKey = 5, PatchOrdinal = 0, BedSlot = 0, IsPot = true,
+            Estate = Gardener, MapKey = 5, PatchOrdinal = 0, BedSlot = 0, IsPot = true,
         };
 
         var cells = PatchStrip.ForPots([bare], new HashSet<int>());
@@ -130,7 +130,7 @@ public class PatchStripTests
     {
         var bare = new ClaimedBed
         {
-            Estate = Chelsea, MapKey = 110, PatchOrdinal = 0, BedSlot = 0,
+            Estate = Gardener, MapKey = 110, PatchOrdinal = 0, BedSlot = 0,
         };
 
         var cells = PatchStrip.ForPatch([bare], T, new ClockWiltSource(), Now);

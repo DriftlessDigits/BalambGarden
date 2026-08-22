@@ -5,7 +5,7 @@ namespace BalambGarden.Engine.Tests.Census;
 
 public class ObtainLineTests
 {
-    [Fact] // the live receipt, Sam's pot harvest 2026-08-15
+    [Fact] // the live receipt, Drift's pot harvest 2026-08-15
     public void ReadsTheCapturedHarvestLine()
     {
         Assert.Equal("bouquet of red sunflowers",

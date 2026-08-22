@@ -179,7 +179,7 @@ public sealed class DomainTables
     /// an index but never invent one.</summary>
     private static readonly Dictionary<string, string> TalkAliases = new(StringComparer.OrdinalIgnoreCase)
     {
-        // Sam's yard beds 08-16 13:46 (4x unknown-species warnings) + Chelsea's /xllog.
+        // Drift's yard beds 08-16 13:46 (4x unknown-species warnings) + Gardener's /xllog.
         ["Royal Kukuru Bean"] = "Royal Kukuru",
     };
 

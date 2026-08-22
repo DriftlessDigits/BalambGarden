@@ -363,7 +363,7 @@ public class MainWindow : Window, IDisposable
 
         // An apartment or a private room is four walls with no yard, so its tab has an
         // Indoor half and nothing else - an Outdoor section there would be a promise about
-        // a garden that cannot exist (Sam's ruling 08-15). Both shapes are live now: the
+        // a garden that cannot exist (Drift's ruling 08-15). Both shapes are live now: the
         // sensor mints them from the 08-15 HouseId receipts.
         var isIndoorOnly = record.Key.IsIndoorOnly;
 
@@ -613,7 +613,7 @@ public class MainWindow : Window, IDisposable
         // The collapsed line answers "when next" with the EARLIEST species only - every
         // bed row under it carries its own window now, so the full per-species answer
         // lives one click away instead of stretching the rollup across the window
-        // (08-16 Sam: "the time estimates make this very wide"). The other species are
+        // (08-16 Drift: "the time estimates make this very wide"). The other species are
         // one hover away, never hidden.
         if (rollup.RipeBySpecies.FirstOrDefault() is { } next)
         {
@@ -704,7 +704,7 @@ public class MainWindow : Window, IDisposable
         // Ripe is BLUE, not yellow (2026-08-18 ruling: green/amber/red carry the health
         // gradient, so yellow reads as a warning - and ripe is a payoff, not a caution.
         // Ripe answers "is there something to collect?", a different question, so it
-        // stays off the gradient entirely. Chelsea likes blue.)
+        // stays off the gradient entirely. Gardener likes blue.)
         return cell.Fill switch
         {
             CellFill.Unclaimed => new Vector4(0.13f, 0.13f, 0.13f, 1f),
@@ -825,7 +825,7 @@ public class MainWindow : Window, IDisposable
                 plugin.Launched(plugin.TendChain);
             }
 
-            // The pots' one-press sweep, outdoors (08-16 Sam: "make outdoor match").
+            // The pots' one-press sweep, outdoors (08-16 Drift: "make outdoor match").
             // Same gate as the pot row: it exists only when something ripe is here to act
             // on. Beds still growing are left out of the plan, not a reason to refuse.
             var anyRipe = Plugin.Garden.Census.LedgerBeds.Any(b =>
@@ -967,7 +967,7 @@ public class MainWindow : Window, IDisposable
 
         // The verbs column only exists when some row will actually put a button in it -
         // out of reach, a declared-but-empty fifth column reads as a ghost stripe down
-        // the table's edge (08-16 Sam: "why is there a weird empty column"). Drift rows
+        // the table's edge (08-16 Drift: "why is there a weird empty column"). Drift rows
         // always carry Forget, so any drift forces the column too.
         var hasVerbs = beds.Any(b => ReadsEmptyNow(b, isHere))
             || pots.Any(p => p.InReach)
@@ -1005,7 +1005,7 @@ public class MainWindow : Window, IDisposable
 
         // Only pots that own a ROW in this grid panel here - an unrecorded (empty) pot
         // draws its own panel beside its own line, and drawing it in both places put two
-        // identical forms on screen at once (08-16 Sam: "confusing and clunky").
+        // identical forms on screen at once (08-16 Drift: "confusing and clunky").
         var open = pots.FindIndex(p => PanelKey(p) == plantPanelPot
             && beds.Any(b => b.IsPot && b.MapKey == p.MapKey));
         if (open >= 0)
@@ -1170,7 +1170,7 @@ public class MainWindow : Window, IDisposable
         UnrosteredTip(actionable);
     }
 
-    /// <summary>The pot verbs row, shaped like a patch's (08-16 Sam: the sweep had
+    /// <summary>The pot verbs row, shaped like a patch's (08-16 Drift: the sweep had
     /// drifted inline onto the rollup while every outdoor verb lives indented under its
     /// header). "Replant ripe" = harvest + replant every ripe pot with what it already
     /// grows, one press: seed from the species table (flowers carry the join like crops,
@@ -1181,7 +1181,7 @@ public class MainWindow : Window, IDisposable
     {
         // In reach is the whole gate: standing outside, the indoor pot objects are not
         // in the object table at all, so the row honestly vanishes rather than offering
-        // a press that cannot act (08-16 Sam: "don't show it if I'm not in range").
+        // a press that cannot act (08-16 Drift: "don't show it if I'm not in range").
         var pots = ObjectSensor.AllPots();
         var ripeInReach = beds.Any(b =>
             b.IsPot && b.Latest?.Stage == 4
@@ -1295,7 +1295,7 @@ public class MainWindow : Window, IDisposable
     /// Identity is the object's own key (HousingFurnitureIndex, 08-16), so matching the
     /// row to the object is a lookup, not a diff. The list is swept once for the whole
     /// grid and handed down. No Plant here: an occupied pot cannot take a seed, so the
-    /// verb would be a dead button (08-16 Sam: "like 4 different Plant buttons") - Plant
+    /// verb would be a dead button (08-16 Drift: "like 4 different Plant buttons") - Plant
     /// lives on empty pots and on a pot row that reads empty (post-harvest).</summary>
     private void DrawPotRowVerbs(ClaimedBed bed, List<PotObject> pots, bool actionable)
     {
@@ -1643,7 +1643,7 @@ public class MainWindow : Window, IDisposable
 
         using var indent = ImRaii.PushIndent();
 
-        // Real things first, the manual fallback last and in plain words (08-16 Sam:
+        // Real things first, the manual fallback last and in plain words (08-16 Drift:
         // "Whatever's in the picker" as the default face read as debug text). Leaving a
         // combo on the fallback keeps that slot's clicks the player's - same behavior,
         // said like a sentence.
@@ -1796,7 +1796,7 @@ public class MainWindow : Window, IDisposable
     /// cannot exist without one. Nothing in here is product - it writes to the log and
     /// mints capture fixtures - so it keeps reading as an instrument inside its own tab.
     ///
-    /// <para>One button, on purpose (Sam's ruling 08-15): a capture that missed the one
+    /// <para>One button, on purpose (Drift's ruling 08-15): a capture that missed the one
     /// dump you needed costs another whole trip out to the estate, so it fires everything
     /// at once and catches too much rather than not enough. Watch-plant-flow stays a
     /// separate toggle - it is a recording that runs while you play, not a snapshot.</para>
@@ -1829,7 +1829,7 @@ public class MainWindow : Window, IDisposable
 
         ImGui.SameLine();
 
-        // Sow-flow recon, SCOPED (Sam's ruling 08-15): the checkbox is a persisted intent
+        // Sow-flow recon, SCOPED (Drift's ruling 08-15): the checkbox is a persisted intent
         // - "record when I'm gardening" - not a raw switch. Armed automatically within
         // 4.6y of a pot, disarmed on rezone (Plugin.AutoArmWatcher), so captures hold
         // gardening rather than a night of quest dialogue, and hot-loads forget nothing.
@@ -1842,7 +1842,7 @@ public class MainWindow : Window, IDisposable
                 PlantFlow.StopWatching();
         }
 
-        // The sanity readout (Sam's ask): the checkbox is intent, this is the actual
+        // The sanity readout (Drift's ask): the checkbox is intent, this is the actual
         // state, side by side - so "why didn't that capture?" is answered at a glance.
         ImGui.SameLine();
         if (PlantFlow.Watching)

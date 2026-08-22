@@ -9,7 +9,7 @@ public class OutdoorMapTests
         => hex.Split(' ', StringSplitOptions.RemoveEmptyEntries)
               .Select(h => Convert.ToByte(h, 16)).ToArray();
 
-    // key=110 (Chelsea 1st Patch, 08-13 19:56 dump): fresh Fig x Mirror replant, stage 1
+    // key=110 (Gardener 1st Patch, 08-13 19:56 dump): fresh Fig x Mirror replant, stage 1
     private const string Key110 =
         "41 00 01 00 00 10 11 00 01 00 00 51 41 00 01 00 00 00 11 00 01 00 00 00 " +
         "41 00 01 00 00 A7 11 00 01 00 00 69 41 00 01 00 00 00 11 00 01 00 00 00";
@@ -25,7 +25,7 @@ public class OutdoorMapTests
         "00 00 00 00 00 02 00 00 00 00 00 00 00 00 00 00 00 CD 00 00 00 00 00 00";
 
     [Fact]
-    public void ChelseaFirstPatchDecodesFigMirrorAlternation()
+    public void GardenerFirstPatchDecodesFigMirrorAlternation()
     {
         var beds = MapFormat.DecodeOutdoorEntry(Bytes(Key110));
         Assert.Equal(8, beds.Count);

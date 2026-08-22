@@ -48,7 +48,7 @@ public static class MapFormat
             return new PotReading(0, 0, 0, 0, Occupied: false, Recognized: false);
 
         // b2 = (pigment << 4) | stage. Receipted 08-16 across every pot ever captured:
-        // Sam's blue lupins/morning glories 0x14, yellow daisies 0x24, FC cosmos 0x54
+        // Drift's blue lupins/morning glories 0x14, yellow daisies 0x24, FC cosmos 0x54
         // (all stage 4, his "ripe" call), and unpigmented crops 0x01/0x02/0x04 where the
         // split changes nothing. This is what made "Stage 20" nonsense: 20 was 0x14.
         var stage = (byte)(bytes[2] & 0xF);

@@ -6,7 +6,7 @@ namespace BalambGarden.Engine.Tests.Census;
 public class AccessRosterTests
 {
     // Receipts, captures/2026-08-15-roster-recon.log: roster HouseIds decode to RAW
-    // ward/plot (Chelsea ward=11 plot=32; FC ward=11 plot=57; Papa's t641 w3 p51;
+    // ward/plot (Gardener ward=11 plot=32; FC ward=11 plot=57; Papa's t641 w3 p51;
     // apartment t979 w7 room=29 div=0).
     private static AccessRoster SamsRoster() => new([
         new RosterEstate(new EstateKey(340, 11, 32), "SharedEstate"),

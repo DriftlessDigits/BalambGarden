@@ -30,7 +30,7 @@ public sealed class ClockWiltSource : IWiltSource
         // A fully grown crop cannot wilt or die (the same community table the wilt hours
         // come from), so a bed last SEEN ripe makes no water claim however stale its tend
         // clock - the live stage read outranks the derived clock (2026-08-18, the
-        // "DANGER · ripe now" screenshot: Chelsea's watering was invisible to the ledger).
+        // "DANGER · ripe now" screenshot: Gardener's watering was invisible to the ledger).
         if (bed.Latest is { Stage: >= 4 })
             return WaterState.NotApplicable;
 

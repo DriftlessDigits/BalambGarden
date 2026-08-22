@@ -52,7 +52,7 @@ public class WiltTests
         => Assert.Equal(WaterState.NotApplicable, Source.StateFor(Pot(null), Krakka, T0));
 
     // ------------------------------------------------------------- ripe suppression
-    // 2026-08-18 (Sam's screenshot: "DANGER - water now · ripe now" on the same row).
+    // 2026-08-18 (Drift's screenshot: "DANGER - water now · ripe now" on the same row).
     // A fully grown crop cannot wilt or die - the community table the wilt hours came
     // from says so - so a bed whose latest sighting is stage 4 makes no water claim,
     // however stale its tend clock. The live stage read outranks the derived clock.
@@ -78,7 +78,7 @@ public class WiltTests
             Source.StateFor(RipeBed(T0, stage: 3), Krakka, T0.AddHours(37)));
 
     // ------------------------------------------------------------------ death clock
-    // 2026-08-18 (Sam's Allagan Melons died): wilt is a countdown, not an end state.
+    // 2026-08-18 (Drift's Allagan Melons died): wilt is a countdown, not an end state.
     // WitherHours is hours-dry until the plant is unrecoverable; the deadline is a
     // plain derivation the surfaces can finally say out loud.
 

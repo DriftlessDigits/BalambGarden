@@ -42,7 +42,7 @@ internal static unsafe class ObjectSensor
     internal const float EventObjRange = 4.6f;          // field-verified 08-11
     internal const float HousingEventObjRange = 6.5f;
 
-    /// <summary>How far the working patch sweep looks, when nobody says otherwise. Sam's
+    /// <summary>How far the working patch sweep looks, when nobody says otherwise. Drift's
     /// ruling 08-14 - the neighbour's twin ordinal sat at 37.9y, and players know where
     /// their own plots are, so a far own-patch simply reappears when they walk toward it.
     /// It is now a setting (<see cref="Configuration.PatchScanRadius"/>); this constant
