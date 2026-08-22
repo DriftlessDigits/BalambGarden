@@ -323,6 +323,35 @@ public class MainWindow : Window, IDisposable
 
         ImGui.SameLine();
         DrawRenameControl(record);
+
+        // Standing there already, the verb is meaningless - the line stays as it is.
+        if (!isHere)
+            DrawTeleportControl(record);
+    }
+
+    /// <summary>Teleport, beside rename (Drift's placement ruling 08-22): see the state
+    /// on a far tab, act on it one line apart. The button exists only when the game's
+    /// own teleport list uniquely names this estate - no destination, no dead control -
+    /// and the cast gate is the game's own answer, not a second opinion.</summary>
+    private void DrawTeleportControl(EstateRecord record)
+    {
+        if (EstatePort.FindFor(record.Key) is not { } dest)
+            return;
+
+        var ready = EstatePort.Castable(out var why);
+        ImGui.SameLine();
+        using (ImRaii.Disabled(!ready || plugin.AnyChainBusy))
+        {
+            if (ImGui.SmallButton("Teleport"))
+                EstatePort.Fire(dest, record.DisplayName);
+        }
+
+        if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+            ImGui.SetTooltip(plugin.AnyChainBusy
+                ? "a chain is running - teleporting would strand it"
+                : ready
+                    ? $"Teleport to {record.DisplayName} ({dest.GilCost:N0} gil)"
+                    : why);
     }
 
     /// <summary>A nickname is the one piece of an estate the player authors. The button
