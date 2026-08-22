@@ -60,7 +60,7 @@ Each layer knows only the layer below. **Acting IS censusing**: chains emit dial
 
 ## Release
 
-Version lives in `BalambGarden/BalambGarden.csproj` (`<Version>`). Ships through DriftlessDigits/DalamudPluginRepo - the pluginmaster regenerates itself on push (SHOEGAZEssb fork; never hand-edit it; `gh` workflow dispatch 403s). Dev loads read `images/icon.png` beside the DLL; `IconUrl` is fetched only for repo installs; the game caches the icon image across restarts.
+The runbook is `Book Of Holding/Reference/Runbooks/Balamb Release.md` - run it, don't improvise. The short shape: version lives in `BalambGarden/BalambGarden.csproj` (`<Version>`), user-facing changelog in `BalambGarden/BalambGarden.json` (`Changelog`); bump both on the feature branch, merge --no-ff to main, tag `vN.N.N.N`, push tag. **The tag push triggers `.github/workflows/create_release.yml`** (thin caller into DalamudPluginRepo's reusable workflow, same as Scrooge): CI builds Release, creates the GitHub release with `latest.zip`, and pushes the version-stamped manifest to the plugin repo, whose pluginmaster regenerates itself (never hand-edit it). Requires the `PAT` secret on this repo. Dev loads read `images/icon.png` beside the DLL; `IconUrl` is fetched only for repo installs; the game caches the icon image across restarts.
 
 ## Debug-only instrumentation
 

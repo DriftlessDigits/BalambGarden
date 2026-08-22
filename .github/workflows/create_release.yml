@@ -1,0 +1,21 @@
+name: Create Release and Update Repository
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    uses: DriftlessDigits/DalamudPluginRepo/.github/workflows/reusable_create_release.yml@main
+    with:
+      internal_name: BalambGarden
+      solution_name: BalambGarden
+      build_configuration: Release
+      personal_plugin_repo: DriftlessDigits/DalamudPluginRepo
+      personal_plugin_repo_branch: main
+    secrets: inherit
