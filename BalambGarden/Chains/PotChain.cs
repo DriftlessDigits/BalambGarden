@@ -92,6 +92,36 @@ internal sealed unsafe class PotChain : ChainBase
         Close("pot tended");
     }
 
+    /// <summary>Waters every pot in the list, one run - the pot twin of Tend All. Each
+    /// pot claims its own receipt through the furniture read exactly as a single
+    /// <see cref="Water"/> does; a pot whose menu offers no tend quits honestly and the
+    /// run moves on (one odd pot must not strand the rest).</summary>
+    internal void WaterMany(IReadOnlyList<PotObject> pots)
+    {
+        if (pots.Count == 0)
+            return;
+        if (!BeginRun(pots.Count, $"watering {pots.Count} pots..."))
+            return;
+
+        foreach (var pot in pots)
+        {
+            Open(pot);
+            TaskManager.Enqueue(TendOrQuit, "tend");
+            TaskManager.Enqueue(FinishDialogue, "finish");
+        }
+
+        var total = pots.Count;
+        TaskManager.Enqueue(() =>
+        {
+            var skipped = Report.Count(r =>
+                r.Contains("nothing to tend", StringComparison.Ordinal));
+            LastOutcome = $"done: {UnitsDone - skipped}/{total} watered";
+            foreach (var line in Report)
+                Plugin.Log.Information($"[PotChain] report: {line}");
+            return true;
+        }, "report");
+    }
+
     internal void Harvest(PotObject pot)
     {
         if (!BeginRun(1, "harvesting pot..."))

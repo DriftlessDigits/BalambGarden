@@ -323,6 +323,35 @@ public class MainWindow : Window, IDisposable
 
         ImGui.SameLine();
         DrawRenameControl(record);
+
+        // Standing there already, the verb is meaningless - the line stays as it is.
+        if (!isHere)
+            DrawTeleportControl(record);
+    }
+
+    /// <summary>Teleport, beside rename (Drift's placement ruling 08-22): see the state
+    /// on a far tab, act on it one line apart. The button exists only when the game's
+    /// own teleport list uniquely names this estate - no destination, no dead control -
+    /// and the cast gate is the game's own answer, not a second opinion.</summary>
+    private void DrawTeleportControl(EstateRecord record)
+    {
+        if (EstatePort.FindFor(record.Key) is not { } dest)
+            return;
+
+        var ready = EstatePort.Castable(out var why);
+        ImGui.SameLine();
+        using (ImRaii.Disabled(!ready || plugin.AnyChainBusy))
+        {
+            if (ImGui.SmallButton("Teleport"))
+                EstatePort.Fire(dest, record.DisplayName);
+        }
+
+        if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+            ImGui.SetTooltip(plugin.AnyChainBusy
+                ? "a chain is running - teleporting would strand it"
+                : ready
+                    ? $"Teleport to {record.DisplayName} ({dest.GilCost:N0} gil)"
+                    : why);
     }
 
     /// <summary>A nickname is the one piece of an estate the player authors. The button
@@ -497,15 +526,25 @@ public class MainWindow : Window, IDisposable
             return;
         }
 
+        // The button names its coverage outright - "2 patches" made the player guess
+        // WHICH two, and a press should never be a guess. Ordinals are +1 in display.
         var totalBeds = inReach.Sum(p => p.Beds.Count);
+        var names = string.Join(", ", inReach.OrderBy(p => p.Ordinal).Select(p => p.Ordinal + 1));
+        var word = inReach.Count > 1 ? "Patches" : "Patch";
         using (ImRaii.Disabled(plugin.AnyChainBusy || !actionable))
         {
-            if (ImGui.Button($"Tend All ({totalBeds} beds, {inReach.Count} patches)"))
+            if (ImGui.Button($"Tend All ({word} {names} · {totalBeds} beds)"))
             {
                 plugin.TendChain.TendAll(inReach);
                 plugin.Launched(plugin.TendChain);
             }
         }
+
+        if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+            ImGui.SetTooltip("Waters every bed of every patch in reach:\n" + string.Join("\n",
+                patches.OrderBy(p => p.Ordinal).Select(p => p.InReach
+                    ? $"Patch {p.Ordinal + 1} - in reach ({p.Beds.Count} beds)"
+                    : $"Patch {p.Ordinal + 1} - out of reach ({p.Distance:F1}y)")));
 
         BusyTip();
         UnrosteredTip(actionable);
@@ -1183,24 +1222,56 @@ public class MainWindow : Window, IDisposable
         // in the object table at all, so the row honestly vanishes rather than offering
         // a press that cannot act (08-16 Drift: "don't show it if I'm not in range").
         var pots = ObjectSensor.AllPots();
+
+        // The pot Tend All: every in-reach pot the live map says holds a plant that can
+        // still drink - ripe (stage 4) offers no Tend, so counting it would make the
+        // button claim waters it cannot pour (08-22 field report: "Water All (4 pots)"
+        // over 2 ripe cosmos). An unkeyed pot stays a per-row press - with no map key
+        // there is nothing honest to claim the water against, and a sweep should not
+        // queue guesses.
+        var waterable = pots
+            .Where(p => p.InReach && p.MapKey is { } key
+                && CensusPump.LastIndoor.TryGetValue(key, out var reading)
+                && reading.Stage != 4)
+            .ToList();
         var ripeInReach = beds.Any(b =>
             b.IsPot && b.Latest?.Stage == 4
             && pots.FindIndex(p => p.MapKey == b.MapKey && p.InReach) >= 0);
-        if (!ripeInReach)
+        if (waterable.Count == 0 && !ripeInReach)
             return;
 
         using var indent = ImRaii.PushIndent();
         using (ImRaii.Disabled(plugin.AnyChainBusy || !actionable))
         {
-            // "Replant", not "Cycle": Cycle is the verb where you PICK the seed; this one
-            // puts the same plant back. The header keeps the row buttons' vocabulary.
-            if (ImGui.SmallButton("Replant ripe"))
-                LaunchPotSweep(beds);
+            if (waterable.Count > 0)
+            {
+                var word = waterable.Count > 1 ? "pots" : "pot";
+                if (ImGui.SmallButton($"Water All ({waterable.Count} {word})"))
+                {
+                    plugin.PotChain.WaterMany(waterable);
+                    plugin.Launched(plugin.PotChain);
+                }
+
+                if (actionable && ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+                    ImGui.SetTooltip("Water every planted pot in reach, one run.");
+            }
+
+            if (ripeInReach)
+            {
+                if (waterable.Count > 0)
+                    ImGui.SameLine();
+
+                // "Replant", not "Cycle": Cycle is the verb where you PICK the seed; this
+                // one puts the same plant back. The header keeps the row buttons' vocabulary.
+                if (ImGui.SmallButton("Replant ripe"))
+                    LaunchPotSweep(beds);
+
+                if (actionable && ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+                    ImGui.SetTooltip("Harvest + replant every ripe pot with the same plant."
+                        + "\nSeed comes from its species, soil from your bags.");
+            }
         }
 
-        if (actionable && ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
-            ImGui.SetTooltip("Harvest + replant every ripe pot with the same plant."
-                + "\nSeed comes from its species, soil from your bags.");
         BusyTip();
         UnrosteredTip(actionable);
 
