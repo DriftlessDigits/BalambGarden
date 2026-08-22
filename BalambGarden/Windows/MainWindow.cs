@@ -1194,12 +1194,16 @@ public class MainWindow : Window, IDisposable
         // a press that cannot act (08-16 Drift: "don't show it if I'm not in range").
         var pots = ObjectSensor.AllPots();
 
-        // The pot Tend All: every in-reach pot the live map says holds a plant. An
-        // unkeyed pot stays a per-row press - with no map key there is nothing honest
-        // to claim the water against, and a sweep should not queue guesses.
+        // The pot Tend All: every in-reach pot the live map says holds a plant that can
+        // still drink - ripe (stage 4) offers no Tend, so counting it would make the
+        // button claim waters it cannot pour (08-22 field report: "Water All (4 pots)"
+        // over 2 ripe cosmos). An unkeyed pot stays a per-row press - with no map key
+        // there is nothing honest to claim the water against, and a sweep should not
+        // queue guesses.
         var waterable = pots
             .Where(p => p.InReach && p.MapKey is { } key
-                && CensusPump.LastIndoor.ContainsKey(key))
+                && CensusPump.LastIndoor.TryGetValue(key, out var reading)
+                && reading.Stage != 4)
             .ToList();
         var ripeInReach = beds.Any(b =>
             b.IsPot && b.Latest?.Stage == 4
