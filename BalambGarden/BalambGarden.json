@@ -13,5 +13,5 @@
   "InternalName": "BalambGarden",
   "IconUrl": "https://raw.githubusercontent.com/DriftlessDigits/DalamudPluginRepo/main/plugins/BalambGarden/images/icon.png",
   "ImageUrls": [],
-  "Changelog": "One press for the pots: Water All waters every pot in reach that can still drink (ripe pots sit out, and the count says so). Tend All now names the patches it covers instead of counting them. New Teleport button on each estate tab takes you there when the estate is on your teleport list - gil cost on hover, never mid-chain."
+  "Changelog": "Fixes: no more game crash when the window is open during a teleport loading screen. Walking in the front door no longer sometimes shows every pot as 'reads empty - harvested?' when they're planted just fine (step out and back in if you saw this on the old version). The plugin is also more careful before deciding a pot was harvested behind your back - it double-checks before clearing your watering records."
 }

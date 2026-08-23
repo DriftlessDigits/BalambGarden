@@ -72,6 +72,16 @@ internal static unsafe class EstatePort
     {
         if (DateTime.UtcNow < _nextRefresh)
             return;
+
+        // No player, no native call. A zone transition destroys the local player while
+        // the window keeps drawing, and UpdateAetheryteList dereferences player state -
+        // Telepo.Instance() survives the teardown, so it alone is not a sufficient gate
+        // (receipt: appcrash 2026-08-23 08:51, refresh tick ~5s after ZoneInit killed
+        // the client). The throttle is deliberately NOT consumed here: the first frame
+        // with a player back gets a fresh list immediately.
+        if (!ECommons.GameHelpers.Player.Available)
+            return;
+
         _nextRefresh = DateTime.UtcNow.AddSeconds(RefreshSeconds);
 
         Cache.Clear();
@@ -138,7 +148,9 @@ internal static unsafe class EstatePort
     /// named on every path, and a failure moves nobody.</summary>
     internal static bool Fire(Destination dest, string estateName)
     {
-        var telepo = Telepo.Instance();
+        // Same guard as RefreshCache: a click can only land with a player present, but
+        // the native call is unsafe without one, so the gate is stated, not assumed.
+        var telepo = ECommons.GameHelpers.Player.Available ? Telepo.Instance() : null;
         if (telepo == null)
         {
             Svc.Chat.PrintError("[Balamb] Can't teleport - the game's teleport system isn't answering.");
