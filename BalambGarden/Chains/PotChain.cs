@@ -335,6 +335,14 @@ internal sealed unsafe class PotChain : ChainBase
             // the pot outright, so a water now claims like any other verb.
             var plant = _plant;
             var key = _potKey;
+            // RULING 4: the pending opens HERE when the furniture read named the pot - the tend
+            // is selected and the game's line can land before the held receipt runs. With no key
+            // there is deliberately NO early open: the diff-bind route does not learn which pot
+            // this is until the map has changed, and a pending opened without an identity would
+            // be a promise we could not keep. That path degrades honestly instead, opening late
+            // and already delivered at the receipt.
+            if (key is { } identified)
+                CensusPump.OpenAtAct(ReceiptVerb.PotWater, identified, plant);
             _pendingReceipt = () => CensusPump.OnPotReceipt(
                 ReceiptVerb.PotWater, plant, key, FurnitureSource);
             return true;
@@ -475,6 +483,12 @@ internal sealed unsafe class PotChain : ChainBase
         SnapshotPots();
 
         PlantFlow.AnswerSow(true);
+        // RULING 4: the Yes above is the commit, and the receipt is a whole map settle away -
+        // this is the exact gap the 17:28 double receipt fell through. Same asymmetry as the
+        // tend: with a furniture key the pending opens now, without one it cannot, because the
+        // diff has not run yet and the pot has no name to open under.
+        if (_potKey is { } identified)
+            CensusPump.OpenAtAct(ReceiptVerb.Plant, identified, _plant);
         Acted();
         return true;
     }

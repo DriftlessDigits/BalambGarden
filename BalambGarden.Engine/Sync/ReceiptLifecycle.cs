@@ -12,7 +12,13 @@ namespace BalambGarden.Engine.Sync;
 /// land immediately when the chain acts, exactly as before; only the append-only history waits,
 /// because the honest source word - <see cref="SyncSource.Chain"/> or
 /// <see cref="SyncSource.ChainUnconfirmed"/> - is not known until the window closes, and an
-/// append-only log cannot go back and correct one.</para></summary>
+/// append-only log cannot go back and correct one.</para>
+///
+/// <para><paramref name="Delivered"/> is the ruling-4 consequence (2026-08-23): the pending now
+/// opens AT THE ACT, before the chain's own receipt has run, so a pending can exist for an act
+/// that never actually completed. The flag is the difference between "we acted and the census
+/// landed, only the line is missing" and "we clicked and nothing came back at all" - and ruling
+/// 6 reads it at the timeout to decide whether history hears about this act at all.</para></summary>
 public sealed record PendingReceipt(
     SyncKind Kind,
     bool IsPot,
@@ -23,7 +29,8 @@ public sealed record PendingReceipt(
     ushort PatchId,
     int PotKey,
     ushort Species,
-    byte Stage);
+    byte Stage,
+    bool Delivered = false);
 
 /// <summary>The join between an act and its confirmation: one pure rule set, no Dalamud types,
 /// no game state, desk-testable (the receipt lifecycle, ratified 2026-08-23).
@@ -80,4 +87,56 @@ public static class ReceiptLifecycle
     /// live, or the reverse.</summary>
     public static bool Expired(PendingReceipt pending, DateTimeOffset now)
         => now - pending.OpenedAt > CloseWindow;
+
+    /// <summary>What a pending nobody closed has earned - see <see cref="OnTimeout"/>.</summary>
+    public enum TimeoutOutcome
+    {
+        /// <summary>The act happened and only its confirming line is missing: one honest history
+        /// line under <see cref="SyncSource.ChainUnconfirmed"/>, exactly as before.</summary>
+        WriteChainUnconfirmed,
+
+        /// <summary>The act never landed: nothing is written at all.</summary>
+        Cancel,
+    }
+
+    /// <summary>RULING 6 (2026-08-23): an UNDELIVERED pending cancels instead of writing.
+    ///
+    /// <para>Since ruling 4 the pending opens at the ACT, not at the delivery, so the desk now
+    /// holds pendings for acts that may never have completed - a menu that closed under us, a
+    /// sow the prompt refused, a harvest whose yield never arrived. Two absent witnesses are not
+    /// a fact: no chain receipt AND no chat line means nobody saw this act happen, and a refused
+    /// or failed act must not enter an append-only history that has no way to retract it.</para>
+    ///
+    /// <para>A DELIVERED pending is the old case unchanged - the chain's own receipt did land,
+    /// the census already believes it, and only the game's sentence is missing - so it still
+    /// writes, loudly labelled chain-unconfirmed rather than passed off as a confirmation.</para></summary>
+    public static TimeoutOutcome OnTimeout(PendingReceipt pending)
+        => pending.Delivered ? TimeoutOutcome.WriteChainUnconfirmed : TimeoutOutcome.Cancel;
+
+    /// <summary>The desk's memory of the last pending a chat line actually closed. One slot,
+    /// session-only: it answers a question about the last few seconds and nothing longer.</summary>
+    public readonly record struct RecentClose(SyncKind Kind, bool IsPot, DateTimeOffset At);
+
+    /// <summary>THE REVERSE RACE. A chain act whose delivery runs LATE - the pot paths wait on a
+    /// map settle - can have its confirming line arrive first, close the pending, and write the
+    /// history line before the chain's own receipt has run at all. When the delivery finally
+    /// arrives it finds no pending open, and without this rule it would read that as the
+    /// late-identity fallback and open a SECOND pending for an act already in history: one act,
+    /// two entries, which is the 17:28 field receipt's failure wearing the other face.
+    ///
+    /// <para>Same kind, same container, inside the same <see cref="CloseWindow"/> the close half
+    /// runs on - so the suppression is exactly as wide as the race it answers and no wider. A
+    /// negative elapsed is not "very recent" here either: the clock moved under us, and
+    /// <see cref="Matches"/> gives that the same reading.</para></summary>
+    public static bool DeliveryAlreadyClosed(
+        SyncKind kind, bool isPot, RecentClose? lastClose, DateTimeOffset now)
+    {
+        if (lastClose is not { } closed)
+            return false;
+        if (closed.Kind != kind || closed.IsPot != isPot)
+            return false;
+
+        var since = now - closed.At;
+        return since >= TimeSpan.Zero && since <= CloseWindow;
+    }
 }

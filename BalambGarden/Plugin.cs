@@ -38,6 +38,22 @@ public sealed class Plugin : IDalamudPlugin
     /// neither of them is having.</summary>
     internal bool AnyChainBusy => TendChain.Busy || CycleChain.Busy || PotChain.Busy;
 
+    /// <summary>The one live plugin, for the static receipt paths that need to ask a question
+    /// only the instance can answer. Nulled on dispose so a hot-reload never leaves a stale
+    /// object answering for chains that no longer exist.</summary>
+    private static Plugin? instance;
+
+    /// <summary>Whether a chain is driving the character RIGHT NOW, reachable from the static
+    /// chat handler (ruling 5, 2026-08-23: the manual branch never runs while a chain is driving
+    /// - one character, one pair of hands, so a line that arrives mid-run is ours whether or not
+    /// a pending happened to match it).
+    ///
+    /// <para>A pass-through rather than a cached flag on purpose: a mirrored bool refreshed on
+    /// the framework tick would answer for the frame before the one the chat line landed in, and
+    /// the whole point of this gate is the boundary. No instance means no chains, which honestly
+    /// reads as nothing driving.</para></summary>
+    internal static bool AnyChainDriving => instance?.AnyChainBusy ?? false;
+
     /// <summary>Whichever chain the run log should be showing: the one that is running,
     /// or the last one launched once it finishes (its outcome is the thing to read).</summary>
     internal Chains.ChainBase ActiveChain
@@ -84,6 +100,10 @@ public sealed class Plugin : IDalamudPlugin
         TendChain = new Chains.TendChain();
         CycleChain = new Chains.CycleChain();
         PotChain = new Chains.PotChain();
+
+        // Only now: the chains the accessor answers about have to exist before anything can be
+        // told they are idle.
+        instance = this;
 
         ConfigWindow = new ConfigWindow(this);
         MainWindow = new MainWindow(this);
@@ -136,6 +156,10 @@ public sealed class Plugin : IDalamudPlugin
 
     public void Dispose()
     {
+        // FIRST, before a single subscriber comes off: the chat handler is still live for the
+        // rest of this method, and it must not be asking a half-torn-down plugin about chains.
+        instance = null;
+
         // Unregister all actions to not leak anything during disposal of plugin
         PluginInterface.UiBuilder.Draw -= WindowSystem.Draw;
         PluginInterface.UiBuilder.OpenConfigUi -= ToggleConfigUi;

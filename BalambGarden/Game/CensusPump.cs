@@ -325,11 +325,11 @@ internal static class CensusPump
 
         var outcome = Deliver(receipt, $"{bedHeader}: {DisplayPlant(plantName)}");
 
-        // The census is delivered; only the history waits on the game's confirming line. The
-        // identity is banked from the receipt just built, because the closing line names
-        // nothing and would have nothing to ask.
-        OpenPending(
-            verb, estate, isPot: false,
+        // The pending was opened at the ACT (ruling 4); this is the delivery reporting in with
+        // the full parse and the fresh map behind it - the better witness, so its identity
+        // overwrites what the act could only estimate.
+        MarkDelivered(
+            verb, isPot: false, estate,
             patchOrdinal: parsed.PatchOrdinal, bedSlot: parsed.BedSlot,
             patchId: NearestPatchId(parsed.PatchOrdinal), potKey: -1,
             species: species, stage: stage);
@@ -436,9 +436,11 @@ internal static class CensusPump
 
         // A pot's identity in the history is its furniture key alone (ReceiptLog reads PotKey
         // and nothing else when IsPot) - so ordinal and slot stay 0 here, matching what the
-        // chat path already writes, and patch id 0 because a pot has no such thing.
-        OpenPending(
-            verb, estate, isPot: true,
+        // chat path already writes, and patch id 0 because a pot has no such thing. On the
+        // diff-bind route this delivery is the FIRST moment the key exists at all, so it is
+        // also where the pending gets opened (late, and honestly so - ruling 4).
+        MarkDelivered(
+            verb, isPot: true, estate,
             patchOrdinal: 0, bedSlot: 0, patchId: 0, potKey: key,
             species: species, stage: stage);
 
@@ -564,10 +566,19 @@ internal static class CensusPump
     };
 
     // ---- THE PENDING DESK ----------------------------------------------------------------
-    // The two-phase receipt (ratified 2026-08-23). A chain act OPENS a pending here the moment
-    // its census has been delivered; the game's confirming chat line CLOSES it and the history
-    // is appended as Chain. Nothing closes it, and the sweep appends it as ChainUnconfirmed -
-    // today's chain-belief behaviour, kept, but labelled honestly.
+    // The two-phase receipt (ratified 2026-08-23, amended the same night by rulings 4-6). A
+    // chain act OPENS a pending here AT THE MOMENT IT COMMITS; the game's confirming chat line
+    // CLOSES it and the history is appended as Chain. Nothing closes it, and the sweep decides
+    // between an honest ChainUnconfirmed line and a silent cancel (ruling 6).
+    //
+    // RULING 4 - THE PENDING OPENS AT THE ACT. It used to open at the DELIVERY, which for the
+    // pot paths runs after a map settle: at the 17:28 field lap the game's line beat the
+    // delivery there, found nothing open, ran the manual branch, and then the delivery opened a
+    // pending that timed out. One act, two history entries. The chains' closure-build points
+    // are the true commit moments and identity is already in hand at them, so open-before-close
+    // is restored for the whole class. The pot's diff-bind fallback is the one exception it
+    // cannot cover - the key does not exist until the map has changed - and it degrades
+    // honestly to a late open marked delivered, which times out as chain-unconfirmed.
     //
     // ONLY THE HISTORY WAITS. Ledger state, feed strings and binding all land immediately when
     // the chain acts, exactly as before - the desk never sits between a chain and its census.
@@ -579,36 +590,179 @@ internal static class CensusPump
 
     private static PendingReceipt? openPending;
 
+    /// <summary>The last close a chat line actually made, for the reverse race
+    /// (<see cref="ReceiptLifecycle.DeliveryAlreadyClosed"/>). One slot, session-only, never
+    /// persisted - same reasoning as the pending itself.</summary>
+    private static ReceiptLifecycle.RecentClose? lastClose;
+
     /// <summary>The kind of act currently waiting on its confirming line, or null when none is.
     /// Read by <see cref="ChatReceipts"/>'s unmatched-line logger, which is only interesting
     /// while something is open.</summary>
     internal static SyncKind? OpenPendingKind => openPending?.Kind;
 
-    /// <summary>Opens the wait for a chain act's confirming line. Called from inside the
-    /// receipt paths AFTER the census has landed, with the identity the receipt was just built
-    /// from - the chain knows exactly which bed it touched, and that knowledge has to be banked
-    /// now because the closing line credits no object at all.
+    /// <summary>Opens the wait for a BED act's confirming line, at the moment the chain commits
+    /// to it (ruling 4). Called from the chains' own act steps, BEFORE the census delivery - the
+    /// menu entry is already selected, so this is genuinely the act, and the pending has to be
+    /// standing before the game's line can land or the manual branch will claim it.
+    ///
+    /// <para>Everything here is BEST EFFORT on purpose. The delivery does the full parse, the
+    /// fresh sight and the bind, and it overwrites all of this through
+    /// <see cref="MarkDelivered"/> - so the act only has to bank enough identity to be a real
+    /// receipt if the delivery never arrives, and a stage of 0 (honest unknown) is a fair price
+    /// for not running a map read inside a dialogue step.</para>
+    ///
+    /// <para>NO ESTATE, NO PENDING. Both gates the delivery paths refuse on are checked here
+    /// too: opening a pending on ground the census does not keep would promise a history line
+    /// that every write path below would then refuse to make.</para></summary>
+    internal static void OpenAtAct(ReceiptVerb verb, string bedHeader, string plantName)
+    {
+        if (ActGround(verb) is not { } estate)
+            return;
+
+        if (ReceiptParser.ParseBedHeader(bedHeader) is not { } parsed)
+        {
+            Plugin.Log.Debug(
+                $"[Census] {verb} act on unparseable bed header '{bedHeader}' - no pending opened");
+            return;
+        }
+
+        // The map read we already have, never a fresh one: a sight inside a dialogue step would
+        // cost the run its tempo, and the delivery is a beat away with a real one.
+        var stage = Plugin.Garden.Census.BoundKey(estate, parsed.PatchOrdinal) is { } key
+            && LastOutdoor.TryGetValue(key, out var beds)
+            && parsed.BedSlot < beds.Count
+                ? beds[parsed.BedSlot].Stage : (byte)0;
+
+        OpenPending(
+            verb, estate, isPot: false,
+            patchOrdinal: parsed.PatchOrdinal, bedSlot: parsed.BedSlot,
+            patchId: NearestPatchId(parsed.PatchOrdinal), potKey: -1,
+            species: Plugin.Tables.SpeciesIndexByName(plantName) ?? 0, stage: stage);
+    }
+
+    /// <summary>The pot form of <see cref="OpenAtAct(ReceiptVerb, string, string)"/>, for the
+    /// acts whose pot is already named by the furniture read. The diff-bind route has no key at
+    /// its commit moment and deliberately does NOT call this - see the note at that site.</summary>
+    internal static void OpenAtAct(ReceiptVerb verb, int potKey, string plantName)
+    {
+        if (ActGround(verb) is not { } estate)
+            return;
+
+        // The name-variant gap (a ripe pot's Talk says "Red Sunflowers") loses a species here
+        // exactly as it does at the delivery, and the cure is the same: ask the map what is
+        // actually growing in the pot we already know the key of.
+        var species = Plugin.Tables.SpeciesIndexByName(plantName) ?? 0;
+        PotReading? sighted = LastIndoor.TryGetValue(potKey, out var pot) ? pot : null;
+        if (species == 0 && sighted is not null)
+            species = sighted.SpeciesIndex;
+
+        OpenPending(
+            verb, estate, isPot: true,
+            patchOrdinal: 0, bedSlot: 0, patchId: 0, potKey: potKey,
+            species: species, stage: sighted?.Stage ?? (byte)0);
+    }
+
+    /// <summary>The two gates every act-time open shares: the estate underfoot, and whether the
+    /// census keeps it. Silent-ish by design - a debug line, not a warning - because standing
+    /// somewhere unrostered is a normal thing to do and the delivery will say so out loud in the
+    /// run feed when it refuses.</summary>
+    private static EstateKey? ActGround(ReceiptVerb verb)
+    {
+        var estate = EstateSensor.Current();
+        if (estate is null)
+        {
+            Plugin.Log.Debug($"[Census] {verb} act with no estate identity - no pending opened");
+            return null;
+        }
+
+        if (!CoveredHere)
+        {
+            Plugin.Log.Debug($"[Census] {verb} act here: {NotCovered} - no pending opened");
+            return null;
+        }
+
+        return estate;
+    }
+
+    /// <summary>Opens the wait for a chain act's confirming line, with the identity the act had
+    /// in hand - the chain knows exactly which bed or pot it touched, and that knowledge has to
+    /// be banked now because the closing line credits no object at all.
     ///
     /// <para>ONE IN FLIGHT, EVER. Chains are sequential, so a second open means the first act's
-    /// line never came: the old pending is force-closed as chain-unconfirmed before the new one
-    /// opens. That is what makes overlap impossible even at the pacing boundary, where a slow
-    /// line and the next act would otherwise both be live and the wrong one could be
-    /// closed.</para></summary>
+    /// line never came: the old pending is retired before the new one opens. That is what makes
+    /// overlap impossible even at the pacing boundary, where a slow line and the next act would
+    /// otherwise both be live and the wrong one could be closed. What retiring MEANS is ruling
+    /// 6's question, not this one's - a delivered act writes its chain-unconfirmed line, an
+    /// undelivered one cancels.</para></summary>
     private static void OpenPending(
         ReceiptVerb verb, EstateKey estate, bool isPot,
-        int patchOrdinal, int bedSlot, ushort patchId, int potKey, ushort species, byte stage)
+        int patchOrdinal, int bedSlot, ushort patchId, int potKey, ushort species, byte stage,
+        bool delivered = false)
     {
         if (openPending is { } stale)
         {
-            Plugin.Log.Warning(
+            openPending = null;
+            Retire(stale,
                 $"[Census] {stale.Kind} receipt never confirmed by chat before the next act - "
                 + "recording as chain-unconfirmed");
-            CloseUnconfirmed(stale);
         }
 
         openPending = new PendingReceipt(
             KindFor(verb), isPot, DateTimeOffset.UtcNow, estate,
-            patchOrdinal, bedSlot, patchId, potKey, species, stage);
+            patchOrdinal, bedSlot, patchId, potKey, species, stage, delivered);
+    }
+
+    /// <summary>The chain's own receipt reporting in: this act really did complete, and here is
+    /// the identity the full parse and the fresh sight resolved it to.
+    ///
+    /// <para>THE DELIVERY IS THE BETTER WITNESS. The act opened the pending from whatever it had
+    /// to hand mid-dialogue; the delivery has just re-read the map, run the parse and possibly
+    /// bound the patch. So its identity overwrites, rather than being discarded as a duplicate
+    /// of something already banked.</para>
+    ///
+    /// <para>NO PENDING OPEN is two different situations and they must not be confused. If a
+    /// matching line closed one moments ago, this act is ALREADY IN HISTORY and there is nothing
+    /// to do - the reverse race, ruled at
+    /// <see cref="ReceiptLifecycle.DeliveryAlreadyClosed"/>. Otherwise this is a late-identity
+    /// path (the pot diff-bind, or an act whose pending the sweep already retired), and the
+    /// pending opens HERE, already delivered: it will wait for a line that has most likely
+    /// already been dropped, and time out honestly as chain-unconfirmed.</para></summary>
+    private static void MarkDelivered(
+        ReceiptVerb verb, bool isPot, EstateKey estate,
+        int patchOrdinal, int bedSlot, ushort patchId, int potKey, ushort species, byte stage)
+    {
+        var kind = KindFor(verb);
+
+        if (openPending is { } pending && pending.Kind == kind && pending.IsPot == isPot)
+        {
+            openPending = pending with
+            {
+                Delivered = true,
+                Estate = estate,
+                PatchOrdinal = patchOrdinal,
+                BedSlot = bedSlot,
+                PatchId = patchId,
+                PotKey = potKey,
+                Species = species,
+                Stage = stage,
+            };
+            return;
+        }
+
+        if (ReceiptLifecycle.DeliveryAlreadyClosed(kind, isPot, lastClose, DateTimeOffset.UtcNow))
+        {
+            Plugin.Log.Debug(
+                $"[Census] {kind} delivery arrived after its own confirming line closed the act - "
+                + "already in history, no second pending opened");
+            return;
+        }
+
+        Plugin.Log.Debug(
+            $"[Census] {kind} delivery with no pending open - opening late (identity was not "
+            + "knowable at the act)");
+        OpenPending(
+            verb, estate, isPot, patchOrdinal, bedSlot, patchId, potKey, species, stage,
+            delivered: true);
     }
 
     /// <summary>Offers a classified chat line to the open act. True means the line was that
@@ -625,31 +779,54 @@ internal static class CensusPump
             return false;
 
         openPending = null;
+        // Banked for the reverse race: a delivery still on its way to this same act must be
+        // able to tell "already in history" from "never opened" (ruling 4's honest degrade).
+        lastClose = new ReceiptLifecycle.RecentClose(pending.Kind, pending.IsPot, DateTimeOffset.UtcNow);
         AppendHistory(pending, SyncSource.Chain);
         Plugin.Log.Information($"[Census] {pending.Kind} receipt confirmed by chat");
         return true;
     }
 
     /// <summary>The timeout sweep. Runs on every tick ABOVE the census gate and without asking
-    /// where we are: a pending is a promise to write history, and standing somewhere the census
-    /// does not cover - or nowhere at all - is not a reason to drop it. The act happened.</summary>
+    /// where we are: a pending is a promise to ANSWER for an act, and standing somewhere the
+    /// census does not cover - or nowhere at all - is not a reason to drop it.
+    ///
+    /// <para>The answer itself is <see cref="Retire"/>'s to give, because since ruling 4 a
+    /// pending is no longer proof the act happened - it is proof we tried.</para></summary>
     private static void SweepPending()
     {
         if (openPending is not { } pending || !ReceiptLifecycle.Expired(pending, DateTimeOffset.UtcNow))
             return;
 
         openPending = null;
-        // LOUDLY, by ruling: every timeout is logged at warning so a systematic miss - a line
-        // we have not learned to read, a verb whose words changed in a patch - surfaces as a
-        // pile in the log instead of hiding inside an honest-looking source word.
-        Plugin.Log.Warning(
+        Retire(pending,
             $"[Census] {pending.Kind} receipt timed out with no confirming chat line after "
             + $"{ReceiptLifecycle.CloseWindow.TotalSeconds:0}s - recording as chain-unconfirmed");
-        CloseUnconfirmed(pending);
     }
 
-    private static void CloseUnconfirmed(PendingReceipt pending)
-        => AppendHistory(pending, SyncSource.ChainUnconfirmed);
+    /// <summary>What becomes of a pending nobody closed - the timeout and the force-close at the
+    /// next act both end here, because they are the same question asked at different moments.
+    /// Ruling 6 answers it: <paramref name="warning"/> is only ever spoken for an act that
+    /// really happened.
+    ///
+    /// <para>LOUDLY for a delivered act, by the original ruling: every such timeout is logged at
+    /// warning so a systematic miss - a line we have not learned to read, a verb whose words
+    /// changed in a patch - surfaces as a pile in the log instead of hiding inside an
+    /// honest-looking source word. A CANCEL is not that: nothing was missed, the act simply did
+    /// not happen, so it goes in at information and writes nothing at all.</para></summary>
+    private static void Retire(PendingReceipt pending, string warning)
+    {
+        if (ReceiptLifecycle.OnTimeout(pending) == ReceiptLifecycle.TimeoutOutcome.Cancel)
+        {
+            Plugin.Log.Information(
+                $"[Census] {pending.Kind} pending cancelled - never delivered and no confirming "
+                + "line (act presumed refused or failed)");
+            return;
+        }
+
+        Plugin.Log.Warning(warning);
+        AppendHistory(pending, SyncSource.ChainUnconfirmed);
+    }
 
     /// <summary>The deferred half: the pending becomes one line of append-only history under
     /// the source word the verdict earned it.

@@ -9,13 +9,15 @@ public class ReceiptLifecycleTests
     private static readonly EstateKey Garden = new(340, 11, 32);
     private static readonly DateTimeOffset Opened = new(2026, 8, 23, 21, 0, 0, TimeSpan.Zero);
 
-    private static PendingReceipt Bed(SyncKind kind = SyncKind.Tend) => new(
+    private static PendingReceipt Bed(SyncKind kind = SyncKind.Tend, bool delivered = false) => new(
         kind, IsPot: false, OpenedAt: Opened, Estate: Garden,
-        PatchOrdinal: 0, BedSlot: 3, PatchId: 0x3312, PotKey: -1, Species: 88, Stage: 2);
+        PatchOrdinal: 0, BedSlot: 3, PatchId: 0x3312, PotKey: -1, Species: 88, Stage: 2,
+        Delivered: delivered);
 
-    private static PendingReceipt Pot(SyncKind kind = SyncKind.PotWater) => new(
+    private static PendingReceipt Pot(SyncKind kind = SyncKind.PotWater, bool delivered = false) => new(
         kind, IsPot: true, OpenedAt: Opened, Estate: Garden,
-        PatchOrdinal: 7, BedSlot: 0, PatchId: 0, PotKey: 7, Species: 88, Stage: 2);
+        PatchOrdinal: 7, BedSlot: 0, PatchId: 0, PotKey: 7, Species: 88, Stage: 2,
+        Delivered: delivered);
 
     [Fact]
     public void The_matching_line_inside_the_window_closes_the_act()
@@ -103,5 +105,93 @@ public class ReceiptLifecycleTests
             Assert.False(ReceiptLifecycle.Matches(harvest, verdict, Opened.AddSeconds(1)));
 
         Assert.True(ReceiptLifecycle.Expired(harvest, Opened.AddSeconds(30)));
+    }
+
+    // ---- RULING 6: an undelivered pending cancels instead of writing --------------------
+
+    [Fact]
+    public void A_pending_starts_undelivered()
+    {
+        // The default matters: every open goes through the same constructor, and an act that
+        // forgot to say it completed must read as "we tried", never as "it happened".
+        Assert.False(Bed().Delivered);
+        Assert.False(Pot().Delivered);
+    }
+
+    [Fact]
+    public void A_delivered_act_still_writes_its_chain_unconfirmed_line()
+    {
+        // The old behaviour, unchanged: the chain's own receipt landed, the census already
+        // believes it, and only the game's sentence is missing.
+        Assert.Equal(
+            ReceiptLifecycle.TimeoutOutcome.WriteChainUnconfirmed,
+            ReceiptLifecycle.OnTimeout(Bed(delivered: true)));
+        Assert.Equal(
+            ReceiptLifecycle.TimeoutOutcome.WriteChainUnconfirmed,
+            ReceiptLifecycle.OnTimeout(Pot(SyncKind.Harvest, delivered: true)));
+    }
+
+    [Fact]
+    public void An_act_nobody_witnessed_cancels_and_writes_nothing()
+    {
+        // Two absent witnesses - no chain receipt, no chat line - are not a fact. A menu that
+        // closed under us or a sow the prompt refused must not enter an append-only history.
+        Assert.Equal(ReceiptLifecycle.TimeoutOutcome.Cancel, ReceiptLifecycle.OnTimeout(Bed()));
+        Assert.Equal(
+            ReceiptLifecycle.TimeoutOutcome.Cancel, ReceiptLifecycle.OnTimeout(Pot(SyncKind.Plant)));
+    }
+
+    // ---- THE REVERSE RACE: a delivery arriving after its own line closed the act ---------
+
+    private static ReceiptLifecycle.RecentClose Closed(
+        SyncKind kind = SyncKind.PotWater, bool isPot = true)
+        => new(kind, isPot, Opened);
+
+    [Fact]
+    public void A_delivery_right_after_its_own_line_closed_the_act_opens_nothing()
+        => Assert.True(ReceiptLifecycle.DeliveryAlreadyClosed(
+            SyncKind.PotWater, isPot: true, Closed(), Opened.AddSeconds(2)));
+
+    [Fact]
+    public void The_window_edge_still_suppresses()
+        => Assert.True(ReceiptLifecycle.DeliveryAlreadyClosed(
+            SyncKind.PotWater, isPot: true, Closed(), Opened + ReceiptLifecycle.CloseWindow));
+
+    [Fact]
+    public void A_delivery_long_after_the_close_is_its_own_act()
+    {
+        // Past the window the suppression has to let go, or the NEXT water of the same pot
+        // would be swallowed by the last one's memory.
+        var late = Opened + ReceiptLifecycle.CloseWindow + TimeSpan.FromMilliseconds(1);
+        Assert.False(ReceiptLifecycle.DeliveryAlreadyClosed(
+            SyncKind.PotWater, isPot: true, Closed(), late));
+    }
+
+    [Fact]
+    public void A_close_from_the_future_is_not_evidence()
+        => Assert.False(ReceiptLifecycle.DeliveryAlreadyClosed(
+            SyncKind.PotWater, isPot: true, Closed(), Opened.AddSeconds(-1)));
+
+    [Fact]
+    public void No_close_has_happened_at_all()
+        => Assert.False(ReceiptLifecycle.DeliveryAlreadyClosed(
+            SyncKind.PotWater, isPot: true, lastClose: null, Opened.AddSeconds(1)));
+
+    [Fact]
+    public void A_close_of_a_different_kind_suppresses_nothing()
+        => Assert.False(ReceiptLifecycle.DeliveryAlreadyClosed(
+            SyncKind.Plant, isPot: true, Closed(SyncKind.PotWater), Opened.AddSeconds(1)));
+
+    [Fact]
+    public void A_close_in_the_other_container_suppresses_nothing()
+    {
+        // Same SyncKind, different container - the case the kind check alone waves through,
+        // exactly as at the Matches desk: a bed fertilize must not be silenced by a pot one.
+        Assert.False(ReceiptLifecycle.DeliveryAlreadyClosed(
+            SyncKind.Fertilize, isPot: false,
+            Closed(SyncKind.Fertilize, isPot: true), Opened.AddSeconds(1)));
+        Assert.False(ReceiptLifecycle.DeliveryAlreadyClosed(
+            SyncKind.Fertilize, isPot: true,
+            Closed(SyncKind.Fertilize, isPot: false), Opened.AddSeconds(1)));
     }
 }

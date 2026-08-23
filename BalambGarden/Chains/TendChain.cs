@@ -192,6 +192,9 @@ internal sealed unsafe class TendChain : ChainBase
                 // which binds the patch (if unbound) and records the bed. Held until the
                 // dialogue goes quiet - selecting is firing, not finishing.
                 var plant = _currentPlant;
+                // RULING 4: the pending opens HERE, at the commit - the entry is selected and
+                // the game's line can land before the held receipt below ever runs.
+                CensusPump.OpenAtAct(ReceiptVerb.Tend, header, plant);
                 _pendingReceipt = () => CensusPump.OnBedReceipt(ReceiptVerb.Tend, header, plant);
                 return true;
             }

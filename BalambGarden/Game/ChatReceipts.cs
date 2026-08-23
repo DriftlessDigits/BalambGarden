@@ -25,9 +25,12 @@ namespace BalambGarden.Game;
 /// <see cref="CensusPump.TryCloseChain"/> whether an act of ours is waiting on it. If one is,
 /// the line is that act's confirmation and we are DONE here - the chain already delivered the
 /// census when it acted, so the desk only has the history left to append, under the honest
-/// source word. If nothing is waiting, the line is a HUMAN's own hands, and it becomes a
-/// receipt in its own right down the chat-identity path below - census and history together,
-/// the way the fertilize path has always worked.</para>
+/// source word. If nothing is waiting AND no chain is driving, the line is a HUMAN's own hands,
+/// and it becomes a receipt in its own right down the chat-identity path below - census and
+/// history together, the way the fertilize path has always worked. If a chain IS driving, the
+/// manual branch is closed to it by ruling 5 (2026-08-23) and the line is logged and dropped:
+/// one character has one pair of hands, so a mid-run line our own desk could not match is a gap
+/// in the desk, not evidence of a second gardener.</para>
 ///
 /// <para>IDENTITY COMES FROM THE PREVIOUS-TARGET, on the manual branch only. The success line
 /// credits no object and the hard target is already cleared when it prints (capture
@@ -93,6 +96,20 @@ internal static unsafe class ChatReceipts
             // second, weaker answer to a question already settled.
             if (CensusPump.TryCloseChain(verdict))
                 return;
+
+            // RULING 5 (2026-08-23): the manual branch never runs while a chain is driving. One
+            // character, one pair of hands - a gardening line printed mid-run is OUR act by
+            // elimination, so reading it as somebody's own hands would credit a second history
+            // entry to the act already on the desk (the 17:28 field lap's double receipt). No
+            // pending matched it, so there is nothing left to close either: it is logged, so the
+            // mismatch can be read later, and dropped.
+            if (Plugin.AnyChainDriving)
+            {
+                Plugin.Log.Information(
+                    $"[ChatReceipts] {verdict} line while a chain is driving and no pending "
+                    + "matched - dropped (one character, one pair of hands)");
+                return;
+            }
 
             var previous = Svc.Targets.PreviousTarget;
             if (ChatLine.IsPotVerdict(verdict))
