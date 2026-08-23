@@ -75,6 +75,10 @@ public sealed class Plugin : IDalamudPlugin
 
         Garden = GardenService.Load(PluginInterface.GetPluginConfigDirectory());
 
+        // Wired here rather than inside Load because the identity lives half in config and
+        // half in the receipt log, and this is the first point where both exist.
+        WireSyncIdentity();
+
         TendChain = new Chains.TendChain();
         CycleChain = new Chains.CycleChain();
         PotChain = new Chains.PotChain();
@@ -109,6 +113,11 @@ public sealed class Plugin : IDalamudPlugin
         // signal (capture 2026-08-15 F4), so the listener lives as long as the plugin does.
         Game.ObtainWatch.Start();
 
+        // Fertilize has no chain and no closing dialogue - the chat line IS the event, whether
+        // Balamb drove it or a human did it by hand, so the listener lives as long as the
+        // plugin does. Not debug-gated: the receipt it writes is the product.
+        Game.FertilizeWatch.Start();
+
 #if DEBUG
         // Scoped recording: the persisted flag means "arm near pots", and a rezone ends
         // the scene a recording was scoped to. The proximity check in OnFrameworkUpdate
@@ -133,6 +142,7 @@ public sealed class Plugin : IDalamudPlugin
         Svc.ClientState.TerritoryChanged -= OnTerritoryChanged;
 #endif
         Game.ObtainWatch.Stop();
+        Game.FertilizeWatch.Stop();
 #if DEBUG
         // A watcher left registered would outlive the plugin its callback belongs to.
         Chains.PlantFlow.StopWatching();
@@ -152,6 +162,53 @@ public sealed class Plugin : IDalamudPlugin
 
         Garden.Save();
         ECommonsMain.Dispose();
+    }
+
+    /// <summary>Opens the id-space for this install (identity amendment, ruled 2026-08-23).
+    /// Two jobs, both once per launch: mint the user slug if this install has never had one,
+    /// and rule on whether the receipt log's era may keep counting.
+    ///
+    /// <para>ERAS ARE CHEAP, COLLISIONS ARE NOT. A spurious mint costs one slug and a counter
+    /// restart; a missed mint puts two different facts on the relay under one id, which cannot
+    /// be undone. EraGuard fails toward minting for that reason, and the verdict's reason is
+    /// logged either way so a field report says WHICH trigger fired rather than leaving it to
+    /// be guessed at from a changed slug.</para></summary>
+    private static void WireSyncIdentity()
+    {
+        if (Configuration.SyncUserId.Length == 0)
+        {
+            Configuration.SyncUserId = BalambGarden.Engine.Sync.SyncId.NewSlug();
+            Configuration.Save();
+            Log.Information("[Garden] minted this install's sync user id");
+        }
+
+        // An empty remembered era is NO MEMORY, not a memory of nothing - the guard's own
+        // "no memory" branch mints, which is the right answer for a config that was wiped.
+        var remembered = Configuration.SyncEraRemembered.Length == 0
+            ? null
+            : new BalambGarden.Engine.Sync.EraMemory(
+                Configuration.SyncEraRemembered,
+                Configuration.SyncCounterRemembered,
+                Configuration.SyncMachineHash);
+
+        var (verdict, reason) = BalambGarden.Engine.Sync.EraGuard.Check(
+            remembered, Garden.Receipts.Era, Garden.Receipts.Counter, Sync.MachineStamp.Hash());
+        Log.Information($"[Garden] era check: {reason}");
+
+        if (verdict == BalambGarden.Engine.Sync.EraVerdict.MintFresh)
+        {
+            var era = BalambGarden.Engine.Sync.SyncId.NewSlug();
+            Garden.Receipts.MintEra(era);
+            Log.Information($"[Garden] minted era '{era}' - the counter restarts under it");
+            Garden.SaveReceipts();   // writes the log, then refreshes the memory with it
+        }
+        else
+        {
+            // Nothing changed in the log, but the memory still gets stamped: the machine hash
+            // and counter must describe THIS load, or the next one compares against a stale
+            // clean state.
+            Garden.RememberEra();
+        }
     }
 
     /// <summary>Nothing sensed before the player exists: no character, no estate,

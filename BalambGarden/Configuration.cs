@@ -71,6 +71,33 @@ public class Configuration : IPluginConfiguration
     /// small one want different answers. Recon keeps its own fixed 40y view on purpose.</summary>
     public float PatchScanRadius { get; set; } = 20f;
 
+    /// <summary>This install's identity - the user third of the wire id "user:era:counter"
+    /// (identity amendment, ruled 2026-08-23). Minted once, empty until then, and never
+    /// re-minted: it is what marks a receipt mine-vs-external forever, on both sides of a
+    /// sync. Derived from nothing (SyncId.NewSlug), which is a privacy property - a slug that
+    /// could be recomputed from a character name would identify its owner to anyone holding
+    /// the name, and this travels on every receipt.</summary>
+    public string SyncUserId { get; set; } = "";
+
+    /// <summary>Config's MEMORY of the receipt log's last clean state - the era it was
+    /// counting under, the number it had reached, and the machine it was on. Not a copy of
+    /// the log and never read as one: it is the rewind/wipe/duplicate detector. Config and the
+    /// receipt log are separate files, restored separately and copied separately, so when one
+    /// travels back in time or sideways the other still holds the old truth and EraGuard sees
+    /// the disagreement at load. Refreshed on every receipt save (GardenService.SaveReceipts),
+    /// because a stale memory reads a healthy counter as a rewind.</summary>
+    public string SyncEraRemembered { get; set; } = "";
+
+    /// <inheritdoc cref="SyncEraRemembered"/>
+    public long SyncCounterRemembered { get; set; }
+
+    /// <summary>The machine memory of the trio above - the only signal that tells a cloned
+    /// install from a healthy one, since a clone counts forward perfectly on both copies.
+    /// A LOCAL fingerprint by contract: hashed at the source (see MachineStamp), never logged
+    /// raw, and it NEVER rides a wire receipt. The Engine only ever compares it for equality
+    /// and has no idea what it means.</summary>
+    public string SyncMachineHash { get; set; } = "";
+
     // The garden ledger: every tended bed's latest census record.
     public List<BedRecord> Ledger { get; set; } = [];
 

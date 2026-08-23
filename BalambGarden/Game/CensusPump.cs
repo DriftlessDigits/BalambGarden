@@ -5,6 +5,7 @@ using BalambGarden.Engine.Census;
 using BalambGarden.Engine.Derivations;
 using BalambGarden.Engine.Ledger;
 using BalambGarden.Engine.Sensing;
+using BalambGarden.Engine.Sync;
 using ECommons.DalamudServices;
 
 namespace BalambGarden.Game;
@@ -416,6 +417,87 @@ internal static class CensusPump
         var receipt = new ReceiptEvent(
             estate, key, 0, verb, species, stage, DateTimeOffset.UtcNow, IsPot: true);
         return Deliver(receipt, $"pot (key {key}): {DisplayPlant(plantName)}");
+    }
+
+    /// <summary>A fertilize receipt born in chat (<see cref="FertilizeWatch"/>). Identity is
+    /// already decided by the time it gets here - the watcher decoded the object and ran the
+    /// fail-closed checks - so this does the census and the history, nothing else.
+    ///
+    /// <para>Returns nothing on purpose, unlike every other receipt path: a chat receipt has
+    /// no chain feed to report into, so the gates say what happened in the log instead of
+    /// handing a line to a run nobody launched.</para></summary>
+    internal static void OnChatFertilize(
+        bool isPot, int potKey, int patchOrdinal, int bedSlot, ushort patchId)
+    {
+        var estate = EstateSensor.Current();
+        if (estate is null)
+        {
+            Plugin.Log.Information("[Census] chat fertilize with no estate identity - not recorded");
+            return;
+        }
+
+        if (!CoveredHere)
+        {
+            Plugin.Log.Information($"[Census] chat fertilize here: {NotCovered}");
+            return;
+        }
+
+        SightNow();   // acting is censusing: fresh map before the receipt lands
+
+        // Best effort off the map read, never a guess: 0 stays 0 locally and becomes a null
+        // species on the wire, which honestly says "the sender did not know" rather than
+        // asserting a crop that might not be there.
+        ushort species = 0;
+        byte stage = 0;
+        if (isPot)
+        {
+            if (LastIndoor.TryGetValue(potKey, out var pot))
+            {
+                species = pot.SpeciesIndex;
+                stage = pot.Stage;
+            }
+        }
+        else if (Plugin.Garden.Census.BoundKey(estate, patchOrdinal) is { } key
+                 && LastOutdoor.TryGetValue(key, out var beds)
+                 && bedSlot < beds.Count)
+        {
+            species = beds[bedSlot].SpeciesIndex;
+            stage = beds[bedSlot].Stage;
+        }
+
+        var now = DateTimeOffset.UtcNow;
+
+        // A pot is its own one-bed patch (ordinal = map key, slot 0), the same shape
+        // OnPotReceipt uses - the census keeps one identity convention whoever minted it.
+        var receipt = new ReceiptEvent(
+            estate,
+            isPot ? potKey : patchOrdinal,
+            isPot ? 0 : bedSlot,
+            ReceiptVerb.Fertilize, species, stage, now, IsPot: isPot);
+
+        if (Plugin.Configuration.TrailEnabled)
+            Plugin.Garden.Trail.Append(receipt);
+
+        // Lands no observation by design (CensusEngine.SourceFor returns null for Fertilize -
+        // a feed is not a reading), but it still proves the row: we stood there and touched it.
+        var bed = Plugin.Garden.Census.OnReceipt(receipt);
+        Plugin.Garden.Save();
+
+        // The history, which is the point: the ledger holds current state, the receipt log
+        // holds what happened. SaveReceipts refreshes config's memory of the counter with it.
+        Plugin.Garden.Receipts.Append(
+            SyncKind.Fertilize, SyncSource.Chat, now, estate, isPot,
+            patchOrdinal: patchOrdinal, bedSlot: bedSlot, patchId: patchId, potKey: potKey,
+            data: new SyncData(Species: species == 0 ? null : species));
+        Plugin.Garden.SaveReceipts();
+
+        var where = isPot
+            ? $"pot (key {potKey})"
+            : $"patch {patchOrdinal + 1} bed {bedSlot + 1}";
+        Plugin.Log.Information(
+            $"[Census] fertilize receipted from chat: {where} at {estate.DisplayLabel()}"
+            + $" - {(species == 0 ? "species unknown" : Plugin.Tables.SpeciesName(species))}"
+            + (bed is null ? " (not claimed: patch not identified yet)" : ""));
     }
 
     internal static string OnRipeSkip(string bedHeader, string plantName)
