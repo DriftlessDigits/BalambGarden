@@ -73,6 +73,8 @@ public sealed class Plugin : IDalamudPlugin
         Tables = BalambGarden.Engine.Domain.DomainTables.Load();
         Log.Information($"[Engine] domain tables loaded: sunflower check = {Tables.SpeciesName(103)}");
 
+        Log.Information($"build {BuildStamp.Line}");
+
         Garden = GardenService.Load(PluginInterface.GetPluginConfigDirectory());
 
         // Wired here rather than inside Load because the identity lives half in config and

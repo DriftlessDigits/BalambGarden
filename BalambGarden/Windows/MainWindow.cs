@@ -1880,7 +1880,12 @@ public class MainWindow : Window, IDisposable
 
         ImGui.Spacing();
         using (ImRaii.PushColor(ImGuiCol.Text, Dim))
+        {
             ImGui.TextWrapped("Instrument, not product. Everything here writes to the Dalamud log.");
+            // "Am I on the current build?" is the hot-load question this tab keeps
+            // getting asked during field laps - the stamp answers it without a log dive.
+            ImGui.TextUnformatted($"build {BuildStamp.Line}");
+        }
 
         // The sensor filters to beds by DataId, so the old "beds only" toggle is gone -
         // what the table shows now IS the bed set, identified by the game's own gimmick.
