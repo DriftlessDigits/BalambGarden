@@ -34,7 +34,10 @@ public sealed class CensusEngine(LedgerStore ledger)
             ledger.Beds.Add(bed);
         }
 
-        bed.Observe(new Observation(e.At, e.SpeciesIndex, e.Stage, SourceFor(e.Verb)));
+        // A fertilize receipt still proves the row (it is a bed we stood at and touched), but
+        // it contributes no reading - see SourceFor.
+        if (SourceFor(e.Verb) is { } source)
+            bed.Observe(new Observation(e.At, e.SpeciesIndex, e.Stage, source));
         if (e.Verb is ReceiptVerb.Tend or ReceiptVerb.PotWater)
             bed.LastTended = e.At;
         return bed;
@@ -153,12 +156,18 @@ public sealed class CensusEngine(LedgerStore ledger)
         return pruned;
     }
 
-    private static ObservationSource SourceFor(ReceiptVerb verb) => verb switch
+    /// <summary>Null = this verb is not an observation. The ring is anchor-space - what the
+    /// bed CONTAINED and when - and fertilize says nothing about contents; it lands in the
+    /// ReceiptLog, which is where history lives (design ruled 2026-08-23). Inventing a
+    /// FertilizeReceipt source would put a non-reading into the ring and let StageModel
+    /// anchor on it.</summary>
+    private static ObservationSource? SourceFor(ReceiptVerb verb) => verb switch
     {
         ReceiptVerb.Tend => ObservationSource.TendReceipt,
         ReceiptVerb.Plant => ObservationSource.PlantReceipt,
         ReceiptVerb.Harvest => ObservationSource.HarvestReceipt,
         ReceiptVerb.PotWater => ObservationSource.TendReceipt,
+        ReceiptVerb.Fertilize => null,
         _ => ObservationSource.MapSighting,
     };
 }
