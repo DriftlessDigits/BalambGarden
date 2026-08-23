@@ -80,8 +80,17 @@ internal static class CensusPump
         {
             if (announcedInside != inside)
             {
-                announcedInside = inside;
                 SightNow();
+                // The front door has the same settle trap as arrival (below): the DataMap
+                // can populate a beat after the flip, and a one-shot read that raced it
+                // left an empty LastIndoor standing for the whole visit - every FC pot
+                // record read "harvested?" against a snapshot of nothing (2026-08-23).
+                // Same cure: don't latch until the side we now stand on has answered,
+                // when the ledger says it has something to answer with.
+                if ((inside ? LastIndoor.Count : LastOutdoor.Count) == 0
+                    && Plugin.Garden.Ledger.Beds.Any(b => b.Estate == estate && b.IsPot == inside))
+                    return;
+                announcedInside = inside;
             }
             return;
         }
