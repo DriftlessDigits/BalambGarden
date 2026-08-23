@@ -1,0 +1,831 @@
+2026-08-23 10:58:11.187 -05:00 [INF] [BalambGarden] [ChatRecon] watching all chat (verbatim + target-at-line-time)
+2026-08-23 10:58:15.639 -05:00 [INF] [BalambGarden] [ChatRecon] kind=SystemMessage/57 src=None tgt=None text='Screenshot saved.'
+2026-08-23 10:58:15.639 -05:00 [INF] [BalambGarden] [ChatRecon]   zone=385 target=none soft=none prev=none
+2026-08-23 10:58:21.901 -05:00 [INF] [BalambGarden] [Recon] ===== capture start =====
+2026-08-23 10:58:21.901 -05:00 [INF] [BalambGarden] [Probe] Housing: territory=385 ward=11 plot=57 room=7 inside=True
+2026-08-23 10:58:21.901 -05:00 [INF] [BalambGarden] [Probe] HouseId: 0x0037015401CB0039 territory=340 world=55 ward=11 plot=57 room=7 isApartment=False apartmentDivision=57 isWorkshop=False
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=165 territory=979 estateType=ApartmentRoom(6) ward=0 plot=0 subIndex=128 sharedHouse=False apartment=True gil=78
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0x003703D307470080 territory=979 world=55 ward=7 plot=0 room=29 isApartment=True apartmentDivision=0 isWorkshop=False
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=97 territory=641 estateType=PersonalEstate(2) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=303
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0x0037028100030033 territory=641 world=55 ward=3 plot=51 room=0 isApartment=False apartmentDivision=51 isWorkshop=False
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=57 territory=340 estateType=FreeCompanyEstate(0) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=25
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0x00370154000B0039 territory=340 world=55 ward=11 plot=57 room=0 isApartment=False apartmentDivision=57 isWorkshop=False
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=60 territory=340 estateType=SharedEstate(4) ward=12 plot=33 subIndex=1 sharedHouse=True apartment=False gil=25
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0x00370154000B0020 territory=340 world=55 ward=11 plot=32 room=0 isApartment=False apartmentDivision=32 isWorkshop=False
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=8 territory=129 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=308
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=52 territory=134 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=589
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=10 territory=135 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=573
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=11 territory=137 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=503
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=12 territory=137 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=503
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=13 territory=138 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=599
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=14 territory=138 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=599
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=15 territory=139 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=529
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=16 territory=180 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=495
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=55 territory=250 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=693
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=2 territory=132 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=50
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=3 territory=148 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=158
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=4 territory=152 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=188
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=5 territory=153 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=221
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=6 territory=153 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=221
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=7 territory=154 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=180
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=9 territory=130 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=257
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=17 territory=140 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=531
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=53 territory=141 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=435
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=18 territory=145 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=354
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=19 territory=146 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=542
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=20 territory=146 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=542
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=21 territory=147 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=355
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=22 territory=147 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=355
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=62 territory=144 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=583
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=70 territory=418 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=315
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=23 territory=155 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=289
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=71 territory=397 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=418
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=72 territory=401 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=306
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=73 territory=401 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=306
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=74 territory=402 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=345
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=75 territory=478 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=667
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=76 territory=398 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=500
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=77 territory=398 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=500
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=78 territory=400 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=606
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=79 territory=400 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=606
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=104 territory=635 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=240
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=98 territory=612 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=204
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=99 territory=612 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=204
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=100 territory=620 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=306
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=101 territory=620 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=306
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=102 territory=621 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=332
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=103 territory=621 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=332
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=111 territory=628 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=1213
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=105 territory=613 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=1159
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=106 territory=613 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=1159
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=107 territory=614 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=1063
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=108 territory=614 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=1063
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=109 territory=622 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=1049
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=110 territory=622 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=1049
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=128 territory=622 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=1049
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=127 territory=759 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=1044
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=183 territory=963 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=721
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=169 territory=957 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=663
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=170 territory=957 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=663
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=171 territory=957 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=663
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=172 territory=958 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=1016
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=173 territory=958 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=1016
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=216 territory=1185 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=1343
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=200 territory=1187 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=1440
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=201 territory=1187 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=1440
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=202 territory=1188 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=1340
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=203 territory=1188 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=1340
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=204 territory=1188 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=1340
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=238 territory=1188 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=1340
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=205 territory=1189 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=1214
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=206 territory=1189 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=1214
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=217 territory=1186 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=0
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=207 territory=1190 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=1382
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=208 territory=1190 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=1382
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=209 territory=1190 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=1382
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=210 territory=1191 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=1437
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=211 territory=1191 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=1437
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=212 territory=1191 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=1437
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=133 territory=819 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=523
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=134 territory=820 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=769
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=132 territory=813 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=583
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=136 territory=813 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=583
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=137 territory=814 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=719
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=138 territory=814 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=719
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=139 territory=814 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=719
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=140 territory=815 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=661
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=161 territory=815 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=661
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=141 territory=815 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=661
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=144 territory=816 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=632
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=145 territory=816 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=632
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=146 territory=816 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=632
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=142 territory=817 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=589
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=143 territory=817 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=589
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=147 territory=818 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=889
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=148 territory=818 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=889
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=24 territory=156 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=323
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=182 territory=962 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=1080
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=166 territory=956 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=1114
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=167 territory=956 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=1114
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=168 territory=956 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=1114
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=174 territory=959 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=1216
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=175 territory=959 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=1216
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=179 territory=960 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=1314
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=180 territory=960 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=1314
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=181 territory=960 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=1314
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=176 territory=961 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=623
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=177 territory=961 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=623
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=178 territory=961 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=623
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=213 territory=1192 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=1314
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=214 territory=1192 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=1314
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=215 territory=1192 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=1314
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] teleport list: 111 rows, 111 estate-shaped (rest are plain aetherytes)
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] here: currentHouseId=0x0037015401CB0039 ward=11 plot=57 room=7 inside=True hasHousePermissions=True
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] here: indoorHouseId=0x0037015401CB0039
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] owned FreeCompanyEstate: 0x00370154000B0039
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] owned PersonalChambers: 0x0037015401CB0039
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] owned PersonalEstate: 0x0037028100030033
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] owned SharedEstate[0]: 0x00370154000B0020
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] owned SharedEstate[1]: 0xFFFFFFFFFFFFFFFF
+2026-08-23 10:58:21.902 -05:00 [INF] [BalambGarden] [Roster] owned ApartmentRoom: 0x003703D307470080
+2026-08-23 10:58:21.903 -05:00 [INF] [BalambGarden] [Probe] furniture vector: 2 entries, object array count: 600
+2026-08-23 10:58:21.903 -05:00 [INF] [BalambGarden] [Probe] furniture idx=0 id=65980 stain=0 pos=<-1.0, 0.0, 0.4> dist=2.6y
+2026-08-23 10:58:21.903 -05:00 [INF] [BalambGarden] [Probe] furniture idx=1 id=65980 stain=0 pos=<1.0, 0.0, 0.3> dist=2.7y
+2026-08-23 10:58:21.903 -05:00 [INF] [BalambGarden] [Probe] furniture within 45y: 2
+2026-08-23 10:58:21.904 -05:00 [INF] [BalambGarden] [Probe] pot-gate sheets: Item rows=52801, HousingFurniture rows=1793
+2026-08-23 10:58:21.904 -05:00 [INF] [BalambGarden] [Probe] pot-gate HF row=197051 itemRow=14055 name=Riviera Flowerpot cat=14
+2026-08-23 10:58:21.904 -05:00 [INF] [BalambGarden] [Probe] pot-gate HF row=197052 itemRow=14056 name=Glade Flowerpot cat=14
+2026-08-23 10:58:21.904 -05:00 [INF] [BalambGarden] [Probe] pot-gate HF row=197053 itemRow=14057 name=Oasis Flowerpot cat=14
+2026-08-23 10:58:21.904 -05:00 [INF] [BalambGarden] [Probe] pot-gate HF row range: 196608..198402
+2026-08-23 10:58:21.904 -05:00 [INF] [BalambGarden] [Probe] pot-gate: furniture x sheets x datamap
+2026-08-23 10:58:21.904 -05:00 [INF] [BalambGarden] [Probe] pot-gate idx=0 id=65980 | Item: - | HousingFurniture: cat=14 item=Glade Flowerpot | datamap: word0=0x0 b2=0 b3=0
+2026-08-23 10:58:21.904 -05:00 [INF] [BalambGarden] [Probe] pot-gate idx=1 id=65980 | Item: - | HousingFurniture: cat=14 item=Glade Flowerpot | datamap: word0=0x0 b2=0 b3=0
+2026-08-23 10:58:21.905 -05:00 [INF] [BalambGarden] [Probe] datamap: 2 entries (via MapSensor)
+2026-08-23 10:58:21.905 -05:00 [INF] [BalambGarden] [Probe] datamap key=0 bytes: 00 00 00 00 00 FF 00 00 00 00 00 FF 00 00 00 00 00 FF 00 00 00 00 00 FF 00 00 00 00 00 7F 00 00 00 00 00 FF 00 00 00 00 00 01 00 00 00 00 00 00 
+2026-08-23 10:58:21.905 -05:00 [INF] [BalambGarden] [Probe] datamap key=1 bytes: 00 00 00 00 00 FF 00 00 00 00 00 FF 00 00 00 00 00 FF 00 00 00 00 00 FF 00 00 00 00 00 7F 00 00 00 00 00 FF 00 00 00 00 00 01 00 00 00 00 00 00 
+2026-08-23 10:58:21.905 -05:00 [INF] [BalambGarden] [Probe] datamap entries logged: 2
+2026-08-23 10:58:21.906 -05:00 [INF] [BalambGarden] [Probe] mgr-diff: baseline snapshot taken (0x12E8 bytes)
+2026-08-23 10:58:21.908 -05:00 [INF] [BalambGarden] [Probe] object entity=40036B1B index=449 name='Glade Flowerpot' pos=<-1.0, 0.0, 0.4> dist=2.62y addr=1EF24A1FA80
+2026-08-23 10:58:21.908 -05:00 [INF] [BalambGarden] [Probe]   +000: A0 9A 0B 73 F6 7F 00 00 00 00 00 00 00 00 00 00 
+2026-08-23 10:58:21.908 -05:00 [INF] [BalambGarden] [Probe]   +010: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+2026-08-23 10:58:21.908 -05:00 [INF] [BalambGarden] [Probe]   +020: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+2026-08-23 10:58:21.908 -05:00 [INF] [BalambGarden] [Probe]   +030: 47 6C 61 64 65 20 46 6C 6F 77 65 72 70 6F 74 00 
+2026-08-23 10:58:21.908 -05:00 [INF] [BalambGarden] [Probe]   +040: 69 74 69 6F 6E 00 00 00 00 00 00 00 00 00 00 00 
+2026-08-23 10:58:21.908 -05:00 [INF] [BalambGarden] [Probe]   +050: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+2026-08-23 10:58:21.908 -05:00 [INF] [BalambGarden] [Probe]   +060: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+2026-08-23 10:58:21.908 -05:00 [INF] [BalambGarden] [Probe]   +070: 00 00 00 00 7B 13 00 00 1B 6B 03 40 00 00 00 00 
+2026-08-23 10:58:21.908 -05:00 [INF] [BalambGarden] [Probe]   +080: 00 00 00 00 BC 01 03 00 00 00 00 E0 C1 01 F9 00 
+2026-08-23 10:58:21.908 -05:00 [INF] [BalambGarden] [Probe]   +090: 0C 00 00 0F 00 0F 00 00 00 01 FB 21 00 00 00 00 
+2026-08-23 10:58:21.908 -05:00 [INF] [BalambGarden] [Probe]   +0A0: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+2026-08-23 10:58:21.908 -05:00 [INF] [BalambGarden] [Probe]   +0B0: 95 27 7B BF 00 00 00 00 60 91 C0 3E 00 00 00 00 
+2026-08-23 10:58:21.908 -05:00 [INF] [BalambGarden] [Probe]   +0C0: 00 00 49 B8 00 00 80 3F 00 00 80 3F 00 00 80 3F 
+2026-08-23 10:58:21.908 -05:00 [INF] [BalambGarden] [Probe]   +0D0: 00 00 00 3F 00 00 00 00 00 00 00 00 00 00 00 00 
+2026-08-23 10:58:21.908 -05:00 [INF] [BalambGarden] [Probe]   +0E0: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+2026-08-23 10:58:21.908 -05:00 [INF] [BalambGarden] [Probe]   +0F0: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+2026-08-23 10:58:21.908 -05:00 [INF] [BalambGarden] [Probe]   +100: 00 00 00 00 00 00 00 00 F0 0C 51 09 F1 01 00 00 
+2026-08-23 10:58:21.908 -05:00 [INF] [BalambGarden] [Probe]   +110: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+2026-08-23 10:58:21.908 -05:00 [INF] [BalambGarden] [Probe]   +120: 00 00 00 00 B5 92 11 3F 00 00 00 00 00 00 00 00 
+2026-08-23 10:58:21.908 -05:00 [INF] [BalambGarden] [Probe]   +130: 00 00 00 00 96 58 56 3E 00 00 00 00 00 00 00 00 
+2026-08-23 10:58:21.908 -05:00 [INF] [BalambGarden] [Probe]   +140: 95 27 7B BF 00 00 00 00 60 91 C0 3E 00 00 00 00 
+2026-08-23 10:58:21.908 -05:00 [INF] [BalambGarden] [Probe]   +150: 00 00 00 00 00 00 00 00 80 1B CB CF F0 01 00 00 
+2026-08-23 10:58:21.908 -05:00 [INF] [BalambGarden] [Probe]   +160: F0 40 18 02 F1 01 00 00 00 00 00 00 00 00 00 00 
+2026-08-23 10:58:21.908 -05:00 [INF] [BalambGarden] [Probe]   +170: 00 00 00 00 B5 92 11 3F 00 00 00 00 00 00 00 00 
+2026-08-23 10:58:21.908 -05:00 [INF] [BalambGarden] [Probe]   +180: 00 00 00 00 96 58 56 3E 00 00 00 00 00 00 00 00 
+2026-08-23 10:58:21.908 -05:00 [INF] [BalambGarden] [Probe]   +190: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+2026-08-23 10:58:21.908 -05:00 [INF] [BalambGarden] [Probe]   +1A0: 40 9D 0B 73 F6 7F 00 00 BC 01 03 00 00 00 00 00 
+2026-08-23 10:58:21.908 -05:00 [INF] [BalambGarden] [Probe]   +1B0: 00 01 00 00 00 33 00 00 01 00 00 00 00 00 00 00 
+2026-08-23 10:58:21.908 -05:00 [INF] [BalambGarden] [Probe]   +1C0: 01 00 00 34 00 00 15 80 00 00 00 35 00 00 15 92 
+2026-08-23 10:58:21.908 -05:00 [INF] [BalambGarden] [Probe]   +1D0: 80 FA A1 24 EF 01 00 00 00 00 00 00 00 00 15 B6 
+2026-08-23 10:58:21.908 -05:00 [INF] [BalambGarden] [Probe]   +1E0: 00 00 00 38 00 00 15 C8 00 00 00 39 00 00 15 DA 
+2026-08-23 10:58:21.908 -05:00 [INF] [BalambGarden] [Probe]   +1F0: 00 00 00 3A 00 00 15 EC 00 00 00 3B 00 00 15 FE 
+2026-08-23 10:58:21.908 -05:00 [INF] [BalambGarden] [Probe]   +200: 00 00 00 3C 00 00 16 10 00 00 00 3D 00 00 16 22 
+2026-08-23 10:58:21.908 -05:00 [INF] [BalambGarden] [Probe]   +210: A0 9A 0B 73 F6 7F 00 00 00 00 00 3F 00 00 16 46 
+2026-08-23 10:58:21.908 -05:00 [INF] [BalambGarden] [Probe]   draw: null
+2026-08-23 10:58:21.908 -05:00 [INF] [BalambGarden] [Probe] object entity=40036B1A index=450 name='Glade Flowerpot' pos=<1.0, 0.0, 0.3> dist=2.70y addr=1EF24A1FC90
+2026-08-23 10:58:21.908 -05:00 [INF] [BalambGarden] [Probe]   +000: A0 9A 0B 73 F6 7F 00 00 00 00 00 3F 00 00 16 46 
+2026-08-23 10:58:21.908 -05:00 [INF] [BalambGarden] [Probe]   +010: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+2026-08-23 10:58:21.908 -05:00 [INF] [BalambGarden] [Probe]   +020: 00 00 00 00 00 00 00 00 00 00 00 43 00 00 16 8E 
+2026-08-23 10:58:21.908 -05:00 [INF] [BalambGarden] [Probe]   +030: 47 6C 61 64 65 20 46 6C 6F 77 65 72 70 6F 74 00 
+2026-08-23 10:58:21.908 -05:00 [INF] [BalambGarden] [Probe]   +040: 69 74 69 6F 6E 00 00 14 00 00 00 47 00 00 17 4E 
+2026-08-23 10:58:21.908 -05:00 [INF] [BalambGarden] [Probe]   +050: 00 00 00 48 00 00 17 88 00 00 00 49 00 00 17 C2 
+2026-08-23 10:58:21.908 -05:00 [INF] [BalambGarden] [Probe]   +060: 00 00 00 4A 00 00 17 FC 00 00 00 4B 00 00 18 36 
+2026-08-23 10:58:21.908 -05:00 [INF] [BalambGarden] [Probe]   +070: 00 00 00 4C 7A 13 00 00 1A 6B 03 40 00 00 00 00 
+2026-08-23 10:58:21.908 -05:00 [INF] [BalambGarden] [Probe]   +080: 00 00 00 00 BC 01 03 00 00 00 00 E0 C2 01 F9 00 
+2026-08-23 10:58:21.908 -05:00 [INF] [BalambGarden] [Probe]   +090: 0C 00 00 0F 00 0F 00 00 00 01 FB 21 00 00 19 92 
+2026-08-23 10:58:21.908 -05:00 [INF] [BalambGarden] [Probe]   +0A0: 00 00 00 00 00 00 19 CC 00 00 00 53 00 00 1A 06 
+2026-08-23 10:58:21.908 -05:00 [INF] [BalambGarden] [Probe]   +0B0: E8 E1 80 3F 00 00 00 00 F0 38 AD 3E 00 00 00 00 
+2026-08-23 10:58:21.908 -05:00 [INF] [BalambGarden] [Probe]   +0C0: 00 00 49 B8 00 00 80 3F 00 00 80 3F 00 00 80 3F 
+2026-08-23 10:58:21.908 -05:00 [INF] [BalambGarden] [Probe]   +0D0: 00 00 00 3F 00 00 1B 28 00 00 00 59 00 00 1B 62 
+2026-08-23 10:58:21.908 -05:00 [INF] [BalambGarden] [Probe]   +0E0: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+2026-08-23 10:58:21.908 -05:00 [INF] [BalambGarden] [Probe]   +0F0: 00 00 00 00 00 00 00 00 00 00 00 5D 00 00 1C 4A 
+2026-08-23 10:58:21.908 -05:00 [INF] [BalambGarden] [Probe]   +100: 00 00 00 00 00 00 00 00 F0 CD 50 09 F1 01 00 00 
+2026-08-23 10:58:21.908 -05:00 [INF] [BalambGarden] [Probe]   +110: 00 00 00 00 00 00 1C F8 00 00 00 00 00 00 00 00 
+2026-08-23 10:58:21.908 -05:00 [INF] [BalambGarden] [Probe]   +120: 00 00 00 00 B5 92 11 3F 00 00 00 00 00 00 00 00 
+2026-08-23 10:58:21.908 -05:00 [INF] [BalambGarden] [Probe]   +130: 00 00 00 00 96 58 56 3E 00 00 00 00 00 00 00 00 
+2026-08-23 10:58:21.908 -05:00 [INF] [BalambGarden] [Probe]   +140: E8 E1 80 3F 00 00 00 00 F0 38 AD 3E 00 00 00 00 
+2026-08-23 10:58:21.908 -05:00 [INF] [BalambGarden] [Probe]   +150: 00 00 00 00 00 00 1E C8 20 1A CB CF F0 01 00 00 
+2026-08-23 10:58:21.908 -05:00 [INF] [BalambGarden] [Probe]   +160: F0 40 18 02 F1 01 00 00 00 00 00 00 00 00 00 00 
+2026-08-23 10:58:21.908 -05:00 [INF] [BalambGarden] [Probe]   +170: 00 00 00 00 B5 92 11 3F 00 00 00 00 00 00 00 00 
+2026-08-23 10:58:21.908 -05:00 [INF] [BalambGarden] [Probe]   +180: 00 00 00 00 96 58 56 3E 00 00 00 00 00 00 00 00 
+2026-08-23 10:58:21.908 -05:00 [INF] [BalambGarden] [Probe]   +190: 00 00 00 70 00 00 1F A8 00 00 00 71 00 00 1F BA 
+2026-08-23 10:58:21.908 -05:00 [INF] [BalambGarden] [Probe]   +1A0: 40 9D 0B 73 F6 7F 00 00 BC 01 03 00 00 00 01 00 
+2026-08-23 10:58:21.908 -05:00 [INF] [BalambGarden] [Probe]   +1B0: 00 01 00 00 12 33 00 07 01 00 00 75 00 00 20 02 
+2026-08-23 10:58:21.908 -05:00 [INF] [BalambGarden] [Probe]   +1C0: 01 00 00 76 00 00 20 14 00 00 00 77 00 00 20 4E 
+2026-08-23 10:58:21.908 -05:00 [INF] [BalambGarden] [Probe]   +1D0: 90 FC A1 24 EF 01 00 00 00 00 00 00 00 00 20 C2 
+2026-08-23 10:58:21.908 -05:00 [INF] [BalambGarden] [Probe]   +1E0: 00 00 00 7A 00 00 20 FC 00 00 00 7B 00 00 21 36 
+2026-08-23 10:58:21.908 -05:00 [INF] [BalambGarden] [Probe]   +1F0: 00 00 00 7C 00 00 21 70 00 00 00 7D 00 00 21 AA 
+2026-08-23 10:58:21.908 -05:00 [INF] [BalambGarden] [Probe]   +200: 00 00 00 7E 00 00 21 E4 00 00 00 7F 00 00 22 1E 
+2026-08-23 10:58:21.908 -05:00 [INF] [BalambGarden] [Probe]   +210: 30 DB E0 72 F6 7F 00 00 00 00 00 81 00 00 22 92 
+2026-08-23 10:58:21.908 -05:00 [INF] [BalambGarden] [Probe]   draw: null
+2026-08-23 10:58:21.908 -05:00 [INF] [BalambGarden] [Probe] dumped 2 objects (220 bytes each)
+2026-08-23 10:58:21.908 -05:00 [INF] [BalambGarden] [Recon] zone (385), 0 beds in 40y:
+2026-08-23 10:58:21.908 -05:00 [INF] [BalambGarden] [Recon] ===== capture end =====
+2026-08-23 10:58:30.616 -05:00 [INF] [BalambGarden] [ChatRecon] kind=SystemMessage/57 src=None tgt=None sender='Adventurer in Need' text='Duty Roulette: Leveling needs a Dps.'
+2026-08-23 10:58:30.616 -05:00 [INF] [BalambGarden] [ChatRecon]   payloads: UIForegroundPayload|TextPayload|UIForegroundPayload|TextPayload|IconPayload|UIForegroundPayload|TextPayload|UIForegroundPayload|TextPayload
+2026-08-23 10:58:30.616 -05:00 [INF] [BalambGarden] [ChatRecon]   zone=385 target=none soft=none prev=none
+2026-08-23 10:59:38.491 -05:00 [INF] [BalambGarden] [PlantRecon] --- Talk (12 values) ---
+2026-08-23 10:59:38.491 -05:00 [INF] [BalambGarden] [PlantRecon] Talk AtkValues[0] = 'There is nothing in this flowerpot.'
+2026-08-23 10:59:40.609 -05:00 [INF] [BalambGarden] [ChatRecon] kind=SystemMessage/57 src=None tgt=None text='There is nothing in this flowerpot.'
+2026-08-23 10:59:40.609 -05:00 [INF] [BalambGarden] [ChatRecon]   zone=385 target='Glade Flowerpot'(pot key=0) soft=none prev=none
+2026-08-23 10:59:40.680 -05:00 [INF] [BalambGarden] [PlantRecon] --- SelectString (9 values) ---
+2026-08-23 10:59:40.680 -05:00 [INF] [BalambGarden] [PlantRecon] SelectString AtkValues[7] = 'Plant Seeds'
+2026-08-23 10:59:40.680 -05:00 [INF] [BalambGarden] [PlantRecon] SelectString AtkValues[8] = 'Quit'
+2026-08-23 10:59:41.947 -05:00 [INF] [BalambGarden] [PlantRecon] --- HousingGardening (0 values) ---
+2026-08-23 10:59:41.948 -05:00 [INF] [BalambGarden] [PlantRecon] node tree: 10 nodes
+2026-08-23 10:59:41.949 -05:00 [INF] [BalambGarden] [PlantRecon]   [0] id=1 type=Res vis=True click=False pos=(1590,628) size=260x184
+2026-08-23 10:59:41.949 -05:00 [INF] [BalambGarden] [PlantRecon]   [1] id=10 type=1005 vis=True click=False pos=(1590,628) size=260x184 comp=Window children=11
+2026-08-23 10:59:41.949 -05:00 [INF] [BalambGarden] [PlantRecon]     .0 id=12 type=Collision vis=True click=False
+2026-08-23 10:59:41.949 -05:00 [INF] [BalambGarden] [PlantRecon]     .1 id=11 type=Collision vis=True click=False
+2026-08-23 10:59:41.949 -05:00 [INF] [BalambGarden] [PlantRecon]     .2 id=10 type=NineGrid vis=True click=False
+2026-08-23 10:59:41.949 -05:00 [INF] [BalambGarden] [PlantRecon]     .3 id=9 type=NineGrid vis=False click=False
+2026-08-23 10:59:41.949 -05:00 [INF] [BalambGarden] [PlantRecon]     .4 id=8 type=Image vis=True click=False
+2026-08-23 10:59:41.949 -05:00 [INF] [BalambGarden] [PlantRecon]     .5 id=2 type=Res vis=True click=False
+2026-08-23 10:59:41.949 -05:00 [INF] [BalambGarden] [PlantRecon]     .6 id=7 type=1002 vis=True click=False comp=Button
+2026-08-23 10:59:41.949 -05:00 [INF] [BalambGarden] [PlantRecon]     .7 id=6 type=1003 vis=False click=False comp=Button
+2026-08-23 10:59:41.949 -05:00 [INF] [BalambGarden] [PlantRecon]     .8 id=5 type=1004 vis=False click=False comp=Button
+2026-08-23 10:59:41.949 -05:00 [INF] [BalambGarden] [PlantRecon]     .9 id=4 type=Text vis=True click=False
+2026-08-23 10:59:41.949 -05:00 [INF] [BalambGarden] [PlantRecon]     .10 id=3 type=Text vis=True click=False
+2026-08-23 10:59:41.949 -05:00 [INF] [BalambGarden] [PlantRecon]   [2] id=9 type=1001 vis=True click=False pos=(1724,764) size=100x28 comp=Button children=3
+2026-08-23 10:59:41.949 -05:00 [INF] [BalambGarden] [PlantRecon]     .0 id=4 type=Collision vis=True click=True
+2026-08-23 10:59:41.949 -05:00 [INF] [BalambGarden] [PlantRecon]     .1 id=3 type=NineGrid vis=True click=False
+2026-08-23 10:59:41.949 -05:00 [INF] [BalambGarden] [PlantRecon]     .2 id=2 type=Text vis=True click=False
+2026-08-23 10:59:41.949 -05:00 [INF] [BalambGarden] [PlantRecon]   [3] id=8 type=1001 vis=True click=False pos=(1616,764) size=100x28 comp=Button children=3
+2026-08-23 10:59:41.949 -05:00 [INF] [BalambGarden] [PlantRecon]     .0 id=4 type=Collision vis=True click=True
+2026-08-23 10:59:41.949 -05:00 [INF] [BalambGarden] [PlantRecon]     .1 id=3 type=NineGrid vis=True click=False
+2026-08-23 10:59:41.949 -05:00 [INF] [BalambGarden] [PlantRecon]     .2 id=2 type=Text vis=True click=False
+2026-08-23 10:59:41.949 -05:00 [INF] [BalambGarden] [PlantRecon]   [4] id=7 type=1007 vis=True click=False pos=(1744,696) size=44x44 comp=DragDrop children=3
+2026-08-23 10:59:41.949 -05:00 [INF] [BalambGarden] [PlantRecon]     .0 id=4 type=Collision vis=True click=False
+2026-08-23 10:59:41.949 -05:00 [INF] [BalambGarden] [PlantRecon]     .1 id=3 type=Image vis=True click=False
+2026-08-23 10:59:41.949 -05:00 [INF] [BalambGarden] [PlantRecon]     .2 id=2 type=1006 vis=True click=False comp=Icon
+2026-08-23 10:59:41.949 -05:00 [INF] [BalambGarden] [PlantRecon]   [5] id=6 type=1007 vis=True click=False pos=(1652,696) size=44x44 comp=DragDrop children=3
+2026-08-23 10:59:41.949 -05:00 [INF] [BalambGarden] [PlantRecon]     .0 id=4 type=Collision vis=True click=False
+2026-08-23 10:59:41.949 -05:00 [INF] [BalambGarden] [PlantRecon]     .1 id=3 type=Image vis=True click=False
+2026-08-23 10:59:41.949 -05:00 [INF] [BalambGarden] [PlantRecon]     .2 id=2 type=1006 vis=True click=False comp=Icon
+2026-08-23 10:59:41.949 -05:00 [INF] [BalambGarden] [PlantRecon]   [6] id=3 type=Res vis=True click=False pos=(1658,703) size=124x32
+2026-08-23 10:59:41.949 -05:00 [INF] [BalambGarden] [PlantRecon]   [7] id=5 type=Image vis=False click=False pos=(1750,703) size=32x32
+2026-08-23 10:59:41.949 -05:00 [INF] [BalambGarden] [PlantRecon]   [8] id=4 type=Image vis=False click=False pos=(1658,703) size=32x32
+2026-08-23 10:59:41.949 -05:00 [INF] [BalambGarden] [PlantRecon]   [9] id=2 type=Text vis=False click=False pos=(1618,674) size=200x18
+2026-08-23 10:59:42.742 -05:00 [INF] [BalambGarden] [PlantRecon] HousingGardening receive DragDropRollOver param=1
+2026-08-23 10:59:42.977 -05:00 [INF] [BalambGarden] [PlantRecon] HousingGardening receive MouseDown param=1
+2026-08-23 10:59:42.977 -05:00 [INF] [BalambGarden] [PlantRecon] HousingGardening receive DragDropClick param=1
+2026-08-23 10:59:42.994 -05:00 [INF] [BalambGarden] [PlantRecon] --- ContextIconMenu (19 values) ---
+2026-08-23 10:59:42.994 -05:00 [INF] [BalambGarden] [PlantRecon] ContextIconMenu AtkValues[13] = 'Potting Soil'
+2026-08-23 10:59:42.994 -05:00 [INF] [BalambGarden] [PlantRecon] ContextIconMenu AtkValues[5] int = -1
+2026-08-23 10:59:42.994 -05:00 [INF] [BalambGarden] [PlantRecon] HousingGardening receive DragDropRollOut param=1
+2026-08-23 10:59:42.994 -05:00 [INF] [BalambGarden] [PlantRecon] ContextIconMenu receive ListItemRollOver param=3
+2026-08-23 10:59:43.584 -05:00 [INF] [BalambGarden] [PlantRecon] ContextIconMenu receive ListItemClick param=0
+2026-08-23 10:59:43.598 -05:00 [INF] [BalambGarden] [PlantRecon] ContextIconMenu receive ListItemRollOut param=2
+2026-08-23 10:59:43.687 -05:00 [INF] [BalambGarden] [PlantRecon] HousingGardening receive DragDropRollOver param=2
+2026-08-23 10:59:43.934 -05:00 [INF] [BalambGarden] [PlantRecon] HousingGardening receive MouseDown param=2
+2026-08-23 10:59:43.934 -05:00 [INF] [BalambGarden] [PlantRecon] HousingGardening receive DragDropClick param=2
+2026-08-23 10:59:43.952 -05:00 [INF] [BalambGarden] [PlantRecon] --- ContextIconMenu (19 values) ---
+2026-08-23 10:59:43.952 -05:00 [INF] [BalambGarden] [PlantRecon] ContextIconMenu AtkValues[13] = 'Krakka Root Seeds'
+2026-08-23 10:59:43.952 -05:00 [INF] [BalambGarden] [PlantRecon] ContextIconMenu AtkValues[5] int = -1
+2026-08-23 10:59:43.952 -05:00 [INF] [BalambGarden] [PlantRecon] HousingGardening receive DragDropRollOut param=2
+2026-08-23 10:59:43.952 -05:00 [INF] [BalambGarden] [PlantRecon] ContextIconMenu receive ListItemRollOver param=3
+2026-08-23 10:59:44.435 -05:00 [INF] [BalambGarden] [PlantRecon] ContextIconMenu receive ListItemClick param=0
+2026-08-23 10:59:44.450 -05:00 [INF] [BalambGarden] [PlantRecon] ContextIconMenu receive ListItemRollOut param=2
+2026-08-23 10:59:44.450 -05:00 [INF] [BalambGarden] [PlantRecon] HousingGardening receive DragDropRollOver param=2
+2026-08-23 10:59:44.556 -05:00 [INF] [BalambGarden] [PlantRecon] HousingGardening receive DragDropRollOut param=2
+2026-08-23 10:59:45.880 -05:00 [INF] [BalambGarden] [PlantRecon] HousingGardening receive ButtonClick param=4
+2026-08-23 10:59:45.897 -05:00 [INF] [BalambGarden] [PlantRecon] --- SelectYesno (13 values) ---
+2026-08-23 10:59:45.897 -05:00 [INF] [BalambGarden] [PlantRecon] SelectYesno AtkValues[0] = 'Prepare the bed with a bag of potting soil and a bag of krakka root seeds?'
+2026-08-23 10:59:45.897 -05:00 [INF] [BalambGarden] [PlantRecon] SelectYesno AtkValues[1] = 'Yes'
+2026-08-23 10:59:45.897 -05:00 [INF] [BalambGarden] [PlantRecon] SelectYesno AtkValues[2] = 'No'
+2026-08-23 10:59:48.286 -05:00 [INF] [BalambGarden] [ChatRecon] kind=SystemMessage/57 src=LocalPlayer tgt=None text='Seeds planted in flowerpot.'
+2026-08-23 10:59:48.286 -05:00 [INF] [BalambGarden] [ChatRecon]   zone=385 target=none soft=none prev='Glade Flowerpot'(pot key=0)
+2026-08-23 10:59:57.298 -05:00 [INF] [BalambGarden] [PlantRecon] --- Talk (12 values) ---
+2026-08-23 10:59:57.298 -05:00 [INF] [BalambGarden] [PlantRecon] Talk AtkValues[0] = 'Krakka Root
+2026-08-23 10:59:58.406 -05:00 [INF] [BalambGarden] [ChatRecon] kind=SystemMessage/57 src=None tgt=None text='Krakka Root
+2026-08-23 10:59:58.406 -05:00 [INF] [BalambGarden] [ChatRecon]   payloads: UIForegroundPayload|UIGlowPayload|TextPayload|UIGlowPayload|UIForegroundPayload|TextPayload
+2026-08-23 10:59:58.406 -05:00 [INF] [BalambGarden] [ChatRecon]   zone=385 target='Glade Flowerpot'(pot key=0) soft=none prev='Glade Flowerpot'(pot key=0)
+2026-08-23 10:59:58.477 -05:00 [INF] [BalambGarden] [PlantRecon] --- SelectString (11 values) ---
+2026-08-23 10:59:58.477 -05:00 [INF] [BalambGarden] [PlantRecon] SelectString AtkValues[7] = 'Fertilize Crop'
+2026-08-23 10:59:58.477 -05:00 [INF] [BalambGarden] [PlantRecon] SelectString AtkValues[8] = 'Tend Crop'
+2026-08-23 10:59:58.477 -05:00 [INF] [BalambGarden] [PlantRecon] SelectString AtkValues[9] = 'Remove Crop'
+2026-08-23 10:59:58.477 -05:00 [INF] [BalambGarden] [PlantRecon] SelectString AtkValues[10] = 'Quit'
+2026-08-23 11:00:02.670 -05:00 [INF] [BalambGarden] [ChatRecon] kind=SystemMessage/57 src=LocalPlayer tgt=None text='Pomace added to flowerpot.'
+2026-08-23 11:00:02.670 -05:00 [INF] [BalambGarden] [ChatRecon]   zone=385 target=none soft=none prev='Glade Flowerpot'(pot key=0)
+2026-08-23 11:00:10.894 -05:00 [INF] [BalambGarden] [PlantRecon] --- Talk (12 values) ---
+2026-08-23 11:00:10.894 -05:00 [INF] [BalambGarden] [PlantRecon] Talk AtkValues[0] = 'Krakka Root
+2026-08-23 11:00:11.750 -05:00 [INF] [BalambGarden] [ChatRecon] kind=SystemMessage/57 src=None tgt=None text='Krakka Root
+2026-08-23 11:00:11.750 -05:00 [INF] [BalambGarden] [ChatRecon]   payloads: UIForegroundPayload|UIGlowPayload|TextPayload|UIGlowPayload|UIForegroundPayload|TextPayload
+2026-08-23 11:00:11.750 -05:00 [INF] [BalambGarden] [ChatRecon]   zone=385 target='Glade Flowerpot'(pot key=0) soft=none prev='Glade Flowerpot'(pot key=0)
+2026-08-23 11:00:11.820 -05:00 [INF] [BalambGarden] [PlantRecon] --- SelectString (11 values) ---
+2026-08-23 11:00:11.820 -05:00 [INF] [BalambGarden] [PlantRecon] SelectString AtkValues[7] = 'Fertilize Crop'
+2026-08-23 11:00:11.820 -05:00 [INF] [BalambGarden] [PlantRecon] SelectString AtkValues[8] = 'Tend Crop'
+2026-08-23 11:00:11.820 -05:00 [INF] [BalambGarden] [PlantRecon] SelectString AtkValues[9] = 'Remove Crop'
+2026-08-23 11:00:11.820 -05:00 [INF] [BalambGarden] [PlantRecon] SelectString AtkValues[10] = 'Quit'
+2026-08-23 11:00:12.948 -05:00 [INF] [BalambGarden] [ChatRecon] kind=SystemMessage/57 src=LocalPlayer tgt=None text='The crops appear to be healthy.'
+2026-08-23 11:00:12.948 -05:00 [INF] [BalambGarden] [ChatRecon]   zone=385 target=none soft=none prev='Glade Flowerpot'(pot key=0)
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Recon] ===== capture start =====
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Probe] Housing: territory=385 ward=11 plot=57 room=7 inside=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Probe] HouseId: 0x0037015401CB0039 territory=340 world=55 ward=11 plot=57 room=7 isApartment=False apartmentDivision=57 isWorkshop=False
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=165 territory=979 estateType=ApartmentRoom(6) ward=0 plot=0 subIndex=128 sharedHouse=False apartment=True gil=78
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0x003703D307470080 territory=979 world=55 ward=7 plot=0 room=29 isApartment=True apartmentDivision=0 isWorkshop=False
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=97 territory=641 estateType=PersonalEstate(2) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=303
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0x0037028100030033 territory=641 world=55 ward=3 plot=51 room=0 isApartment=False apartmentDivision=51 isWorkshop=False
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=57 territory=340 estateType=FreeCompanyEstate(0) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=25
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0x00370154000B0039 territory=340 world=55 ward=11 plot=57 room=0 isApartment=False apartmentDivision=57 isWorkshop=False
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=60 territory=340 estateType=SharedEstate(4) ward=12 plot=33 subIndex=1 sharedHouse=True apartment=False gil=25
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0x00370154000B0020 territory=340 world=55 ward=11 plot=32 room=0 isApartment=False apartmentDivision=32 isWorkshop=False
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=8 territory=129 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=308
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=52 territory=134 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=589
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=10 territory=135 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=573
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=11 territory=137 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=503
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=12 territory=137 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=503
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=13 territory=138 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=599
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=14 territory=138 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=599
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=15 territory=139 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=529
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=16 territory=180 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=495
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=55 territory=250 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=693
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=2 territory=132 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=50
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=3 territory=148 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=158
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=4 territory=152 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=188
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=5 territory=153 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=221
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=6 territory=153 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=221
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=7 territory=154 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=180
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=9 territory=130 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=257
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=17 territory=140 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=531
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=53 territory=141 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=435
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=18 territory=145 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=354
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=19 territory=146 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=542
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=20 territory=146 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=542
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=21 territory=147 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=355
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=22 territory=147 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=355
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=62 territory=144 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=583
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=70 territory=418 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=315
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=23 territory=155 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=289
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=71 territory=397 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=418
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=72 territory=401 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=306
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=73 territory=401 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=306
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=74 territory=402 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=345
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=75 territory=478 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=667
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=76 territory=398 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=500
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=77 territory=398 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=500
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=78 territory=400 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=606
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=79 territory=400 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=606
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=104 territory=635 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=240
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=98 territory=612 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=204
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=99 territory=612 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=204
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=100 territory=620 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=306
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=101 territory=620 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=306
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=102 territory=621 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=332
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=103 territory=621 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=332
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=111 territory=628 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=1213
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=105 territory=613 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=1159
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=106 territory=613 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=1159
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=107 territory=614 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=1063
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=108 territory=614 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=1063
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=109 territory=622 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=1049
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=110 territory=622 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=1049
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=128 territory=622 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=1049
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=127 territory=759 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=1044
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=183 territory=963 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=721
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=169 territory=957 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=663
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=170 territory=957 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=663
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=171 territory=957 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=663
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=172 territory=958 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=1016
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=173 territory=958 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=1016
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=216 territory=1185 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=1343
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=200 territory=1187 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=1440
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=201 territory=1187 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=1440
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=202 territory=1188 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=1340
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=203 territory=1188 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=1340
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=204 territory=1188 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=1340
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=238 territory=1188 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=1340
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=205 territory=1189 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=1214
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=206 territory=1189 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=1214
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=217 territory=1186 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=0
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=207 territory=1190 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=1382
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=208 territory=1190 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=1382
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=209 territory=1190 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=1382
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=210 territory=1191 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=1437
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=211 territory=1191 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=1437
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=212 territory=1191 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=1437
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=133 territory=819 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=523
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=134 territory=820 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=769
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=132 territory=813 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=583
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=136 territory=813 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=583
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=137 territory=814 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=719
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=138 territory=814 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=719
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=139 territory=814 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=719
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=140 territory=815 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=661
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=161 territory=815 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=661
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=141 territory=815 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=661
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=144 territory=816 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=632
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=145 territory=816 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=632
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=146 territory=816 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=632
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=142 territory=817 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=589
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=143 territory=817 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=589
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=147 territory=818 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=889
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=148 territory=818 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=889
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=24 territory=156 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=323
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=182 territory=962 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=1080
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=166 territory=956 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=1114
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=167 territory=956 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=1114
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=168 territory=956 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=1114
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=174 territory=959 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=1216
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=175 territory=959 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=1216
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=179 territory=960 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=1314
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=180 territory=960 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=1314
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=181 territory=960 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=1314
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=176 territory=961 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=623
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=177 territory=961 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=623
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=178 territory=961 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=623
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=213 territory=1192 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=1314
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=214 territory=1192 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=1314
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] row aetheryte=215 territory=1192 estateType=255(255) ward=0 plot=0 subIndex=0 sharedHouse=False apartment=False gil=1314
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster]   houseId=0xFFFFFFFFFFFFFFFF territory=65535 world=65535 ward=63 plot=127 room=1023 isApartment=False apartmentDivision=127 isWorkshop=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] teleport list: 111 rows, 111 estate-shaped (rest are plain aetherytes)
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] here: currentHouseId=0x0037015401CB0039 ward=11 plot=57 room=7 inside=True hasHousePermissions=True
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] here: indoorHouseId=0x0037015401CB0039
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] owned FreeCompanyEstate: 0x00370154000B0039
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] owned PersonalChambers: 0x0037015401CB0039
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] owned PersonalEstate: 0x0037028100030033
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] owned SharedEstate[0]: 0x00370154000B0020
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] owned SharedEstate[1]: 0xFFFFFFFFFFFFFFFF
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Roster] owned ApartmentRoom: 0x003703D307470080
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Probe] furniture vector: 2 entries, object array count: 600
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Probe] furniture idx=0 id=65980 stain=0 pos=<-1.0, 0.0, 0.4> dist=2.6y
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Probe] furniture idx=1 id=65980 stain=0 pos=<1.0, 0.0, 0.3> dist=2.7y
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Probe] furniture within 45y: 2
+2026-08-23 11:00:24.182 -05:00 [INF] [BalambGarden] [Probe] pot-gate sheets: Item rows=52801, HousingFurniture rows=1793
+2026-08-23 11:00:24.183 -05:00 [INF] [BalambGarden] [Probe] pot-gate HF row=197051 itemRow=14055 name=Riviera Flowerpot cat=14
+2026-08-23 11:00:24.183 -05:00 [INF] [BalambGarden] [Probe] pot-gate HF row=197052 itemRow=14056 name=Glade Flowerpot cat=14
+2026-08-23 11:00:24.183 -05:00 [INF] [BalambGarden] [Probe] pot-gate HF row=197053 itemRow=14057 name=Oasis Flowerpot cat=14
+2026-08-23 11:00:24.183 -05:00 [INF] [BalambGarden] [Probe] pot-gate HF row range: 196608..198402
+2026-08-23 11:00:24.183 -05:00 [INF] [BalambGarden] [Probe] pot-gate: furniture x sheets x datamap
+2026-08-23 11:00:24.183 -05:00 [INF] [BalambGarden] [Probe] pot-gate idx=0 id=65980 | Item: - | HousingFurniture: cat=14 item=Glade Flowerpot | datamap: word0=0x31 b2=1 b3=0
+2026-08-23 11:00:24.183 -05:00 [INF] [BalambGarden] [Probe] pot-gate idx=1 id=65980 | Item: - | HousingFurniture: cat=14 item=Glade Flowerpot | datamap: word0=0x0 b2=0 b3=0
+2026-08-23 11:00:24.183 -05:00 [INF] [BalambGarden] [Probe] datamap: 2 entries (via MapSensor)
+2026-08-23 11:00:24.183 -05:00 [INF] [BalambGarden] [Probe] datamap key=0 bytes: 31 00 01 00 00 FF 00 00 00 00 00 FF 00 00 00 00 00 FF 00 00 00 00 00 FF 00 00 00 00 00 7F 00 00 00 00 00 FF 00 00 00 00 00 01 00 00 00 00 00 00 
+2026-08-23 11:00:24.183 -05:00 [INF] [BalambGarden] [Probe] key=0 outdoor decode (1/8 occupied):
+2026-08-23 11:00:24.183 -05:00 [INF] [BalambGarden] [Probe] key=0 indoor decode: Krakka Root (0x31) stage=01 extra=00 recognized=True
+2026-08-23 11:00:24.183 -05:00 [INF] [BalambGarden] [Probe] datamap key=1 bytes: 00 00 00 00 00 FF 00 00 00 00 00 FF 00 00 00 00 00 FF 00 00 00 00 00 FF 00 00 00 00 00 7F 00 00 00 00 00 FF 00 00 00 00 00 01 00 00 00 00 00 00 
+2026-08-23 11:00:24.183 -05:00 [INF] [BalambGarden] [Probe] datamap entries logged: 2
+2026-08-23 11:00:24.183 -05:00 [INF] [BalambGarden] [Probe] mgr-diff: 0 byte(s) changed since last capture
+2026-08-23 11:00:24.183 -05:00 [INF] [BalambGarden] [Probe] object entity=40036B1B index=449 name='Glade Flowerpot' pos=<-1.0, 0.0, 0.4> dist=2.62y addr=1EF24A1FA80
+2026-08-23 11:00:24.183 -05:00 [INF] [BalambGarden] [Probe]   +000: A0 9A 0B 73 F6 7F 00 00 00 00 00 00 00 00 00 00 
+2026-08-23 11:00:24.183 -05:00 [INF] [BalambGarden] [Probe]   +010: 95 27 7B BF 00 00 00 00 60 91 C0 3E 00 00 00 00 
+2026-08-23 11:00:24.183 -05:00 [INF] [BalambGarden] [Probe]   +020: 00 00 49 B8 00 00 00 00 00 00 00 00 00 00 00 00 
+2026-08-23 11:00:24.183 -05:00 [INF] [BalambGarden] [Probe]   +030: 47 6C 61 64 65 20 46 6C 6F 77 65 72 70 6F 74 00 
+2026-08-23 11:00:24.183 -05:00 [INF] [BalambGarden] [Probe]   +040: 69 74 69 6F 6E 00 00 00 00 00 00 00 00 00 00 00 
+2026-08-23 11:00:24.183 -05:00 [INF] [BalambGarden] [Probe]   +050: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+2026-08-23 11:00:24.183 -05:00 [INF] [BalambGarden] [Probe]   +060: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+2026-08-23 11:00:24.183 -05:00 [INF] [BalambGarden] [Probe]   +070: 00 00 00 00 7B 13 00 00 1B 6B 03 40 00 00 00 00 
+2026-08-23 11:00:24.183 -05:00 [INF] [BalambGarden] [Probe]   +080: 00 00 00 00 BC 01 03 00 00 00 00 E0 C1 01 F9 00 
+2026-08-23 11:00:24.183 -05:00 [INF] [BalambGarden] [Probe]   +090: 0C 00 00 0F 00 0F 00 00 00 01 FB 21 00 00 00 00 
+2026-08-23 11:00:24.183 -05:00 [INF] [BalambGarden] [Probe]   +0A0: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+2026-08-23 11:00:24.183 -05:00 [INF] [BalambGarden] [Probe]   +0B0: 95 27 7B BF 00 00 00 00 60 91 C0 3E 00 00 00 00 
+2026-08-23 11:00:24.183 -05:00 [INF] [BalambGarden] [Probe]   +0C0: 00 00 49 B8 00 00 80 3F 00 00 80 3F 00 00 80 3F 
+2026-08-23 11:00:24.183 -05:00 [INF] [BalambGarden] [Probe]   +0D0: 00 00 00 3F 00 00 00 00 00 00 00 00 00 00 00 00 
+2026-08-23 11:00:24.183 -05:00 [INF] [BalambGarden] [Probe]   +0E0: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+2026-08-23 11:00:24.183 -05:00 [INF] [BalambGarden] [Probe]   +0F0: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+2026-08-23 11:00:24.183 -05:00 [INF] [BalambGarden] [Probe]   +100: 00 00 00 00 00 00 00 00 F0 0C 51 09 F1 01 00 00 
+2026-08-23 11:00:24.183 -05:00 [INF] [BalambGarden] [Probe]   +110: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+2026-08-23 11:00:24.183 -05:00 [INF] [BalambGarden] [Probe]   +120: 00 00 00 00 B5 92 11 3F 00 00 00 00 00 00 00 00 
+2026-08-23 11:00:24.183 -05:00 [INF] [BalambGarden] [Probe]   +130: 00 00 00 00 96 58 56 3E 00 00 00 00 00 00 00 00 
+2026-08-23 11:00:24.183 -05:00 [INF] [BalambGarden] [Probe]   +140: 95 27 7B BF 00 00 00 00 60 91 C0 3E 00 00 00 00 
+2026-08-23 11:00:24.183 -05:00 [INF] [BalambGarden] [Probe]   +150: 00 00 00 00 00 00 00 00 80 1B CB CF F0 01 00 00 
+2026-08-23 11:00:24.183 -05:00 [INF] [BalambGarden] [Probe]   +160: F0 40 18 02 F1 01 00 00 00 00 00 00 00 00 00 00 
+2026-08-23 11:00:24.183 -05:00 [INF] [BalambGarden] [Probe]   +170: 00 00 00 00 B5 92 11 3F 00 00 00 00 00 00 00 00 
+2026-08-23 11:00:24.183 -05:00 [INF] [BalambGarden] [Probe]   +180: 00 00 00 00 96 58 56 3E 00 00 00 00 00 00 00 00 
+2026-08-23 11:00:24.183 -05:00 [INF] [BalambGarden] [Probe]   +190: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+2026-08-23 11:00:24.183 -05:00 [INF] [BalambGarden] [Probe]   +1A0: 40 9D 0B 73 F6 7F 00 00 BC 01 03 00 00 00 00 00 
+2026-08-23 11:00:24.183 -05:00 [INF] [BalambGarden] [Probe]   +1B0: 00 01 00 00 00 33 00 00 01 00 00 00 00 00 00 00 
+2026-08-23 11:00:24.183 -05:00 [INF] [BalambGarden] [Probe]   +1C0: 01 00 00 34 00 00 15 80 00 00 00 35 00 00 15 92 
+2026-08-23 11:00:24.183 -05:00 [INF] [BalambGarden] [Probe]   +1D0: 80 FA A1 24 EF 01 00 00 00 00 00 00 00 00 15 B6 
+2026-08-23 11:00:24.183 -05:00 [INF] [BalambGarden] [Probe]   +1E0: 00 00 00 38 00 00 15 C8 00 00 00 39 00 00 15 DA 
+2026-08-23 11:00:24.183 -05:00 [INF] [BalambGarden] [Probe]   +1F0: 00 00 00 3A 00 00 15 EC 00 00 00 3B 00 00 15 FE 
+2026-08-23 11:00:24.183 -05:00 [INF] [BalambGarden] [Probe]   +200: 00 00 00 3C 00 00 16 10 00 00 00 3D 00 00 16 22 
+2026-08-23 11:00:24.183 -05:00 [INF] [BalambGarden] [Probe]   +210: A0 9A 0B 73 F6 7F 00 00 00 00 00 3F 00 00 16 46 
+2026-08-23 11:00:24.183 -05:00 [INF] [BalambGarden] [Probe]   draw: null
+2026-08-23 11:00:24.183 -05:00 [INF] [BalambGarden] [Probe] object entity=40036B1A index=450 name='Glade Flowerpot' pos=<1.0, 0.0, 0.3> dist=2.70y addr=1EF24A1FC90
+2026-08-23 11:00:24.183 -05:00 [INF] [BalambGarden] [Probe]   +000: A0 9A 0B 73 F6 7F 00 00 00 00 00 3F 00 00 16 46 
+2026-08-23 11:00:24.183 -05:00 [INF] [BalambGarden] [Probe]   +010: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+2026-08-23 11:00:24.183 -05:00 [INF] [BalambGarden] [Probe]   +020: 00 00 00 00 00 00 00 00 00 00 00 43 00 00 16 8E 
+2026-08-23 11:00:24.183 -05:00 [INF] [BalambGarden] [Probe]   +030: 47 6C 61 64 65 20 46 6C 6F 77 65 72 70 6F 74 00 
+2026-08-23 11:00:24.183 -05:00 [INF] [BalambGarden] [Probe]   +040: 69 74 69 6F 6E 00 00 14 00 00 00 47 00 00 17 4E 
+2026-08-23 11:00:24.183 -05:00 [INF] [BalambGarden] [Probe]   +050: 00 00 00 48 00 00 17 88 00 00 00 49 00 00 17 C2 
+2026-08-23 11:00:24.183 -05:00 [INF] [BalambGarden] [Probe]   +060: 00 00 00 4A 00 00 17 FC 00 00 00 4B 00 00 18 36 
+2026-08-23 11:00:24.183 -05:00 [INF] [BalambGarden] [Probe]   +070: 00 00 00 4C 7A 13 00 00 1A 6B 03 40 00 00 00 00 
+2026-08-23 11:00:24.183 -05:00 [INF] [BalambGarden] [Probe]   +080: 00 00 00 00 BC 01 03 00 00 00 00 E0 C2 01 F9 00 
+2026-08-23 11:00:24.183 -05:00 [INF] [BalambGarden] [Probe]   +090: 0C 00 00 0F 00 0F 00 00 00 01 FB 21 00 00 19 92 
+2026-08-23 11:00:24.183 -05:00 [INF] [BalambGarden] [Probe]   +0A0: 00 00 00 00 00 00 19 CC 00 00 00 53 00 00 1A 06 
+2026-08-23 11:00:24.183 -05:00 [INF] [BalambGarden] [Probe]   +0B0: E8 E1 80 3F 00 00 00 00 F0 38 AD 3E 00 00 00 00 
+2026-08-23 11:00:24.183 -05:00 [INF] [BalambGarden] [Probe]   +0C0: 00 00 49 B8 00 00 80 3F 00 00 80 3F 00 00 80 3F 
+2026-08-23 11:00:24.183 -05:00 [INF] [BalambGarden] [Probe]   +0D0: 00 00 00 3F 00 00 1B 28 00 00 00 59 00 00 1B 62 
+2026-08-23 11:00:24.183 -05:00 [INF] [BalambGarden] [Probe]   +0E0: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+2026-08-23 11:00:24.183 -05:00 [INF] [BalambGarden] [Probe]   +0F0: 00 00 00 00 00 00 00 00 00 00 00 5D 00 00 1C 4A 
+2026-08-23 11:00:24.183 -05:00 [INF] [BalambGarden] [Probe]   +100: 00 00 00 00 00 00 00 00 F0 CD 50 09 F1 01 00 00 
+2026-08-23 11:00:24.183 -05:00 [INF] [BalambGarden] [Probe]   +110: 00 00 00 00 00 00 1C F8 00 00 00 00 00 00 00 00 
+2026-08-23 11:00:24.183 -05:00 [INF] [BalambGarden] [Probe]   +120: 00 00 00 00 B5 92 11 3F 00 00 00 00 00 00 00 00 
+2026-08-23 11:00:24.183 -05:00 [INF] [BalambGarden] [Probe]   +130: 00 00 00 00 96 58 56 3E 00 00 00 00 00 00 00 00 
+2026-08-23 11:00:24.183 -05:00 [INF] [BalambGarden] [Probe]   +140: E8 E1 80 3F 00 00 00 00 F0 38 AD 3E 00 00 00 00 
+2026-08-23 11:00:24.183 -05:00 [INF] [BalambGarden] [Probe]   +150: 00 00 00 00 00 00 1E C8 20 1A CB CF F0 01 00 00 
+2026-08-23 11:00:24.183 -05:00 [INF] [BalambGarden] [Probe]   +160: F0 40 18 02 F1 01 00 00 00 00 00 00 00 00 00 00 
+2026-08-23 11:00:24.183 -05:00 [INF] [BalambGarden] [Probe]   +170: 00 00 00 00 B5 92 11 3F 00 00 00 00 00 00 00 00 
+2026-08-23 11:00:24.183 -05:00 [INF] [BalambGarden] [Probe]   +180: 00 00 00 00 96 58 56 3E 00 00 00 00 00 00 00 00 
+2026-08-23 11:00:24.183 -05:00 [INF] [BalambGarden] [Probe]   +190: 00 00 00 70 00 00 1F A8 00 00 00 71 00 00 1F BA 
+2026-08-23 11:00:24.183 -05:00 [INF] [BalambGarden] [Probe]   +1A0: 40 9D 0B 73 F6 7F 00 00 BC 01 03 00 00 00 01 00 
+2026-08-23 11:00:24.183 -05:00 [INF] [BalambGarden] [Probe]   +1B0: 00 01 00 00 12 33 00 07 01 00 00 75 00 00 20 02 
+2026-08-23 11:00:24.183 -05:00 [INF] [BalambGarden] [Probe]   +1C0: 01 00 00 76 00 00 20 14 00 00 00 77 00 00 20 4E 
+2026-08-23 11:00:24.183 -05:00 [INF] [BalambGarden] [Probe]   +1D0: 90 FC A1 24 EF 01 00 00 00 00 00 00 00 00 20 C2 
+2026-08-23 11:00:24.183 -05:00 [INF] [BalambGarden] [Probe]   +1E0: 00 00 00 7A 00 00 20 FC 00 00 00 7B 00 00 21 36 
+2026-08-23 11:00:24.183 -05:00 [INF] [BalambGarden] [Probe]   +1F0: 00 00 00 7C 00 00 21 70 00 00 00 7D 00 00 21 AA 
+2026-08-23 11:00:24.183 -05:00 [INF] [BalambGarden] [Probe]   +200: 00 00 00 7E 00 00 21 E4 00 00 00 7F 00 00 22 1E 
+2026-08-23 11:00:24.183 -05:00 [INF] [BalambGarden] [Probe]   +210: 30 DB E0 72 F6 7F 00 00 00 00 00 81 00 00 22 92 
+2026-08-23 11:00:24.183 -05:00 [INF] [BalambGarden] [Probe]   draw: null
+2026-08-23 11:00:24.183 -05:00 [INF] [BalambGarden] [Probe] dumped 2 objects (220 bytes each)
+2026-08-23 11:00:24.183 -05:00 [INF] [BalambGarden] [Recon] zone (385), 0 beds in 40y:
+2026-08-23 11:00:24.183 -05:00 [INF] [BalambGarden] [Recon] ===== capture end =====
+2026-08-23 11:01:31.520 -05:00 [INF] [BalambGarden] [ChatRecon] kind=SystemMessage/57 src=None tgt=None sender='Adventurer in Need' text='Duty Roulette: Alliance Raids needs a Dps.'
+2026-08-23 11:01:31.520 -05:00 [INF] [BalambGarden] [ChatRecon]   payloads: UIForegroundPayload|TextPayload|UIForegroundPayload|TextPayload|IconPayload|UIForegroundPayload|TextPayload|UIForegroundPayload|TextPayload
+2026-08-23 11:01:31.520 -05:00 [INF] [BalambGarden] [ChatRecon]   zone=385 target=none soft=none prev='Glade Flowerpot'(pot key=0)
+2026-08-23 11:01:57.626 -05:00 [INF] [BalambGarden] [PlantRecon] --- Talk (12 values) ---
+2026-08-23 11:01:57.626 -05:00 [INF] [BalambGarden] [PlantRecon] Talk AtkValues[0] = 'Krakka Root
+2026-08-23 11:01:58.989 -05:00 [INF] [BalambGarden] [ChatRecon] kind=SystemMessage/57 src=None tgt=None text='Krakka Root
+2026-08-23 11:01:58.989 -05:00 [INF] [BalambGarden] [ChatRecon]   payloads: UIForegroundPayload|UIGlowPayload|TextPayload|UIGlowPayload|UIForegroundPayload|TextPayload
+2026-08-23 11:01:58.989 -05:00 [INF] [BalambGarden] [ChatRecon]   zone=385 target='Glade Flowerpot'(pot key=0) soft=none prev='Glade Flowerpot'(pot key=0)
+2026-08-23 11:01:59.059 -05:00 [INF] [BalambGarden] [PlantRecon] --- SelectString (11 values) ---
+2026-08-23 11:01:59.059 -05:00 [INF] [BalambGarden] [PlantRecon] SelectString AtkValues[7] = 'Fertilize Crop'
+2026-08-23 11:01:59.059 -05:00 [INF] [BalambGarden] [PlantRecon] SelectString AtkValues[8] = 'Tend Crop'
+2026-08-23 11:01:59.059 -05:00 [INF] [BalambGarden] [PlantRecon] SelectString AtkValues[9] = 'Remove Crop'
+2026-08-23 11:01:59.059 -05:00 [INF] [BalambGarden] [PlantRecon] SelectString AtkValues[10] = 'Quit'
+2026-08-23 11:02:00.904 -05:00 [INF] [BalambGarden] [ChatRecon] kind=ErrorMessage/60 src=None tgt=None text='Additional pomace is not necessary in this flowerpot.'
+2026-08-23 11:02:00.905 -05:00 [INF] [BalambGarden] [ChatRecon]   zone=385 target='Glade Flowerpot'(pot key=0) soft=none prev='Glade Flowerpot'(pot key=0)
+2026-08-23 11:02:44.941 -05:00 [INF] [BalambGarden] [ChatRecon] kind=Action/43 src=LocalPlayer tgt=LocalPlayer text='You ready Teleport.'
+2026-08-23 11:02:44.941 -05:00 [INF] [BalambGarden] [ChatRecon]   zone=385 target=none soft=none prev='Glade Flowerpot'(pot key=0)
+2026-08-23 11:02:50.590 -05:00 [INF] [BalambGarden] [ChatRecon] kind=SystemMessage/57 src=LocalPlayer tgt=None text='You spent 303 gil.'
+2026-08-23 11:02:50.590 -05:00 [INF] [BalambGarden] [ChatRecon]   zone=385 target=none soft=none prev='Glade Flowerpot'(pot key=0)
+2026-08-23 11:02:50.911 -05:00 [INF] [BalambGarden] [ChatRecon] kind=Action/43 src=LocalPlayer tgt=None text='You use Teleport.'
+2026-08-23 11:02:50.911 -05:00 [INF] [BalambGarden] [ChatRecon]   zone=385 target=none soft=none prev='Glade Flowerpot'(pot key=0)
+2026-08-23 11:02:51.341 -05:00 [INF] [BalambGarden] [PlantRecon] stopped
+2026-08-23 11:02:51.341 -05:00 [INF] [BalambGarden] [PlantRecon] auto-disarmed - rezone
+2026-08-23 11:02:51.342 -05:00 [INF] [BalambGarden] [ChatRecon] kind=SystemMessage/57 src=None tgt=None text='You have left the sanctuary.'
+2026-08-23 11:02:51.342 -05:00 [INF] [BalambGarden] [ChatRecon]   zone=641 target=none soft=none prev=none
+2026-08-23 11:02:51.893 -05:00 [INF] [BalambGarden] [ChatRecon] kind=SystemMessage/57 src=None tgt=None text='You have entered a sanctuary.'
+2026-08-23 11:02:51.893 -05:00 [INF] [BalambGarden] [ChatRecon]   zone=641 target=none soft=none prev=none
+2026-08-23 11:02:53.612 -05:00 [INF] [BalambGarden] [ChatRecon] kind=SystemMessage/57 src=None tgt=None text='Shirogane, Ward 4'
+2026-08-23 11:02:53.612 -05:00 [INF] [BalambGarden] [ChatRecon]   zone=641 target=none soft=none prev=none
+2026-08-23 11:03:04.682 -05:00 [INF] [BalambGarden] [ChatRecon] kind=SystemMessage/57 src=None tgt=None text='Royal Kukuru Bean
+2026-08-23 11:03:04.682 -05:00 [INF] [BalambGarden] [ChatRecon]   payloads: UIForegroundPayload|UIGlowPayload|TextPayload|UIGlowPayload|UIForegroundPayload|TextPayload
+2026-08-23 11:03:04.682 -05:00 [INF] [BalambGarden] [ChatRecon]   zone=641 target=''(bed patch=0 bed=2 id=0x3312) soft=none prev=none
+2026-08-23 11:03:18.998 -05:00 [INF] [BalambGarden] [ChatRecon] kind=SystemMessage/57 src=LocalPlayer tgt=None text='You fertilize the crop.'
+2026-08-23 11:03:18.999 -05:00 [INF] [BalambGarden] [ChatRecon]   zone=641 target=none soft=none prev=''(bed patch=0 bed=2 id=0x3312)
+2026-08-23 11:03:31.922 -05:00 [INF] [BalambGarden] [ChatRecon] kind=SystemMessage/57 src=None tgt=None text='Royal Kukuru Bean
+2026-08-23 11:03:31.922 -05:00 [INF] [BalambGarden] [ChatRecon]   payloads: UIForegroundPayload|UIGlowPayload|TextPayload|UIGlowPayload|UIForegroundPayload|TextPayload
+2026-08-23 11:03:31.922 -05:00 [INF] [BalambGarden] [ChatRecon]   zone=641 target=''(bed patch=0 bed=2 id=0x3312) soft=none prev=''(bed patch=0 bed=2 id=0x3312)
+2026-08-23 11:03:33.283 -05:00 [INF] [BalambGarden] [ChatRecon] kind=ErrorMessage/60 src=None tgt=None text='This crop has already been sufficiently fertilized.'
+2026-08-23 11:03:33.283 -05:00 [INF] [BalambGarden] [ChatRecon]   zone=641 target=''(bed patch=0 bed=2 id=0x3312) soft=none prev=''(bed patch=0 bed=2 id=0x3312)
+2026-08-23 11:03:36.818 -05:00 [INF] [BalambGarden] [ChatRecon] kind=SystemMessage/57 src=None tgt=None text='Royal Kukuru Bean
+2026-08-23 11:03:36.818 -05:00 [INF] [BalambGarden] [ChatRecon]   payloads: UIForegroundPayload|UIGlowPayload|TextPayload|UIGlowPayload|UIForegroundPayload|TextPayload
+2026-08-23 11:03:36.818 -05:00 [INF] [BalambGarden] [ChatRecon]   zone=641 target=''(bed patch=0 bed=2 id=0x3312) soft=none prev=''(bed patch=0 bed=2 id=0x3312)
+2026-08-23 11:03:39.724 -05:00 [INF] [BalambGarden] [ChatRecon] kind=SystemMessage/57 src=LocalPlayer tgt=None text='This crop is doing well.'
+2026-08-23 11:03:39.724 -05:00 [INF] [BalambGarden] [ChatRecon]   zone=641 target=none soft=none prev=''(bed patch=0 bed=2 id=0x3312)
+2026-08-23 11:05:50.357 -05:00 [INF] [BalambGarden] [ChatRecon] kind=SystemMessage/57 src=None tgt=None text='Curiel Root
+2026-08-23 11:05:50.358 -05:00 [INF] [BalambGarden] [ChatRecon]   payloads: UIForegroundPayload|UIGlowPayload|TextPayload|UIGlowPayload|UIForegroundPayload|TextPayload
+2026-08-23 11:05:50.358 -05:00 [INF] [BalambGarden] [ChatRecon]   zone=641 target=''(bed patch=0 bed=1 id=0x3312) soft=none prev=''(bed patch=0 bed=2 id=0x3312)
+2026-08-23 11:05:52.497 -05:00 [INF] [BalambGarden] [ChatRecon] kind=SystemMessage/57 src=LocalPlayer tgt=None text='This crop is doing well.'
+2026-08-23 11:05:52.497 -05:00 [INF] [BalambGarden] [ChatRecon]   zone=641 target=none soft=none prev=''(bed patch=0 bed=1 id=0x3312)
+2026-08-23 11:06:03.617 -05:00 [INF] [BalambGarden] [ChatRecon] kind=SystemMessage/57 src=None tgt=None text='Royal Kukuru Bean
+2026-08-23 11:06:03.617 -05:00 [INF] [BalambGarden] [ChatRecon]   payloads: UIForegroundPayload|UIGlowPayload|TextPayload|UIGlowPayload|UIForegroundPayload|TextPayload
+2026-08-23 11:06:03.617 -05:00 [INF] [BalambGarden] [ChatRecon]   zone=641 target=''(bed patch=0 bed=0 id=0x3312) soft=none prev=''(bed patch=0 bed=1 id=0x3312)
+2026-08-23 11:06:04.843 -05:00 [INF] [BalambGarden] [ChatRecon] kind=SystemMessage/57 src=LocalPlayer tgt=None text='This crop is doing well.'
+2026-08-23 11:06:04.843 -05:00 [INF] [BalambGarden] [ChatRecon]   zone=641 target=none soft=none prev=''(bed patch=0 bed=0 id=0x3312)
+2026-08-23 11:07:33.083 -05:00 [INF] [BalambGarden] [ChatRecon] kind=SystemMessage/57 src=None tgt=None sender='Adventurer in Need' text='Duty Roulette: Leveling needs a Tank.'
+2026-08-23 11:07:33.083 -05:00 [INF] [BalambGarden] [ChatRecon]   payloads: UIForegroundPayload|TextPayload|UIForegroundPayload|TextPayload|IconPayload|UIForegroundPayload|TextPayload|UIForegroundPayload|TextPayload
+2026-08-23 11:07:33.083 -05:00 [INF] [BalambGarden] [ChatRecon]   zone=641 target=''(bed patch=0 bed=1 id=0x3312) soft=none prev=''(bed patch=0 bed=0 id=0x3312)
+2026-08-23 11:08:01.448 -05:00 [INF] [BalambGarden] [ChatRecon] kind=SystemMessage/57 src=None tgt=None text='Curiel Root
+2026-08-23 11:08:01.448 -05:00 [INF] [BalambGarden] [ChatRecon]   payloads: UIForegroundPayload|UIGlowPayload|TextPayload|UIGlowPayload|UIForegroundPayload|TextPayload
+2026-08-23 11:08:01.448 -05:00 [INF] [BalambGarden] [ChatRecon]   zone=641 target=''(bed patch=0 bed=1 id=0x3312) soft=none prev=''(bed patch=0 bed=0 id=0x3312)
+2026-08-23 11:08:09.575 -05:00 [INF] [BalambGarden] [ChatRecon] kind=SystemMessage/57 src=None tgt=None text='Royal Kukuru Bean
+2026-08-23 11:08:09.576 -05:00 [INF] [BalambGarden] [ChatRecon]   payloads: UIForegroundPayload|UIGlowPayload|TextPayload|UIGlowPayload|UIForegroundPayload|TextPayload
+2026-08-23 11:08:09.576 -05:00 [INF] [BalambGarden] [ChatRecon]   zone=641 target=''(bed patch=0 bed=2 id=0x3312) soft=none prev=''(bed patch=0 bed=1 id=0x3312)
+2026-08-23 11:08:13.106 -05:00 [INF] [BalambGarden] [ChatRecon] kind=SystemMessage/57 src=None tgt=None text='Royal Kukuru Bean
+2026-08-23 11:08:13.106 -05:00 [INF] [BalambGarden] [ChatRecon]   payloads: UIForegroundPayload|UIGlowPayload|TextPayload|UIGlowPayload|UIForegroundPayload|TextPayload
+2026-08-23 11:08:13.106 -05:00 [INF] [BalambGarden] [ChatRecon]   zone=641 target=''(bed patch=0 bed=0 id=0x3312) soft=none prev=''(bed patch=0 bed=2 id=0x3312)
+2026-08-23 11:08:26.235 -05:00 [INF] [BalambGarden] [ChatRecon] kind=SystemMessage/57 src=LocalPlayer tgt=None text='This crop is doing well.'
+2026-08-23 11:08:26.235 -05:00 [INF] [BalambGarden] [ChatRecon]   zone=641 target=none soft=none prev=''(bed patch=0 bed=0 id=0x3312)
+2026-08-23 11:08:49.509 -05:00 [INF] [BalambGarden] [ChatRecon] kind=SystemMessage/57 src=None tgt=None text='Royal Kukuru Bean
+2026-08-23 11:08:49.509 -05:00 [INF] [BalambGarden] [ChatRecon]   payloads: UIForegroundPayload|UIGlowPayload|TextPayload|UIGlowPayload|UIForegroundPayload|TextPayload
+2026-08-23 11:08:49.509 -05:00 [INF] [BalambGarden] [ChatRecon]   zone=641 target=''(bed patch=0 bed=0 id=0x3312) soft=none prev=''(bed patch=0 bed=0 id=0x3312)
+2026-08-23 11:08:51.618 -05:00 [INF] [BalambGarden] [ChatRecon] kind=SystemMessage/57 src=LocalPlayer tgt=None text='This crop is doing well.'
+2026-08-23 11:08:51.618 -05:00 [INF] [BalambGarden] [ChatRecon]   zone=641 target=none soft=none prev=''(bed patch=0 bed=0 id=0x3312)
+2026-08-23 11:10:34.038 -05:00 [INF] [BalambGarden] [ChatRecon] kind=SystemMessage/57 src=None tgt=None sender='Adventurer in Need' text='Duty Roulette: Trials needs a Dps.'
+2026-08-23 11:10:34.038 -05:00 [INF] [BalambGarden] [ChatRecon]   payloads: UIForegroundPayload|TextPayload|UIForegroundPayload|TextPayload|IconPayload|UIForegroundPayload|TextPayload|UIForegroundPayload|TextPayload
+2026-08-23 11:10:34.038 -05:00 [INF] [BalambGarden] [ChatRecon]   zone=641 target=''(bed patch=0 bed=1 id=0x3312) soft=none prev=''(bed patch=0 bed=0 id=0x3312)
