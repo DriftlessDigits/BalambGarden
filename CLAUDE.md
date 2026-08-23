@@ -66,4 +66,4 @@ The runbook is `Book Of Holding/Reference/Runbooks/Balamb Release.md` - run it, 
 
 ## Debug-only instrumentation
 
-`ReconProbe` (debug builds): raw hex dumped verbatim beside every decode so a decoder bug is visible, not hidden. `PlantFlow` watcher is `#if DEBUG`.
+`ReconProbe` (debug builds): raw hex dumped verbatim beside every decode so a decoder bug is visible, not hidden. `PlantFlow` watcher is `#if DEBUG`. `ChatRecon` (`Game/ChatRecon.cs`, whole file `#if DEBUG`): passive chat listener for manual-action capture - per line: LogKind, source/target relation kinds, sender, verbatim text, payload shape, and hard/soft/previous target decoded to bed gimmick or pot key. Manual toggle on the Recon tab ("Watch chat"); survives zone lines; never handles or suppresses a message. Key capture receipts (2026-08-23, `captures/2026-08-23-fertilize-recon.log`): manual-verb success lines are SystemMessage/57 with src=LocalPlayer, refusals are ErrorMessage/60 with src=None (wording varies, structure does not); the acted object rides PREVIOUS-target at line time (hard target is cleared by then).
