@@ -2,15 +2,21 @@ namespace BalambGarden.Engine.Sync;
 
 /// <summary>What a chat line is worth to the receipt parser. None is the overwhelming
 /// majority and the safe default - a line the classifier does not recognise is a line
-/// nothing happens for.</summary>
-public enum ChatVerdict { None, FertilizeBed, FertilizePot }
+/// nothing happens for.
+///
+/// <para>The three verdicts after the fertilize pair were added for the receipt lifecycle
+/// (ratified 2026-08-23) off the same day's field capture. APPENDED, never reordered: the
+/// fertilize pair keeps its numbers, the way <see cref="Census.ReceiptVerb"/> does, so a
+/// value that ever reaches a persisted surface means the same thing forever.</para></summary>
+public enum ChatVerdict { None, FertilizeBed, FertilizePot, PlantPot, TendBed, WaterPot }
 
 /// <summary>The chat classifier: one pure function over (channel, who acted, words), no
 /// Dalamud types, no game state, desk-testable. Built on the fertilize recon capture of
-/// 2026-08-23 - the first chat verbs Balamb reads for receipts rather than for a debug dump.
+/// 2026-08-23 - the first chat verbs Balamb reads for receipts rather than for a debug dump -
+/// and widened the same day to the plant/tend/water lines the receipt lifecycle closes on.
 ///
 /// <para>STRUCTURE BEATS VOCABULARY. The channel and the actor relation are filtered FIRST,
-/// and only then are the two success sentences matched exactly. The words are the last and
+/// and only then are the success sentences matched exactly. The words are the last and
 /// weakest evidence: they are localised, they get reworded by patches, and a player can type
 /// any of them into a chat box. The structure cannot be typed - a SystemMessage attributed
 /// to the local player is the game speaking about something the player's own character just
@@ -42,6 +48,22 @@ public static class ChatLine
     /// sentence, which is why pot-ness is decided here and never guessed downstream.</summary>
     public const string PotFertilizeText = "Pomace added to flowerpot.";
 
+    /// <summary>The pot sow line, verbatim (capture 2026-08-23). The bed sow line is NOT KNOWN
+    /// yet - a bed plant therefore opens a pending that times out as chain-unconfirmed until
+    /// the unmatched-line logger hands us its words.</summary>
+    public const string PotPlantText = "Seeds planted in flowerpot.";
+
+    /// <summary>The bed tend line, verbatim (capture 2026-08-23). The tape's only tend
+    /// variation is pot-vs-bed; whether a wilted crop prints something else is a GUESS and is
+    /// deliberately not invented here - an unrecognised line is None, and the lifecycle's
+    /// unmatched-line logger is what will capture it.</summary>
+    public const string BedTendText = "This crop is doing well.";
+
+    /// <summary>The pot tend line, verbatim (capture 2026-08-23). Tending a pot IS watering it
+    /// - the game offers no separate verb - so this maps to
+    /// <see cref="SyncKind.PotWater"/>, which is the kind the schema ratified for it.</summary>
+    public const string PotWaterText = "The crops appear to be healthy.";
+
     /// <summary>Rules on one chat line.</summary>
     /// <param name="logKind">The chat channel, numeric.</param>
     /// <param name="fromLocalPlayer">Whether the game attributed the line to the local
@@ -57,9 +79,39 @@ public static class ChatLine
         {
             BedFertilizeText => ChatVerdict.FertilizeBed,
             PotFertilizeText => ChatVerdict.FertilizePot,
+            PotPlantText => ChatVerdict.PlantPot,
+            BedTendText => ChatVerdict.TendBed,
+            PotWaterText => ChatVerdict.WaterPot,
             _ => ChatVerdict.None,
         };
     }
+
+    /// <summary>The kind a verdict is a receipt FOR - the join the lifecycle closes on
+    /// (ratified 2026-08-23). Pure and here rather than in the adapter because the mapping is
+    /// the same fact the classifier already knows: the words named the act.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">None is not an act, so it has no kind.
+    /// Asking is a caller bug, not a runtime condition - a None line is dropped before this.
+    /// </exception>
+    public static SyncKind KindOf(ChatVerdict v) => v switch
+    {
+        ChatVerdict.FertilizeBed or ChatVerdict.FertilizePot => SyncKind.Fertilize,
+        ChatVerdict.PlantPot => SyncKind.Plant,
+        ChatVerdict.TendBed => SyncKind.Tend,
+        ChatVerdict.WaterPot => SyncKind.PotWater,
+        _ => throw new ArgumentOutOfRangeException(nameof(v), v, "No receipt kind for this verdict"),
+    };
+
+    /// <summary>Whether the verdict's own sentence says a POT was acted on. The game names the
+    /// container in its words, which is why container-ness is decided at the classifier and
+    /// never guessed downstream - and why the lifecycle can refuse to close a bed pending on a
+    /// pot line even when the kinds agree.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">None names no container.</exception>
+    public static bool IsPotVerdict(ChatVerdict v) => v switch
+    {
+        ChatVerdict.FertilizePot or ChatVerdict.PlantPot or ChatVerdict.WaterPot => true,
+        ChatVerdict.FertilizeBed or ChatVerdict.TendBed => false,
+        _ => throw new ArgumentOutOfRangeException(nameof(v), v, "No container for this verdict"),
+    };
 
     /// <summary>Whether this line could be the crop-name line the game prints when a planted
     /// BED is interacted with - the corroboration material for

@@ -21,6 +21,22 @@ public class ChatLineTests
             ChatLine.Classify(SystemMessage, true, "Pomace added to flowerpot."));
 
     [Theory]
+    [InlineData("Seeds planted in flowerpot.", ChatVerdict.PlantPot)]
+    [InlineData("This crop is doing well.", ChatVerdict.TendBed)]
+    [InlineData("The crops appear to be healthy.", ChatVerdict.WaterPot)]
+    public void The_lifecycle_close_lines_classify(string text, ChatVerdict expected)
+        => Assert.Equal(expected, ChatLine.Classify(SystemMessage, true, text));
+
+    [Fact]
+    public void A_gil_line_rides_the_same_structure_and_is_still_nothing()
+    {
+        // Capture 2026-08-23: spend lines arrive as SystemMessage/57 attributed to the local
+        // player, exactly like a success line - which is the whole reason the words are matched
+        // exactly and never with Contains. Structure alone would receipt every purchase.
+        Assert.Equal(ChatVerdict.None, ChatLine.Classify(SystemMessage, true, "You spent 303 gil."));
+    }
+
+    [Theory]
     [InlineData(0)]
     [InlineData(56)]
     [InlineData(58)]
@@ -76,6 +92,35 @@ public class ChatLineTests
         // as both, and the adapter never has to choose between them.
         Assert.Equal(ChatVerdict.None, ChatLine.Classify(SystemMessage, false, "Royal Kukuru Bean"));
         Assert.False(ChatLine.IsInspectLine(SystemMessage, unattributed: false));
+    }
+
+    [Theory]
+    [InlineData(ChatVerdict.FertilizeBed, SyncKind.Fertilize)]
+    [InlineData(ChatVerdict.FertilizePot, SyncKind.Fertilize)]
+    [InlineData(ChatVerdict.PlantPot, SyncKind.Plant)]
+    [InlineData(ChatVerdict.TendBed, SyncKind.Tend)]
+    [InlineData(ChatVerdict.WaterPot, SyncKind.PotWater)]
+    public void Every_verdict_names_its_kind(ChatVerdict verdict, SyncKind kind)
+        => Assert.Equal(kind, ChatLine.KindOf(verdict));
+
+    [Theory]
+    [InlineData(ChatVerdict.FertilizePot)]
+    [InlineData(ChatVerdict.PlantPot)]
+    [InlineData(ChatVerdict.WaterPot)]
+    public void Pot_sentences_name_a_pot(ChatVerdict verdict)
+        => Assert.True(ChatLine.IsPotVerdict(verdict));
+
+    [Theory]
+    [InlineData(ChatVerdict.FertilizeBed)]
+    [InlineData(ChatVerdict.TendBed)]
+    public void Bed_sentences_name_a_bed(ChatVerdict verdict)
+        => Assert.False(ChatLine.IsPotVerdict(verdict));
+
+    [Fact]
+    public void None_is_not_an_act_and_has_neither_kind_nor_container()
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() => ChatLine.KindOf(ChatVerdict.None));
+        Assert.Throws<ArgumentOutOfRangeException>(() => ChatLine.IsPotVerdict(ChatVerdict.None));
     }
 }
 

@@ -48,6 +48,11 @@ internal static class CensusPump
 
     internal static void Tick()
     {
+        // ABOVE the 2-second gate and above the estate check, both deliberately: a six-second
+        // window judged on a two-second tempo would round a timeout up by a third, and a
+        // pending is owed its history line whether or not there is covered ground underfoot.
+        SweepPending();
+
 #if DEBUG
         // Deliberately ABOVE the 2-second gate below: the plant-flow dialogs open and
         // close inside a couple of seconds, so a sampler that only ran on census tempo
@@ -318,7 +323,18 @@ internal static class CensusPump
             held.Add(receipt);
         }
 
-        return Deliver(receipt, $"{bedHeader}: {DisplayPlant(plantName)}");
+        var outcome = Deliver(receipt, $"{bedHeader}: {DisplayPlant(plantName)}");
+
+        // The census is delivered; only the history waits on the game's confirming line. The
+        // identity is banked from the receipt just built, because the closing line names
+        // nothing and would have nothing to ask.
+        OpenPending(
+            verb, estate, isPot: false,
+            patchOrdinal: parsed.PatchOrdinal, bedSlot: parsed.BedSlot,
+            patchId: NearestPatchId(parsed.PatchOrdinal), potKey: -1,
+            species: species, stage: stage);
+
+        return outcome;
     }
 
     /// <summary>Delivers the receipts that completed before the estate had an identity,
@@ -416,29 +432,46 @@ internal static class CensusPump
         var stage = LastIndoor.TryGetValue(key, out var pot) ? pot.Stage : (byte)0;
         var receipt = new ReceiptEvent(
             estate, key, 0, verb, species, stage, DateTimeOffset.UtcNow, IsPot: true);
-        return Deliver(receipt, $"pot (key {key}): {DisplayPlant(plantName)}");
+        var outcome = Deliver(receipt, $"pot (key {key}): {DisplayPlant(plantName)}");
+
+        // A pot's identity in the history is its furniture key alone (ReceiptLog reads PotKey
+        // and nothing else when IsPot) - so ordinal and slot stay 0 here, matching what the
+        // chat path already writes, and patch id 0 because a pot has no such thing.
+        OpenPending(
+            verb, estate, isPot: true,
+            patchOrdinal: 0, bedSlot: 0, patchId: 0, potKey: key,
+            species: species, stage: stage);
+
+        return outcome;
     }
 
-    /// <summary>A fertilize receipt born in chat (<see cref="FertilizeWatch"/>). Identity is
-    /// already decided by the time it gets here - the watcher decoded the object and ran the
-    /// fail-closed checks - so this does the census and the history, nothing else.
+    /// <summary>A receipt born in chat (<see cref="ChatReceipts"/>) - the MANUAL branch of the
+    /// receipt lifecycle (ratified 2026-08-23): a confirming line that closed no act of ours
+    /// was a human's own hands. Identity is already decided by the time it gets here - the
+    /// watcher decoded the object and ran the fail-closed checks - so this does the census and
+    /// the history together, nothing else.
+    ///
+    /// <para>Together is the point on this branch. A chain act's history waits for its close
+    /// verdict because the source word is not known yet; an unclaimed line has no such
+    /// question - the act is already over and the source is Chat - so there is nothing to defer
+    /// and deferring would only invent a window in which the fact could be lost.</para>
     ///
     /// <para>Returns nothing on purpose, unlike every other receipt path: a chat receipt has
     /// no chain feed to report into, so the gates say what happened in the log instead of
     /// handing a line to a run nobody launched.</para></summary>
-    internal static void OnChatFertilize(
-        bool isPot, int potKey, int patchOrdinal, int bedSlot, ushort patchId)
+    internal static void OnChatReceipt(
+        SyncKind kind, bool isPot, int potKey, int patchOrdinal, int bedSlot, ushort patchId)
     {
         var estate = EstateSensor.Current();
         if (estate is null)
         {
-            Plugin.Log.Information("[Census] chat fertilize with no estate identity - not recorded");
+            Plugin.Log.Information($"[Census] chat {kind} with no estate identity - not recorded");
             return;
         }
 
         if (!CoveredHere)
         {
-            Plugin.Log.Information($"[Census] chat fertilize here: {NotCovered}");
+            Plugin.Log.Information($"[Census] chat {kind} here: {NotCovered}");
             return;
         }
 
@@ -473,20 +506,23 @@ internal static class CensusPump
             estate,
             isPot ? potKey : patchOrdinal,
             isPot ? 0 : bedSlot,
-            ReceiptVerb.Fertilize, species, stage, now, IsPot: isPot);
+            VerbFor(kind), species, stage, now, IsPot: isPot);
 
         if (Plugin.Configuration.TrailEnabled)
             Plugin.Garden.Trail.Append(receipt);
 
-        // Lands no observation by design (CensusEngine.SourceFor returns null for Fertilize -
-        // a feed is not a reading), but it still proves the row: we stood there and touched it.
+        // A fertilize lands no observation by design (CensusEngine.SourceFor returns null for
+        // it - a feed is not a reading), but it still proves the row: we stood there and
+        // touched it. A manual TEND does land one, through the same engine path a chain tend
+        // uses, and that is the POINT of widening this entry: watering done by hand finally
+        // anchors the ledger instead of leaving a gap the pacing math reads as neglect.
         var bed = Plugin.Garden.Census.OnReceipt(receipt);
         Plugin.Garden.Save();
 
         // The history, which is the point: the ledger holds current state, the receipt log
         // holds what happened. SaveReceipts refreshes config's memory of the counter with it.
         Plugin.Garden.Receipts.Append(
-            SyncKind.Fertilize, SyncSource.Chat, now, estate, isPot,
+            kind, SyncSource.Chat, now, estate, isPot,
             patchOrdinal: patchOrdinal, bedSlot: bedSlot, patchId: patchId, potKey: potKey,
             data: new SyncData(Species: species == 0 ? null : species));
         Plugin.Garden.SaveReceipts();
@@ -495,10 +531,168 @@ internal static class CensusPump
             ? $"pot (key {potKey})"
             : $"patch {patchOrdinal + 1} bed {bedSlot + 1}";
         Plugin.Log.Information(
-            $"[Census] fertilize receipted from chat: {where} at {estate.DisplayLabel()}"
+            $"[Census] {kind} receipted from chat: {where} at {estate.DisplayLabel()}"
             + $" - {(species == 0 ? "species unknown" : Plugin.Tables.SpeciesName(species))}"
             + (bed is null ? " (not claimed: patch not identified yet)" : ""));
     }
+
+    /// <summary>The two vocabularies, joined in one place. The census verb and the wire kind
+    /// mirror each other 1:1 by ruling (PotWater is its own kind on both sides), so this is a
+    /// translation and never a judgement - and keeping it here means the lifecycle's open and
+    /// close paths cannot drift into disagreeing about what an act was.</summary>
+    private static ReceiptVerb VerbFor(SyncKind kind) => kind switch
+    {
+        SyncKind.Fertilize => ReceiptVerb.Fertilize,
+        SyncKind.Tend => ReceiptVerb.Tend,
+        SyncKind.PotWater => ReceiptVerb.PotWater,
+        SyncKind.Plant => ReceiptVerb.Plant,
+        SyncKind.Harvest => ReceiptVerb.Harvest,
+        _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, "Not an action kind"),
+    };
+
+    /// <summary>The reverse direction, for the acts chains report. The observation kinds
+    /// (Stage/Ripe/PotWilt) have no verb because they are not acts - a sighting is something we
+    /// noticed, and only acts open pendings.</summary>
+    private static SyncKind KindFor(ReceiptVerb verb) => verb switch
+    {
+        ReceiptVerb.Fertilize => SyncKind.Fertilize,
+        ReceiptVerb.Tend => SyncKind.Tend,
+        ReceiptVerb.PotWater => SyncKind.PotWater,
+        ReceiptVerb.Plant => SyncKind.Plant,
+        ReceiptVerb.Harvest => SyncKind.Harvest,
+        _ => throw new ArgumentOutOfRangeException(nameof(verb), verb, "Not an action verb"),
+    };
+
+    // ---- THE PENDING DESK ----------------------------------------------------------------
+    // The two-phase receipt (ratified 2026-08-23). A chain act OPENS a pending here the moment
+    // its census has been delivered; the game's confirming chat line CLOSES it and the history
+    // is appended as Chain. Nothing closes it, and the sweep appends it as ChainUnconfirmed -
+    // today's chain-belief behaviour, kept, but labelled honestly.
+    //
+    // ONLY THE HISTORY WAITS. Ledger state, feed strings and binding all land immediately when
+    // the chain acts, exactly as before - the desk never sits between a chain and its census.
+    // The receipt LOG waits because it is append-only: the source word has to be right the
+    // first time, and it is not known until the window closes.
+    //
+    // Session-only, single-slot, and deliberately not persisted: a pending is a question about
+    // the last six seconds, and a restart is an answer of "no".
+
+    private static PendingReceipt? openPending;
+
+    /// <summary>The kind of act currently waiting on its confirming line, or null when none is.
+    /// Read by <see cref="ChatReceipts"/>'s unmatched-line logger, which is only interesting
+    /// while something is open.</summary>
+    internal static SyncKind? OpenPendingKind => openPending?.Kind;
+
+    /// <summary>Opens the wait for a chain act's confirming line. Called from inside the
+    /// receipt paths AFTER the census has landed, with the identity the receipt was just built
+    /// from - the chain knows exactly which bed it touched, and that knowledge has to be banked
+    /// now because the closing line credits no object at all.
+    ///
+    /// <para>ONE IN FLIGHT, EVER. Chains are sequential, so a second open means the first act's
+    /// line never came: the old pending is force-closed as chain-unconfirmed before the new one
+    /// opens. That is what makes overlap impossible even at the pacing boundary, where a slow
+    /// line and the next act would otherwise both be live and the wrong one could be
+    /// closed.</para></summary>
+    private static void OpenPending(
+        ReceiptVerb verb, EstateKey estate, bool isPot,
+        int patchOrdinal, int bedSlot, ushort patchId, int potKey, ushort species, byte stage)
+    {
+        if (openPending is { } stale)
+        {
+            Plugin.Log.Warning(
+                $"[Census] {stale.Kind} receipt never confirmed by chat before the next act - "
+                + "recording as chain-unconfirmed");
+            CloseUnconfirmed(stale);
+        }
+
+        openPending = new PendingReceipt(
+            KindFor(verb), isPot, DateTimeOffset.UtcNow, estate,
+            patchOrdinal, bedSlot, patchId, potKey, species, stage);
+    }
+
+    /// <summary>Offers a classified chat line to the open act. True means the line was that
+    /// act's confirmation and the caller is done with it; false means nothing of ours was
+    /// waiting on it, so it is somebody's own hands and belongs on the manual branch.
+    ///
+    /// <para>A non-match NEVER clears the pending: our act is still waiting for its own line,
+    /// and a stranger's fertilize landing in earshot must not bury it.</para></summary>
+    internal static bool TryCloseChain(ChatVerdict verdict)
+    {
+        if (openPending is not { } pending)
+            return false;
+        if (!ReceiptLifecycle.Matches(pending, verdict, DateTimeOffset.UtcNow))
+            return false;
+
+        openPending = null;
+        AppendHistory(pending, SyncSource.Chain);
+        Plugin.Log.Information($"[Census] {pending.Kind} receipt confirmed by chat");
+        return true;
+    }
+
+    /// <summary>The timeout sweep. Runs on every tick ABOVE the census gate and without asking
+    /// where we are: a pending is a promise to write history, and standing somewhere the census
+    /// does not cover - or nowhere at all - is not a reason to drop it. The act happened.</summary>
+    private static void SweepPending()
+    {
+        if (openPending is not { } pending || !ReceiptLifecycle.Expired(pending, DateTimeOffset.UtcNow))
+            return;
+
+        openPending = null;
+        // LOUDLY, by ruling: every timeout is logged at warning so a systematic miss - a line
+        // we have not learned to read, a verb whose words changed in a patch - surfaces as a
+        // pile in the log instead of hiding inside an honest-looking source word.
+        Plugin.Log.Warning(
+            $"[Census] {pending.Kind} receipt timed out with no confirming chat line after "
+            + $"{ReceiptLifecycle.CloseWindow.TotalSeconds:0}s - recording as chain-unconfirmed");
+        CloseUnconfirmed(pending);
+    }
+
+    private static void CloseUnconfirmed(PendingReceipt pending)
+        => AppendHistory(pending, SyncSource.ChainUnconfirmed);
+
+    /// <summary>The deferred half: the pending becomes one line of append-only history under
+    /// the source word the verdict earned it.
+    ///
+    /// <para>Guarded because the callers are a chat handler and the frame tick, and neither may
+    /// be the thing that breaks the plugin - an append can refuse (no era minted yet, ruled at
+    /// <see cref="ReceiptLog.Append"/>), and a lost history line is a smaller harm than a dead
+    /// tick.</para></summary>
+    private static void AppendHistory(PendingReceipt pending, SyncSource source)
+    {
+        try
+        {
+            Plugin.Garden.Receipts.Append(
+                pending.Kind, source, pending.OpenedAt, pending.Estate, pending.IsPot,
+                patchOrdinal: pending.PatchOrdinal, bedSlot: pending.BedSlot,
+                patchId: pending.PatchId, potKey: pending.PotKey,
+                data: new SyncData(
+                    Species: pending.Species == 0 ? null : pending.Species,
+                    Stage: pending.Stage == 0 ? null : pending.Stage));
+            Plugin.Garden.SaveReceipts();
+        }
+        catch (Exception ex)
+        {
+            Plugin.Log.Warning($"[Census] {pending.Kind} receipt not written to history: {ex.Message}");
+        }
+    }
+
+    /// <summary>The patch id to stamp on a bed pending: the nearest object for that ordinal,
+    /// from the same shortlist source the binder proposes with (the 40y sweep sees the
+    /// neighbours' patches too, so nearest is the only honest pick).
+    ///
+    /// <para>0 when no patch object was seen - HONEST UNKNOWN, not a real id, exactly as
+    /// <see cref="LoggedReceipt.PatchId"/> already carries it. FLAGGED, NOT SOLVED: the wire
+    /// entity name is minted FROM the patch id, so a 0 here cannot become a sendable bed
+    /// receipt. That has to be answered before the relay ships - either by refusing to send
+    /// id-less entries or by resolving the id at send time - and it is a send-path question,
+    /// not one this desk should guess its way past.</para></summary>
+    private static ushort NearestPatchId(int patchOrdinal)
+        => ObjectSensor.Patches()
+            .Where(p => p.Ordinal == patchOrdinal)
+            .OrderBy(p => p.Distance)
+            .Select(p => p.PatchId)
+            .FirstOrDefault();
 
     internal static string OnRipeSkip(string bedHeader, string plantName)
     {

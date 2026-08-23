@@ -39,6 +39,29 @@ public class SyncReceiptTests
         Assert.Contains("\"kind\":\"potwilt\"", Sample(SyncKind.PotWilt).ToJson());
     }
 
+    [Theory]
+    [InlineData(SyncSource.Chain, "chain")]
+    [InlineData(SyncSource.Chat, "chat")]
+    [InlineData(SyncSource.Sighting, "sighting")]
+    public void The_ratified_source_words_are_unchanged_by_the_kebab_policy(SyncSource source, string word)
+    {
+        // The kebab policy arrived with the lifecycle (2026-08-23). Single-word names must come
+        // out byte-identical to what the relay was promised, or the amendment renamed facts it
+        // had no business renaming.
+        var json = (Sample() with { Source = source }).ToJson();
+        Assert.Contains($"\"source\":\"{word}\"", json);
+    }
+
+    [Fact]
+    public void The_unconfirmed_source_lands_hyphenated()
+    {
+        // Schema amendment 2026-08-23: the word must be "chain-unconfirmed" on the wire, and it
+        // has to land before the relay ships.
+        var json = (Sample() with { Source = SyncSource.ChainUnconfirmed }).ToJson();
+        Assert.Contains("\"source\":\"chain-unconfirmed\"", json);
+        Assert.Equal(SyncSource.ChainUnconfirmed, SyncReceipt.FromJson(json)!.Source);
+    }
+
     [Fact]
     public void Empty_data_serializes_with_no_fields()
     {

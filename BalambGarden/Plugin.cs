@@ -115,10 +115,11 @@ public sealed class Plugin : IDalamudPlugin
         // signal (capture 2026-08-15 F4), so the listener lives as long as the plugin does.
         Game.ObtainWatch.Start();
 
-        // Fertilize has no chain and no closing dialogue - the chat line IS the event, whether
-        // Balamb drove it or a human did it by hand, so the listener lives as long as the
-        // plugin does. Not debug-gated: the receipt it writes is the product.
-        Game.FertilizeWatch.Start();
+        // The chat line is the game's own confirmation of a gardening act: it closes a chain's
+        // pending receipt, and it IS the whole event when a human acted by hand (receipt
+        // lifecycle, ratified 2026-08-23). Either way the listener lives as long as the plugin
+        // does. Not debug-gated: the receipt it writes is the product.
+        Game.ChatReceipts.Start();
 
 #if DEBUG
         // Scoped recording: the persisted flag means "arm near pots", and a rezone ends
@@ -144,7 +145,7 @@ public sealed class Plugin : IDalamudPlugin
         Svc.ClientState.TerritoryChanged -= OnTerritoryChanged;
 #endif
         Game.ObtainWatch.Stop();
-        Game.FertilizeWatch.Stop();
+        Game.ChatReceipts.Stop();
 #if DEBUG
         // A watcher left registered would outlive the plugin its callback belongs to.
         Chains.PlantFlow.StopWatching();
