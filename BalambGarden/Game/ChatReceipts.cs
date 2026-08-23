@@ -110,12 +110,21 @@ internal static unsafe class ChatReceipts
     /// <summary>Banks the crop-name line a bed interaction prints. Resolution runs through
     /// the same species table the Talk-name path uses, so its colour-word stripping and
     /// aliases apply here too; anything that does not resolve to a real species is simply not
-    /// evidence and is left un-banked rather than remembered as a zero.</summary>
+    /// evidence and is left un-banked rather than remembered as a zero.
+    ///
+    /// <para>FIRST LINE ONLY: the crop-name message carries a second text payload behind a
+    /// newline (capture 2026-08-23, re-read at the 17:06 field lap after corroboration
+    /// reported "no crop-name line" on a tend the capture said prints one - the whole
+    /// TextValue never resolves, so the instrument sat inert). The name is the first
+    /// line; whatever the game says after it is not the name's problem.</para></summary>
     private static void RememberCropName(int logKind, XivChatRelationKind sourceKind, string text)
     {
         if (!ChatLine.IsInspectLine(logKind, sourceKind == XivChatRelationKind.None))
             return;
-        if (Plugin.Tables.SpeciesIndexByName(text) is not { } species || species == 0)
+
+        var cut = text.IndexOf('\n');
+        var name = (cut >= 0 ? text[..cut] : text).Trim();
+        if (Plugin.Tables.SpeciesIndexByName(name) is not { } species || species == 0)
             return;
 
         inspectedSpecies = species;
