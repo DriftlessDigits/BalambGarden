@@ -1919,7 +1919,31 @@ public class MainWindow : Window, IDisposable
         if (PlantFlow.Watching)
             ImGui.TextColored(Green, "recording");
         else if (watchIntent)
+        {
             ImGui.TextDisabled($"idle - arms within {Plugin.WatcherArmRangeY:F1}y of a pot, drops on rezone");
+            ImGui.SameLine();
+            // Auto-arm needs a pot in reach; the manual-verbs circuit runs at outdoor
+            // beds too. Same watcher, armed deliberately from the bench.
+            if (ImGui.SmallButton("arm now"))
+                PlantFlow.StartWatching();
+        }
+        else
+            ImGui.TextDisabled("off");
+
+        // Chat recon (the manual-actions lap, scoped 2026-08-22 S3): every line verbatim
+        // + LogKind + target-at-line-time. Manual toggle, survives zone lines - the
+        // circuit is deliberate, not ambient.
+        var chatWatch = ChatRecon.Watching;
+        if (ImGui.Checkbox("Watch chat", ref chatWatch))
+        {
+            if (chatWatch)
+                ChatRecon.StartWatching();
+            else
+                ChatRecon.StopWatching();
+        }
+        ImGui.SameLine();
+        if (ChatRecon.Watching)
+            ImGui.TextColored(Green, "recording");
         else
             ImGui.TextDisabled("off");
 

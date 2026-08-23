@@ -136,6 +136,7 @@ public sealed class Plugin : IDalamudPlugin
 #if DEBUG
         // A watcher left registered would outlive the plugin its callback belongs to.
         Chains.PlantFlow.StopWatching();
+        Game.ChatRecon.StopWatching();
 #endif
 
         WindowSystem.RemoveAllWindows();
