@@ -49,7 +49,8 @@ public sealed record SyncData(
 /// <summary>The envelope - the receipt as it travels ([[Balamb Garden - Sync Receipt
 /// Schema - Design]], ratified 2026-08-23). Append-only, identical whichever side minted
 /// it, and identical whether it came from a chain, a chat line, or a map sighting.
-/// Id is "installId:counter" (ruling 8 - gap detection rides the sequence); Entity is
+/// Id is "user:era:counter" (identity amendment 2026-08-23 - gap detection rides the
+/// sequence within an era; <see cref="SyncId"/> owns the format); Entity is
 /// the HMAC pseudonym (<see cref="EntityName"/>); At is UTC, the moment the receipt
 /// landed locally.</summary>
 public sealed record SyncReceipt(
