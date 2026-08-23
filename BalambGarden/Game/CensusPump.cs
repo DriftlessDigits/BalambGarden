@@ -146,11 +146,30 @@ internal static class CensusPump
             LastOutdoor = MapSensor.ReadOutdoor();
     }
 
+    /// <summary>Corroboration state for the absent-pot verdict, reset whenever the estate
+    /// underfoot changes. The DataMap's settle order relative to the object table is
+    /// unreceipted, and a wrong "harvested" verdict Rebase-clears real anchors - so absence
+    /// is only believed when the map has answered non-empty this visit (proof it is talking)
+    /// AND the key was absent from two consecutive settled reads. The cost is honest: an
+    /// estate harvested bare between visits never answers non-empty, so its rows keep the
+    /// amber "harvested?" question instead of auto-clearing - which is the true state of
+    /// our knowledge there.</summary>
+    private static EstateKey? potReadEstate;
+    private static HashSet<int>? priorPotKeys;
+    private static bool mapAnsweredThisVisit;
+
     internal static void SightNow()
     {
         var estate = EstateSensor.Current();
         if (estate is null)
             return;
+
+        if (potReadEstate != estate)
+        {
+            potReadEstate = estate;
+            priorPotKeys = null;
+            mapAnsweredThisVisit = false;
+        }
 
         // The pump refreshes CoveredHere every tick for the estate underfoot, so a
         // non-null estate here can trust it as-is.
@@ -183,16 +202,28 @@ internal static class CensusPump
             // A harvested pot's entry VANISHES from the map (08-15), so the loop above
             // never hears about it - absence from a SETTLED read is the emptying receipt
             // (2026-08-18: Drift's harvested pots kept showing their old contents). The
-            // settled-object guard is the same one the drift row trusts: an unsettled
-            // world answers nothing, never "empty".
-            if (CoveredHere && ObjectSensor.SawHousingObjects)
+            // settled-object guard is the same one the drift row trusts - but it is not
+            // sufficient alone: whether the DataMap fills before or behind the object
+            // table is unreceipted, and on 2026-08-23 a settled-objects-empty-map tick
+            // came within one gate of clearing every FC record. So the verdict takes the
+            // corroboration above: the map must have answered this visit, and the union
+            // of two consecutive settled reads spares any key either one saw.
+            if (LastIndoor.Count > 0)
+                mapAnsweredThisVisit = true;
+            // priorPotKeys non-null = a settled read already happened this visit; the
+            // first answering read has nothing to corroborate against and clears nothing.
+            if (CoveredHere && ObjectSensor.SawHousingObjects && mapAnsweredThisVisit
+                && priorPotKeys is not null)
             {
-                var emptied = Plugin.Garden.Census.ReconcileAbsentPots(estate, LastIndoor.Keys.ToList());
+                var present = LastIndoor.Keys.Union(priorPotKeys).ToList();
+                var emptied = Plugin.Garden.Census.ReconcileAbsentPots(estate, present);
                 if (emptied > 0)
                     Plugin.Log.Information(
                         $"[Census] {emptied} pot(s) read absent (harvested?) - contents cleared at {estate.DisplayLabel()}");
                 landed += emptied;
             }
+            if (ObjectSensor.SawHousingObjects)
+                priorPotKeys = LastIndoor.Keys.ToHashSet();
 
             if (CoveredHere && (landed > 0 || pruned > 0))
                 Plugin.Garden.Save();
