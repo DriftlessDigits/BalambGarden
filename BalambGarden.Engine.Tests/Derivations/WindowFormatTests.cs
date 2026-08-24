@@ -39,6 +39,22 @@ public class WindowFormatTests
         }
     }
 
+    [Fact] // an exact stamp carries the full date - "3d ago" needs a calendar moment behind it
+    public void ExactSaysTheFullDateInTheReadersClock()
+    {
+        var at = DateTimeOffset.Parse("2026-08-14T18:07:00Z");
+        Assert.Equal("Fri 2026-08-14 18:07", WindowFormat.Exact(at));
+        try
+        {
+            WindowFormat.TwelveHourClock = true;
+            Assert.Equal("Fri 2026-08-14 6:07 pm", WindowFormat.Exact(at));
+        }
+        finally
+        {
+            WindowFormat.TwelveHourClock = false;
+        }
+    }
+
     [Fact] // a zero-width window is a time, not a range pretending to have two ends
     public void ZeroWidthWindowPrintsOneTime()
     {
