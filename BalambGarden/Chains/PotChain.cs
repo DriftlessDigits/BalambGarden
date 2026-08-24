@@ -374,6 +374,13 @@ internal sealed unsafe class PotChain : ChainBase
         }
 
         _armedAt = ObtainWatch.Arm();
+        // RULING 4: the option click above is the commit. Same asymmetry as the tend and the
+        // sow: with a furniture key the pending opens now, without one it cannot. Opening
+        // here is also what lets the self-capture instrument see the harvest line - the
+        // candidate-close logger only listens while a pending is open, and the late open
+        // (at delivery, a map settle away) started after the line had already printed.
+        if (_potKey is { } identified)
+            CensusPump.OpenAtAct(ReceiptVerb.Harvest, identified, _plant);
         Acted();
         return true;
     }
