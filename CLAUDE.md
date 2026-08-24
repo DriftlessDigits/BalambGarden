@@ -8,7 +8,7 @@ Dalamud plugin for FFXIV gardening: census, timers, and one-press tend/harvest/r
 - **Agents NEVER build the plugin.** Dalamud hot-loads the output DLL - any build is a live deploy into a running game. Builds happen only on the player's explicit "go", never while they may be in-game or testing.
 - **Tests are safe anytime**: `dotnet test BalambGarden.Engine.Tests/BalambGarden.Engine.Tests.csproj` - the Engine has zero game dependency.
 - Feature branches only; merge to main = save point (this doc's review rides every merge - the merge gate enforces it).
-- Repo is quasi-public. The maintainer persona is **Drift** (GitHub: DriftlessDigits); no real names in code, comments, commits, or docs. No AI co-authorship lines in commits.
+- Repo is quasi-public. The maintainer persona is **Drift** (GitHub: DriftlessDigits); no real names in code, comments, commits, or docs. No AI co-authorship lines in commits. A machine-local pre-commit name guard backs this up (installed per machine via personality-chip's `install-repo-hooks.sh`; untracked BY DESIGN - a tracked hook would ship the names it blocks).
 
 ## Solution layout
 
@@ -39,10 +39,30 @@ Each layer knows only the layer below. **Acting IS censusing**: chains emit dial
 
 **`CensusPump` (`Game/CensusPump.cs`) is the heartbeat**: sensors read, receipts route, the ledger learns. `RefreshDisplayOnly` is the UI-read-without-recording path (post-run settle poll - do not add observations from it). Both the new-estate arrival AND the front-door inside/outside flip retry their map read until the side underfoot answers non-empty when the ledger expects content there - the DataMap populates a beat after any zone line, and a one-shot read that races it stands stale for the whole visit (2026-08-23: every FC pot record read "harvested?" against an empty flip read). `ReconcileAbsentPots`: a vanished pot entry = harvest happened unseen - but the verdict needs corroboration, because DataMap-vs-object-table settle order is unreceipted and a wrong verdict Rebase-clears real anchors: settled objects seen, map answered non-empty this visit, a prior settled read exists, and the key absent from BOTH consecutive settled reads (union spares either). Named cost: an estate harvested bare between visits keeps its amber "harvested?" rows rather than auto-clearing.
 
+## Sync groundwork (built on `sync-engine`, 2026-08-23; relay not yet built)
+
+**The receipt lifecycle - two-phase, ratified** (vault: `Balamb Garden - Receipt Lifecycle - Design.md`, rulings 1-6). A chain's act OPENS a pending receipt; the game's own chat line CLOSES it. One receipt, two witnesses: the chain contributes armed identity, the game contributes the fact it happened.
+
+- **Open at the ACT, never at delivery** (ruling 4). Every chain calls `CensusPump.OpenAtAct` at its commit moment - the option click, the sow Yes. Opening at delivery is the field-receipted 17:28 double-receipt bug: the line lands during the map settle, finds no pending, and the manual branch fires a second entry. The one exception is the diff-bind pot path (`_potKey` null): identity is born from the map diff AFTER the act, so it cannot open early and degrades honestly (late open, already delivered, closes chain-unconfirmed).
+- **Close** = `CensusPump.TryCloseChain` on a classified line (same verb + container within `ReceiptLifecycle.CloseWindow` 6s) -> history entry, source `chain`. The desk banks a `RecentClose` memo so a delivery arriving AFTER its line already closed (`DeliveryAlreadyClosed`) does not re-open a duplicate - both race orderings field-proven 2026-08-23.
+- **Timeout** (`SweepPending`): delivered but no line -> `chain-unconfirmed`, WARN, written (the count is the instrument that would earn the chat-as-primary rethink). Never delivered AND no line -> CANCEL, logged, nothing written (ruling 6: two absent witnesses = no fact).
+- **Manual acts = the unclaimed close** (ruling 2): a recognised line with no pending and no chain driving becomes its own receipt via the chat-identity ladder, source `chat`. While `Plugin.AnyChainDriving`, the manual branch is CLOSED (ruling 5: one character, one pair of hands - the line is logged and dropped).
+
+**`ChatReceipts` (`Game/ChatReceipts.cs`) - the closing half. NOT debug-gated; it ships.** Passive listener per the ObtainWatch law. Classification is a pure Engine function (`Engine/Sync/ChatLine.cs`): structure first - success = SystemMessage/57 + src=LocalPlayer, refusal = ErrorMessage/60 (never receipted) - then EXACT text match ("You spent 303 gil." rides the same structure; exact-match is load-bearing). Catalog: bed fertilize / pot fertilize / pot plant / bed tend / pot water (pot "Tend Crop" IS watering). NOT captured yet: harvest, bed plant - the self-capture instrument (`NoteUnmatched`) logs any success-shaped unrecognised line while a pending is open as a candidate close text; that is how the missing rows get found. Manual identity = PREVIOUS-target at line time, defended fail-closed: kind-vs-object cross-check, plus beds-only species corroboration (`FertilizeCorroboration`, 10s window) against the crop-name inspect line (57 + src=None; FIRST LINE ONLY - the message carries a second payload behind a newline, and the whole TextValue never resolves).
+
+**Identity: wire id = `user:era:counter`.** `user` = stable slug in Configuration (mine-vs-external forever). `era` = volatile slug in the receipt log, names one counter-life; re-minted by `EraGuard` on any of three triggers: counter rewind, fresh log, machine-fingerprint change (covers the clone/migration class a rewind check can't see). `counter` = `ReceiptLog` Seq, monotonic per era. `MachineStamp` = SHA256 of registry MachineGuid, memoized, **LOCAL ONLY - it never travels**; stored hashed in Configuration. Accepted lossy edge: full wipe = new user id, own history replays as external.
+
+**`ReceiptLog` (`receipts.json`, via `GardenService.Receipts`)** - append-only, doubles as the sync outbox (`LastSentSeq` high-water mark; outbox scoped to the current era). Entries carry kind/source/estate/identity/data; entity pseudonyms (HouseholdKeys HMAC) mint at SEND time only - the log itself is local-plaintext. Append-only is law: a duplicate produced by a since-fixed bug stays (nothing sent), it is never edited out.
+
+**Wire types** (`Engine/Sync/SyncReceipt.cs` + `HouseholdKeys.cs`): envelope per the ratified schema doc; enum words via `WireWordPolicy` - kebab-case default with a CLOSED pin table (`potwater`, `potwilt` stay ratified single words). `chain-unconfirmed` is a source word and must be in the relay's accepted vocabulary before the relay ships. Flagged unruled for the send path: `NearestPatchId` 0 (honest-unknown patch id) - refuse-at-send vs resolve-at-send undecided.
+
+**Build stamp**: `StampBuildInfo` csproj target embeds git commit/branch/BuildTime as AssemblyMetadata (BuildTime changes every build, which defeats incremental staleness); `BuildStamp.cs` reads it; shown on the Recon tab and logged at plugin load. "Am I on the current build" is now a read, not a guess.
+
 ## Storage (plugin config directory)
 
 - `ledger-v2.json` - the LedgerStore. **Fail closed**: an unreadable ledger is parked as `.unreadable-<stamp>`, never overwritten. `LedgerMigration.NormalizeEstates` runs idempotently at load (pre-08-15 files held one physical plot as two records).
 - `trail.jsonl` - append-only receipt trail (evidence, not memory).
+- `receipts.json` - the `ReceiptLog` (history + sync outbox; see Sync groundwork). Same fail-closed park-on-unreadable rule as the ledger.
 - The POC ledger (inside `Configuration`) is **never read** - fresh start by spec.
 
 ## Domain data (`Data/`, frozen since 2020, embedded at build)
