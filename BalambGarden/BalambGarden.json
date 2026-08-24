@@ -13,5 +13,5 @@
   "InternalName": "BalambGarden",
   "IconUrl": "https://raw.githubusercontent.com/DriftlessDigits/DalamudPluginRepo/main/plugins/BalambGarden/images/icon.png",
   "ImageUrls": [],
-  "Changelog": "The garden now shows when everything was last watered: a new Watered column on every bed and pot (hover for the exact time). And watering by hand finally counts - tend, water, or fertilize without pressing any plugin buttons and the clocks still update. Fertilizing is remembered too, so 'did I already feed this?' has an answer."
+  "Changelog": "Hover the Watered column to see when a bed or pot was last fertilized - and whether the game will let you feed it again yet. Only shows up once the plugin has actually seen a feeding, by button or by hand."
 }
