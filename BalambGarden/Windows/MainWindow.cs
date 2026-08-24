@@ -1150,19 +1150,27 @@ public class MainWindow : Window, IDisposable
 
             // Last watered is a receipt (Tend/PotWater set it), so the cell speaks plainly
             // or says "?" - never an estimate. Steady state is quiet; the water warnings
-            // beside the name already do the shouting.
+            // beside the name already do the shouting. The hover also answers "did I
+            // already feed this?" from the receipt log - a fed line only when a fertilize
+            // receipt exists, and the hour word is the game's own refusal rule, not a
+            // timer of ours.
             ImGui.TableNextColumn();
-            if (bed.LastTended is { } tended)
+            ImGui.TextDisabled(bed.LastTended is { } tended
+                ? WindowFormat.Ago(tended, now) : "?");
+            if (ImGui.IsItemHovered())
             {
-                ImGui.TextDisabled(WindowFormat.Ago(tended, now));
-                if (ImGui.IsItemHovered())
-                    ImGui.SetTooltip($"watered {WindowFormat.Exact(tended.ToLocalTime())}");
-            }
-            else
-            {
-                ImGui.TextDisabled("?");
-                if (ImGui.IsItemHovered())
-                    ImGui.SetTooltip("no watering receipt for this record yet");
+                // Log scan only on the hovered row - a per-row-per-frame walk of an
+                // append-only log would grow with the history (same law as the pot sweep).
+                var fed = Plugin.Garden.Receipts.LastFertilizedAt(
+                    record.Key, bed.IsPot, bed.MapKey, bed.PatchOrdinal, bed.BedSlot);
+                var fedLine = fed is { } f
+                    ? $"\nfed {WindowFormat.Ago(f, now)} · {WindowFormat.Exact(f.ToLocalTime())}"
+                      + (now - f < TimeSpan.FromHours(1)
+                          ? " (game refuses a refeed within the hour)" : "")
+                    : "";
+                ImGui.SetTooltip((bed.LastTended is { } t
+                    ? $"watered {WindowFormat.Exact(t.ToLocalTime())}"
+                    : "no watering receipt for this record yet") + fedLine);
             }
 
             if (hasVerbs)
