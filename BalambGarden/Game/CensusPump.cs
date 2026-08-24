@@ -245,7 +245,8 @@ internal static class CensusPump
     }
 
     internal static string OnBedReceipt(
-        ReceiptVerb verb, string bedHeader, string plantName, byte? stageOverride = null)
+        ReceiptVerb verb, string bedHeader, string plantName, BedGimmick actBed,
+        byte? stageOverride = null)
     {
         // These two gates write nowhere - not the ledger, not the trail - so the line
         // says exactly that instead of implying a log that never happened.
@@ -331,7 +332,7 @@ internal static class CensusPump
         MarkDelivered(
             verb, isPot: false, estate,
             patchOrdinal: parsed.PatchOrdinal, bedSlot: parsed.BedSlot,
-            patchId: NearestPatchId(parsed.PatchOrdinal), potKey: -1,
+            patchId: ActPatchId(actBed, parsed.PatchOrdinal), potKey: -1,
             species: species, stage: stage);
 
         return outcome;
@@ -614,7 +615,8 @@ internal static class CensusPump
     /// <para>NO ESTATE, NO PENDING. Both gates the delivery paths refuse on are checked here
     /// too: opening a pending on ground the census does not keep would promise a history line
     /// that every write path below would then refuse to make.</para></summary>
-    internal static void OpenAtAct(ReceiptVerb verb, string bedHeader, string plantName)
+    internal static void OpenAtAct(
+        ReceiptVerb verb, string bedHeader, string plantName, BedGimmick actBed)
     {
         if (ActGround(verb) is not { } estate)
             return;
@@ -636,8 +638,27 @@ internal static class CensusPump
         OpenPending(
             verb, estate, isPot: false,
             patchOrdinal: parsed.PatchOrdinal, bedSlot: parsed.BedSlot,
-            patchId: NearestPatchId(parsed.PatchOrdinal), potKey: -1,
+            patchId: ActPatchId(actBed, parsed.PatchOrdinal), potKey: -1,
             species: Plugin.Tables.SpeciesIndexByName(plantName) ?? 0, stage: stage);
+    }
+
+    /// <summary>The patch id for a bed receipt: the acted object's own gimmick bytes - the
+    /// identity the chain held in hand at the interact, the same decode the manual chat path
+    /// binds by - taken when it agrees with the header the receipt is filed under. The
+    /// proximity scan is only the fallback for a disagreement, because a gimmick whose ordinal
+    /// contradicts the menu header belongs to some OTHER patch and its patch id would be a
+    /// wrong answer with a confident face. Disagreement is a finding (it would mean the menu
+    /// header and the interacted object can diverge), so it is warned with both numbers.</summary>
+    private static ushort ActPatchId(BedGimmick actBed, int patchOrdinal)
+    {
+        if (actBed.PatchOrdinal == patchOrdinal)
+            return actBed.PatchId;
+
+        Plugin.Log.Warning(
+            $"[Census] BED IDENTITY MISMATCH: menu header says patch {patchOrdinal + 1}, the "
+            + $"acted object's gimmick says patch {actBed.PatchOrdinal + 1} (id {actBed.PatchId})"
+            + " - filed under the header, patch id from the nearest-object scan.");
+        return NearestPatchId(patchOrdinal);
     }
 
     /// <summary>The pot form of <see cref="OpenAtAct(ReceiptVerb, string, string)"/>, for the
@@ -854,16 +875,17 @@ internal static class CensusPump
         }
     }
 
-    /// <summary>The patch id to stamp on a bed pending: the nearest object for that ordinal,
-    /// from the same shortlist source the binder proposes with (the 40y sweep sees the
-    /// neighbours' patches too, so nearest is the only honest pick).
+    /// <summary>FALLBACK ONLY (ruled 2026-08-23): the primary patch id is the acted object's
+    /// own gimmick via <see cref="ActPatchId"/> - the chain holds it at the interact - and
+    /// this proximity scan answers only when that gimmick contradicts the header it is filed
+    /// under. Nearest object for the ordinal, from the same shortlist source the binder
+    /// proposes with (the 40y sweep sees the neighbours' patches too).
     ///
     /// <para>0 when no patch object was seen - HONEST UNKNOWN, not a real id, exactly as
-    /// <see cref="LoggedReceipt.PatchId"/> already carries it. FLAGGED, NOT SOLVED: the wire
-    /// entity name is minted FROM the patch id, so a 0 here cannot become a sendable bed
-    /// receipt. That has to be answered before the relay ships - either by refusing to send
-    /// id-less entries or by resolving the id at send time - and it is a send-path question,
-    /// not one this desk should guess its way past.</para></summary>
+    /// <see cref="LoggedReceipt.PatchId"/> already carries it. The wire entity name is minted
+    /// FROM the patch id, so the send path refuses any entry still carrying 0 (fail closed,
+    /// one guard, no resolution machinery) - with the gimmick as the primary source that case
+    /// should never arise on new receipts.</para></summary>
     private static ushort NearestPatchId(int patchOrdinal)
         => ObjectSensor.Patches()
             .Where(p => p.Ordinal == patchOrdinal)

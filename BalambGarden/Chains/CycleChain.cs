@@ -83,6 +83,11 @@ internal sealed unsafe class CycleChain : ChainBase
 
     private string _plant = "";
     private string _header = "";
+
+    // The acted bed's own gimmick, banked at each bed's gate. The header still files the
+    // receipt (ordinal + slot); the gimmick contributes the patch id the header cannot
+    // carry, cross-checked by the pump.
+    private BedGimmick _currentBed;
     private DateTime _armedAt;
     private DateTime _waitUntil;
     private bool _waitAnnounced;
@@ -236,8 +241,13 @@ internal sealed unsafe class CycleChain : ChainBase
                 : ApplyJitter(Plugin.Configuration.PostTendDelayMS, Plugin.Configuration.PostTendJitterMS));
 
             // The one place a user stop may land: between beds, never between a bed's
-            // harvest and its replant.
-            TaskManager.Enqueue(() => CheckStop(label), $"gate {slot}");
+            // harvest and its replant. The gimmick banks when the gate RUNS (the PotChain
+            // key lesson): the acted object's own patch id rides the receipt paths.
+            TaskManager.Enqueue(() =>
+            {
+                _currentBed = bedObject.Gimmick;
+                return CheckStop(label);
+            }, $"gate {slot}");
 
             if (ripe)
             {
@@ -260,7 +270,11 @@ internal sealed unsafe class CycleChain : ChainBase
             {
                 TaskManager.DelayNext(
                     ApplyJitter(Plugin.Configuration.PostTendDelayMS, Plugin.Configuration.PostTendJitterMS));
-                TaskManager.Enqueue(() => CheckStop($"anchor tend, bed {slot + 1}"), $"gate-t {slot}");
+                TaskManager.Enqueue(() =>
+                {
+                    _currentBed = bedObject.Gimmick;
+                    return CheckStop($"anchor tend, bed {slot + 1}");
+                }, $"gate-t {slot}");
                 TaskManager.Enqueue(() => Interact(bedObject.Object), $"interact-t {slot}");
                 TaskManager.Enqueue(AdvanceToMenu, $"advance-t {slot}");
                 TaskManager.Enqueue(SelectTend, $"tend {slot}");
@@ -384,7 +398,7 @@ internal sealed unsafe class CycleChain : ChainBase
         _armedAt = ObtainWatch.Arm();
         // RULING 4: the pending opens HERE, at the commit - the harvest is selected and the
         // receipt does not run until the yield lands, which is the whole gap the line beats.
-        CensusPump.OpenAtAct(ReceiptVerb.Harvest, _header, _plant);
+        CensusPump.OpenAtAct(ReceiptVerb.Harvest, _header, _plant, _currentBed);
         Acted();
         return true;
     }
@@ -397,7 +411,7 @@ internal sealed unsafe class CycleChain : ChainBase
         if (!ObtainWatch.FiredSince(_armedAt))
             return false;
 
-        RecordOutcome(CensusPump.OnBedReceipt(ReceiptVerb.Harvest, _header, _plant)
+        RecordOutcome(CensusPump.OnBedReceipt(ReceiptVerb.Harvest, _header, _plant, _currentBed)
             + $" (obtained {ObtainWatch.LastItem})");
         return true;
     }
@@ -497,8 +511,9 @@ internal sealed unsafe class CycleChain : ChainBase
         var plantName = crop?.Name ?? check.Parts!.Seed;
         // RULING 4: the Yes above is the commit, and this is the first line after it - the
         // refusal branch never reaches here, so no pending is opened for a sow we declined.
-        CensusPump.OpenAtAct(ReceiptVerb.Plant, _header, plantName);
-        RecordOutcome(CensusPump.OnBedReceipt(ReceiptVerb.Plant, _header, plantName, stageOverride: 1));
+        CensusPump.OpenAtAct(ReceiptVerb.Plant, _header, plantName, _currentBed);
+        RecordOutcome(CensusPump.OnBedReceipt(
+            ReceiptVerb.Plant, _header, plantName, _currentBed, stageOverride: 1));
         return true;
     }
 
@@ -520,10 +535,11 @@ internal sealed unsafe class CycleChain : ChainBase
         Acted();
         var plant = _plant;
         var header = _header;
+        var acted = _currentBed;
         // RULING 4: the pending opens HERE, at the commit - the tend is selected and the game's
         // line can land before the held receipt runs at the end of the dialogue.
-        CensusPump.OpenAtAct(ReceiptVerb.Tend, header, plant);
-        _pendingReceipt = () => CensusPump.OnBedReceipt(ReceiptVerb.Tend, header, plant);
+        CensusPump.OpenAtAct(ReceiptVerb.Tend, header, plant, acted);
+        _pendingReceipt = () => CensusPump.OnBedReceipt(ReceiptVerb.Tend, header, plant, acted);
         return true;
     }
 

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using BalambGarden.Engine.Census;
+using BalambGarden.Engine.Sensing;
 using BalambGarden.Game;
 using Dalamud.Game.ClientState.Objects.Types;
 using Dalamud.Memory;
@@ -27,6 +28,11 @@ internal sealed unsafe class TendChain : ChainBase
     // plant, the menu names the bed. The patch identity rides the receipt header,
     // never the object's position (the POC's positional ledger is gone).
     private string _currentPlant = "";
+
+    // The acted bed's own gimmick identity, banked at the gate. The header still names the
+    // receipt (ordinal + slot, the game's menu text); the gimmick contributes the patch id
+    // the header cannot carry, and the pump cross-checks the two.
+    private BedGimmick _currentBed;
 
     // The tend receipt, held between the menu selection and the end of the bed's
     // dialogue. Selecting "Tend Crop" is the FIRE; the conversation going quiet is the
@@ -55,7 +61,15 @@ internal sealed unsafe class TendChain : ChainBase
                 ? ApplyJitter(Plugin.Configuration.TendPaceMS)
                 : ApplyJitter(Plugin.Configuration.PostTendDelayMS, Plugin.Configuration.PostTendJitterMS));
             var label = $"bed {i + 1}/{beds.Count}";
-            TaskManager.Enqueue(() => CheckStop(label), $"gate {i}");
+            // The gimmick is banked when the gate RUNS, not when the queue is built (the
+            // PotChain key lesson): the receipt paths want the identity of the bed actually
+            // underfoot this step, and its patch id in particular - the object's own bytes,
+            // not a proximity guess.
+            TaskManager.Enqueue(() =>
+            {
+                _currentBed = bed.Gimmick;
+                return CheckStop(label);
+            }, $"gate {i}");
             TaskManager.Enqueue(() => Interact(bed.Object), $"interact {i}");
             // A growing crop opens with a status Talk ("X is doing well") BEFORE the
             // menu - the plant name arrives here, then the menu. Click dialogue until
@@ -192,10 +206,11 @@ internal sealed unsafe class TendChain : ChainBase
                 // which binds the patch (if unbound) and records the bed. Held until the
                 // dialogue goes quiet - selecting is firing, not finishing.
                 var plant = _currentPlant;
+                var acted = _currentBed;
                 // RULING 4: the pending opens HERE, at the commit - the entry is selected and
                 // the game's line can land before the held receipt below ever runs.
-                CensusPump.OpenAtAct(ReceiptVerb.Tend, header, plant);
-                _pendingReceipt = () => CensusPump.OnBedReceipt(ReceiptVerb.Tend, header, plant);
+                CensusPump.OpenAtAct(ReceiptVerb.Tend, header, plant, acted);
+                _pendingReceipt = () => CensusPump.OnBedReceipt(ReceiptVerb.Tend, header, plant, acted);
                 return true;
             }
 
