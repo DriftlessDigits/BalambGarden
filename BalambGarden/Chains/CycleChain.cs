@@ -382,6 +382,9 @@ internal sealed unsafe class CycleChain : ChainBase
         // Arm BEFORE the yield can possibly land: the obtain line is the completion
         // signal and a line that arrives between selection and arming would be missed.
         _armedAt = ObtainWatch.Arm();
+        // RULING 4: the pending opens HERE, at the commit - the harvest is selected and the
+        // receipt does not run until the yield lands, which is the whole gap the line beats.
+        CensusPump.OpenAtAct(ReceiptVerb.Harvest, _header, _plant);
         Acted();
         return true;
     }
@@ -492,6 +495,9 @@ internal sealed unsafe class CycleChain : ChainBase
         // Planting completes silently after Yes - the capture saw no further addon event -
         // so this IS the completion, not a fire we are receipting early.
         var plantName = crop?.Name ?? check.Parts!.Seed;
+        // RULING 4: the Yes above is the commit, and this is the first line after it - the
+        // refusal branch never reaches here, so no pending is opened for a sow we declined.
+        CensusPump.OpenAtAct(ReceiptVerb.Plant, _header, plantName);
         RecordOutcome(CensusPump.OnBedReceipt(ReceiptVerb.Plant, _header, plantName, stageOverride: 1));
         return true;
     }
@@ -514,6 +520,9 @@ internal sealed unsafe class CycleChain : ChainBase
         Acted();
         var plant = _plant;
         var header = _header;
+        // RULING 4: the pending opens HERE, at the commit - the tend is selected and the game's
+        // line can land before the held receipt runs at the end of the dialogue.
+        CensusPump.OpenAtAct(ReceiptVerb.Tend, header, plant);
         _pendingReceipt = () => CensusPump.OnBedReceipt(ReceiptVerb.Tend, header, plant);
         return true;
     }

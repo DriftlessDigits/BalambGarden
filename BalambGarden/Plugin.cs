@@ -38,6 +38,22 @@ public sealed class Plugin : IDalamudPlugin
     /// neither of them is having.</summary>
     internal bool AnyChainBusy => TendChain.Busy || CycleChain.Busy || PotChain.Busy;
 
+    /// <summary>The one live plugin, for the static receipt paths that need to ask a question
+    /// only the instance can answer. Nulled on dispose so a hot-reload never leaves a stale
+    /// object answering for chains that no longer exist.</summary>
+    private static Plugin? instance;
+
+    /// <summary>Whether a chain is driving the character RIGHT NOW, reachable from the static
+    /// chat handler (ruling 5, 2026-08-23: the manual branch never runs while a chain is driving
+    /// - one character, one pair of hands, so a line that arrives mid-run is ours whether or not
+    /// a pending happened to match it).
+    ///
+    /// <para>A pass-through rather than a cached flag on purpose: a mirrored bool refreshed on
+    /// the framework tick would answer for the frame before the one the chat line landed in, and
+    /// the whole point of this gate is the boundary. No instance means no chains, which honestly
+    /// reads as nothing driving.</para></summary>
+    internal static bool AnyChainDriving => instance?.AnyChainBusy ?? false;
+
     /// <summary>Whichever chain the run log should be showing: the one that is running,
     /// or the last one launched once it finishes (its outcome is the thing to read).</summary>
     internal Chains.ChainBase ActiveChain
@@ -73,11 +89,21 @@ public sealed class Plugin : IDalamudPlugin
         Tables = BalambGarden.Engine.Domain.DomainTables.Load();
         Log.Information($"[Engine] domain tables loaded: sunflower check = {Tables.SpeciesName(103)}");
 
+        Log.Information($"build {BuildStamp.Line}");
+
         Garden = GardenService.Load(PluginInterface.GetPluginConfigDirectory());
+
+        // Wired here rather than inside Load because the identity lives half in config and
+        // half in the receipt log, and this is the first point where both exist.
+        WireSyncIdentity();
 
         TendChain = new Chains.TendChain();
         CycleChain = new Chains.CycleChain();
         PotChain = new Chains.PotChain();
+
+        // Only now: the chains the accessor answers about have to exist before anything can be
+        // told they are idle.
+        instance = this;
 
         ConfigWindow = new ConfigWindow(this);
         MainWindow = new MainWindow(this);
@@ -109,6 +135,12 @@ public sealed class Plugin : IDalamudPlugin
         // signal (capture 2026-08-15 F4), so the listener lives as long as the plugin does.
         Game.ObtainWatch.Start();
 
+        // The chat line is the game's own confirmation of a gardening act: it closes a chain's
+        // pending receipt, and it IS the whole event when a human acted by hand (receipt
+        // lifecycle, ratified 2026-08-23). Either way the listener lives as long as the plugin
+        // does. Not debug-gated: the receipt it writes is the product.
+        Game.ChatReceipts.Start();
+
 #if DEBUG
         // Scoped recording: the persisted flag means "arm near pots", and a rezone ends
         // the scene a recording was scoped to. The proximity check in OnFrameworkUpdate
@@ -124,6 +156,10 @@ public sealed class Plugin : IDalamudPlugin
 
     public void Dispose()
     {
+        // FIRST, before a single subscriber comes off: the chat handler is still live for the
+        // rest of this method, and it must not be asking a half-torn-down plugin about chains.
+        instance = null;
+
         // Unregister all actions to not leak anything during disposal of plugin
         PluginInterface.UiBuilder.Draw -= WindowSystem.Draw;
         PluginInterface.UiBuilder.OpenConfigUi -= ToggleConfigUi;
@@ -133,6 +169,7 @@ public sealed class Plugin : IDalamudPlugin
         Svc.ClientState.TerritoryChanged -= OnTerritoryChanged;
 #endif
         Game.ObtainWatch.Stop();
+        Game.ChatReceipts.Stop();
 #if DEBUG
         // A watcher left registered would outlive the plugin its callback belongs to.
         Chains.PlantFlow.StopWatching();
@@ -152,6 +189,53 @@ public sealed class Plugin : IDalamudPlugin
 
         Garden.Save();
         ECommonsMain.Dispose();
+    }
+
+    /// <summary>Opens the id-space for this install (identity amendment, ruled 2026-08-23).
+    /// Two jobs, both once per launch: mint the user slug if this install has never had one,
+    /// and rule on whether the receipt log's era may keep counting.
+    ///
+    /// <para>ERAS ARE CHEAP, COLLISIONS ARE NOT. A spurious mint costs one slug and a counter
+    /// restart; a missed mint puts two different facts on the relay under one id, which cannot
+    /// be undone. EraGuard fails toward minting for that reason, and the verdict's reason is
+    /// logged either way so a field report says WHICH trigger fired rather than leaving it to
+    /// be guessed at from a changed slug.</para></summary>
+    private static void WireSyncIdentity()
+    {
+        if (Configuration.SyncUserId.Length == 0)
+        {
+            Configuration.SyncUserId = BalambGarden.Engine.Sync.SyncId.NewSlug();
+            Configuration.Save();
+            Log.Information("[Garden] minted this install's sync user id");
+        }
+
+        // An empty remembered era is NO MEMORY, not a memory of nothing - the guard's own
+        // "no memory" branch mints, which is the right answer for a config that was wiped.
+        var remembered = Configuration.SyncEraRemembered.Length == 0
+            ? null
+            : new BalambGarden.Engine.Sync.EraMemory(
+                Configuration.SyncEraRemembered,
+                Configuration.SyncCounterRemembered,
+                Configuration.SyncMachineHash);
+
+        var (verdict, reason) = BalambGarden.Engine.Sync.EraGuard.Check(
+            remembered, Garden.Receipts.Era, Garden.Receipts.Counter, Sync.MachineStamp.Hash());
+        Log.Information($"[Garden] era check: {reason}");
+
+        if (verdict == BalambGarden.Engine.Sync.EraVerdict.MintFresh)
+        {
+            var era = BalambGarden.Engine.Sync.SyncId.NewSlug();
+            Garden.Receipts.MintEra(era);
+            Log.Information($"[Garden] minted era '{era}' - the counter restarts under it");
+            Garden.SaveReceipts();   // writes the log, then refreshes the memory with it
+        }
+        else
+        {
+            // Nothing changed in the log, but the memory still gets stamped: the machine hash
+            // and counter must describe THIS load, or the next one compares against a stale
+            // clean state.
+            Garden.RememberEra();
+        }
     }
 
     /// <summary>Nothing sensed before the player exists: no character, no estate,

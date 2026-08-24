@@ -2,3 +2,5 @@
 obj/
 bin/
 *.user
+# Local planning/working docs - never ship
+.superpowers/
