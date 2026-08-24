@@ -112,6 +112,12 @@ public static class WindowFormat
         _ => "night",
     };
 
+    /// <summary>An exact past moment for hovers - the full date, because a "3d ago" only
+    /// resolves to a real calendar moment with the date said outright. Caller converts to
+    /// local time first, same as <see cref="Range"/>.</summary>
+    public static string Exact(DateTimeOffset t)
+        => t.ToString("ddd yyyy-MM-dd ", CultureInfo.InvariantCulture) + Clock(t, withDay: false);
+
     /// <summary>Data age, beside every number the dashboard shows. Clock skew clamps to
     /// "just now" - a negative age would be the surface claiming to have seen the future.</summary>
     public static string Ago(DateTimeOffset at, DateTimeOffset now)

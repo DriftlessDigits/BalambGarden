@@ -1018,7 +1018,7 @@ public class MainWindow : Window, IDisposable
         // A wider window is quiet space on the right, and nothing ever clips.
         // NoHostExtendX: without it the OUTER width still fills the window, so the last
         // column drags every row's stripe to the far edge as one long empty tail.
-        using (var table = ImRaii.Table($"beds{rollup.PatchOrdinal}", hasVerbs ? 5 : 4,
+        using (var table = ImRaii.Table($"beds{rollup.PatchOrdinal}", hasVerbs ? 6 : 5,
                    ImGuiTableFlags.RowBg | ImGuiTableFlags.Borders | ImGuiTableFlags.SizingFixedFit
                    | ImGuiTableFlags.NoHostExtendX))
         {
@@ -1029,6 +1029,7 @@ public class MainWindow : Window, IDisposable
             ImGui.TableSetupColumn("Plant");
             ImGui.TableSetupColumn("Stage");
             ImGui.TableSetupColumn("Ripe");
+            ImGui.TableSetupColumn("Watered");
             if (hasVerbs)
                 ImGui.TableSetupColumn("##verbs");
             ImGui.TableHeadersRow();
@@ -1146,6 +1147,23 @@ public class MainWindow : Window, IDisposable
 
             ImGui.TableNextColumn();
             DrawRipeCell(bed, crop, latest, now);
+
+            // Last watered is a receipt (Tend/PotWater set it), so the cell speaks plainly
+            // or says "?" - never an estimate. Steady state is quiet; the water warnings
+            // beside the name already do the shouting.
+            ImGui.TableNextColumn();
+            if (bed.LastTended is { } tended)
+            {
+                ImGui.TextDisabled(WindowFormat.Ago(tended, now));
+                if (ImGui.IsItemHovered())
+                    ImGui.SetTooltip($"watered {WindowFormat.Exact(tended.ToLocalTime())}");
+            }
+            else
+            {
+                ImGui.TextDisabled("?");
+                if (ImGui.IsItemHovered())
+                    ImGui.SetTooltip("no watering receipt for this record yet");
+            }
 
             if (hasVerbs)
             {
@@ -1473,6 +1491,7 @@ public class MainWindow : Window, IDisposable
             ImGui.TextColored(Amber, bed.IsPot
                 ? $"{label} reads empty now - harvested?"
                 : $"{label} reads empty now - replanted without me?");
+        ImGui.TableNextColumn();
         ImGui.TableNextColumn();
         ImGui.TableNextColumn();
         ImGui.TableNextColumn();
