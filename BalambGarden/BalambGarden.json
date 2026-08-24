@@ -13,5 +13,5 @@
   "InternalName": "BalambGarden",
   "IconUrl": "https://raw.githubusercontent.com/DriftlessDigits/DalamudPluginRepo/main/plugins/BalambGarden/images/icon.png",
   "ImageUrls": [],
-  "Changelog": "Fixes: no more game crash when the window is open during a teleport loading screen. Walking in the front door no longer sometimes shows every pot as 'reads empty - harvested?' when they're planted just fine (step out and back in if you saw this on the old version). The plugin is also more careful before deciding a pot was harvested behind your back - it double-checks before clearing your watering records."
+  "Changelog": "The garden now shows when everything was last watered: a new Watered column on every bed and pot (hover for the exact time). And watering by hand finally counts - tend, water, or fertilize without pressing any plugin buttons and the clocks still update. Fertilizing is remembered too, so 'did I already feed this?' has an answer."
 }
