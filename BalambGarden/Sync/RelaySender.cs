@@ -87,6 +87,7 @@ internal static class RelaySender
             {
                 using var request = new HttpRequestMessage(HttpMethod.Post, url);
                 request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+                request.Headers.Add("X-Balamb-Client", RelayClient.Stamp);
                 request.Content = new StringContent(body, Encoding.UTF8, "application/json");
 
                 using var response = await Http.SendAsync(request).ConfigureAwait(false);

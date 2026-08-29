@@ -67,6 +67,7 @@ internal static class RelayPoller
             {
                 using var request = new HttpRequestMessage(HttpMethod.Get, url);
                 request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+                request.Headers.Add("X-Balamb-Client", RelayClient.Stamp);
 
                 using var response = await Http.SendAsync(request).ConfigureAwait(false);
                 var payload = await response.Content.ReadAsStringAsync().ConfigureAwait(false);

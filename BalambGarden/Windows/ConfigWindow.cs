@@ -130,13 +130,16 @@ public class ConfigWindow : Window, IDisposable
             fingerprint = BalambGarden.Engine.Sync.HouseholdKeys.RelayFingerprint(fingerprintFor);
         }
 
-        ImGui.TextDisabled("Relay fingerprint (server-side AUTH_TOKEN_HASH):");
+        // Open-household ruling 2026-08-29: no admin step exists - typing the phrase IS the
+        // whole setup. This id is the namespace the relay files this household's rows under;
+        // it earns its pixels the day someone is debugging rows in the database.
+        ImGui.TextDisabled("Household id (how the relay files your rows):");
         ImGui.TextWrapped(fingerprint);
-        if (ImGui.Button("Copy fingerprint"))
+        if (ImGui.Button("Copy household id"))
             ImGui.SetClipboardText(fingerprint);
         if (ImGui.IsItemHovered())
             ImGui.SetTooltip(
-                "Whoever runs the relay sets this value as AUTH_TOKEN_HASH.\n"
+                "Debug identity only - nothing to configure anywhere.\n"
                 + "It cannot be turned back into the phrase.");
     }
 
