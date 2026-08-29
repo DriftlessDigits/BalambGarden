@@ -727,11 +727,13 @@ public class MainWindow : Window, IDisposable
         }
     }
 
-    /// <summary>Map keys of pots the live map says are wilting RIGHT NOW (b4=1) - the only
-    /// water claim a pot cell makes is the game's own, observed, never predicted.</summary>
+    /// <summary>Map keys of pots the live map says are wilting RIGHT NOW - the only water
+    /// claim a pot cell makes is the game's own, observed, never predicted. Ripe pots are
+    /// excluded even at b4=1 (<see cref="PotWiltRule"/>, field receipt 2026-08-26: stage 4
+    /// offers no watering verb, so the byte is not a water claim there).</summary>
     private static HashSet<int> WiltingPotKeys()
         => CensusPump.LastIndoor
-            .Where(kv => kv.Value.Wilt == 1)
+            .Where(kv => PotWiltRule.Claims(kv.Value.Wilt, kv.Value.Stage))
             .Select(kv => kv.Key)
             .ToHashSet();
 
@@ -1087,11 +1089,13 @@ public class MainWindow : Window, IDisposable
             //
             // Pots are OBSERVED, not predicted: the map itself says wilting (byte[4]=1,
             // 08-16 Papa's twins - pots DO wilt for normal crops; the flower no-wilt
-            // evidence stands separately). No clock model, just what the game showed us.
+            // evidence stands separately). No clock model, just what the game showed us -
+            // except at stage 4, where the byte is not a water claim (PotWiltRule,
+            // field receipt 2026-08-26: a ripe pot offers no watering verb at all).
             if (bed.IsPot)
             {
                 if (CensusPump.LastIndoor.TryGetValue(bed.MapKey, out var livePot)
-                    && livePot.Wilt == 1)
+                    && PotWiltRule.Claims(livePot.Wilt, livePot.Stage))
                 {
                     ImGui.SameLine();
                     ImGui.TextColored(Amber, "· wilting - water now");
