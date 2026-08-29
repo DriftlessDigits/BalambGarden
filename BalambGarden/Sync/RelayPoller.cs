@@ -17,11 +17,11 @@ namespace BalambGarden.Sync;
 /// beat, not instantly: the pump itself waits for the map, and a poll racing the loading
 /// screen would burn its attempt on a client that cannot use the answer yet).</para>
 ///
-/// <para>THE CURSOR ADVANCES ONLY PAST APPLIED RECEIPTS. The page goes to
-/// <see cref="ForeignReplay.ApplyPage"/>; if it reports anything less than fully applied, the
-/// cursor holds and the next poll re-reads the same page - the relay's forward-ordered GET
-/// makes that free, and a cursor that outran an unapplied receipt would lose a household
-/// fact silently. Until piece 4 lands the replay, every page holds deliberately.</para></summary>
+/// <para>EVERY RECEIPT LANDS SOMEWHERE BEFORE THE CURSOR MOVES (piece 4 ruling): applied to
+/// a matched row, parked in the ledger's ForeignHold for a census visit to unlock, skipped
+/// as our own echo, or dropped loudly as unparseable. Parking is what lets the cursor
+/// advance without loss - hold-forever would dam the whole household stream on one
+/// orphaned entity.</para></summary>
 internal static class RelayPoller
 {
     private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(15) };
@@ -33,7 +33,6 @@ internal static class RelayPoller
 
     private static DateTime nextPollUtc = DateTime.MinValue;
     private static bool inFlight;
-    private static string lastHeldCursor = "";
 
     /// <summary>A zone line: pull the next poll to just past the settle beat, never push it
     /// out (a poll already due stays due).</summary>
@@ -58,7 +57,7 @@ internal static class RelayPoller
 
         inFlight = true;
         var token = HouseholdKeys.AuthToken(phrase);
-        var cursor = Plugin.Garden.Receipts.RelayCursor;
+        var cursor = Plugin.Garden.Ledger.RelayCursor;   // rides the ledger file (ruling 9)
         var url = Plugin.Configuration.SyncRelayUrl.TrimEnd('/')
             + "/receipts?since=" + Uri.EscapeDataString(cursor);
 
@@ -92,23 +91,12 @@ internal static class RelayPoller
                     if (page.Receipts.Count == 0)
                         return;   // caught up; the echoed cursor equals ours
 
-                    if (ForeignReplay.ApplyPage(page))
-                    {
-                        Plugin.Garden.Receipts.RelayCursor = page.Cursor;
-                        Plugin.Garden.SaveReceipts();
-                        lastHeldCursor = "";
-                        return;
-                    }
-
-                    // Held: say so once per page, not once per poll - the same page will
-                    // come back every cycle until the replay can take it.
-                    if (lastHeldCursor != page.Cursor)
-                    {
-                        lastHeldCursor = page.Cursor;
-                        Plugin.Log.Information(
-                            $"[Sync] {page.Receipts.Count} foreign receipt(s) waiting at the "
-                            + "relay - cursor holds until the replay path applies them");
-                    }
+                    // Apply-then-advance, one ledger save for both: unmatched receipts
+                    // PARKED inside the same file, so advancing past them loses nothing
+                    // (piece 4 ruling - the stream never dams).
+                    ForeignReplay.ApplyPage(page);
+                    Plugin.Garden.Ledger.RelayCursor = page.Cursor;
+                    Plugin.Garden.Save();
                 }).ConfigureAwait(false);
             }
             catch (Exception ex)
@@ -126,11 +114,27 @@ internal static class RelayPoller
     }
 }
 
-/// <summary>Piece 4's seam, standing but deliberately inert: applying a foreign receipt means
-/// routing it through the pump with own-user skip and the game-wins law, and none of that is
-/// built yet. Refusing every page keeps the cursor honest - nothing is marked read before
-/// something can actually read it.</summary>
+/// <summary>The apply half (piece 4): pure Engine logic does the work; this only feeds it
+/// the page and says what happened. Runs on the framework thread (the poller marshals), so
+/// ledger mutation is single-threaded like every other write path.</summary>
 internal static class ForeignReplay
 {
-    internal static bool ApplyPage(RelayPage page) => false;
+    internal static void ApplyPage(RelayPage page)
+    {
+        var outcome = ForeignApply.ApplyPage(
+            Plugin.Garden.Ledger, page.Receipts,
+            Plugin.Configuration.SyncUserId, DateTimeOffset.UtcNow);
+
+        if (outcome.Applied > 0 || outcome.Parked > 0)
+            Plugin.Log.Information(
+                $"[Sync] household receipts: {outcome.Applied} applied"
+                + (outcome.Parked > 0
+                    ? $", {outcome.Parked} parked (their estates await a census visit)" : "")
+                + (outcome.OwnSkipped > 0 ? $", {outcome.OwnSkipped} own echoed back" : ""));
+
+        if (outcome.Dropped > 0)
+            Plugin.Log.Warning(
+                $"[Sync] {outcome.Dropped} relay receipt(s) carried unparseable ids - dropped "
+                + "(the count is the instrument; a growing number means a sender is minting bad ids)");
+    }
 }

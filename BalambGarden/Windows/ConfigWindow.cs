@@ -95,8 +95,22 @@ public class ConfigWindow : Window, IDisposable
         {
             // Trimmed to match the relay's setup flow - a copy-pasted phrase with a stray
             // trailing space would otherwise derive a whole different identity.
-            configuration.SyncPassphrase = phrase.Trim();
-            configuration.Save();
+            var trimmed = phrase.Trim();
+            if (trimmed != configuration.SyncPassphrase)
+            {
+                configuration.SyncPassphrase = trimmed;
+                configuration.Save();
+
+                // A new phrase is a NEW HOUSEHOLD: every cached entity id was minted under
+                // the old naming key and can never match again, the parked receipts came
+                // from the old stream, and the cursor points into it. Full inbox reset -
+                // one estate lap re-mints, cursor 0 replays the new household's window.
+                foreach (var bed in Plugin.Garden.Ledger.Beds)
+                    bed.WireEntity = null;
+                Plugin.Garden.Ledger.ForeignHold.Clear();
+                Plugin.Garden.Ledger.RelayCursor = "0";
+                Plugin.Garden.Save();
+            }
         }
         if (ImGui.IsItemHovered())
             ImGui.SetTooltip(

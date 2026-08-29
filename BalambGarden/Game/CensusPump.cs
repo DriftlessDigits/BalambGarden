@@ -78,6 +78,10 @@ internal static class CensusPump
 
         CoveredHere = RosterSensor.Current().Covers(estate);
 
+        // Wire identity mints where the inputs live: here, standing at the estate. Cheap
+        // no-op once every row underfoot carries its entity.
+        MintWireEntities(estate);
+
         // The front door no longer changes the estate key (08-15: one plot, one record), so
         // the inside/outside flip is its own sighting trigger - the two DataMaps are read by
         // different code paths and neither refreshes the other.
@@ -135,6 +139,65 @@ internal static class CensusPump
             if (Rollups.ArrivalNudge(estate, rollups, Plugin.Configuration.NudgeLabel) is { } line)
                 Svc.Chat.Print(line);
         }
+    }
+
+    private static DateTime nextMintUtc = DateTime.MinValue;
+
+    /// <summary>Mints wire entity ids for this estate's rows (piece 4, ruled 2026-08-29):
+    /// "both installs mint identical IDs independently at census time" is literal - the HMAC
+    /// inputs (raw HouseId, gimmick patch id) only exist while standing here.
+    ///
+    /// <para>STANCE IS PART OF THE IDENTITY: indoors the HouseId carries the room, outdoors
+    /// it is the plot's - so pots mint only while inside and beds only while outside, or two
+    /// installs standing on opposite sides of the front door would mint two names for one
+    /// container. A bed whose gimmick is not in scan range stays null for the next pass
+    /// (NearestPatchId's honest 0). Any fresh mint retries the parked foreign receipts -
+    /// this is the moment a parked fact can finally land.</para></summary>
+    private static void MintWireEntities(EstateKey estate)
+    {
+        if (!CoveredHere || DateTime.UtcNow < nextMintUtc)
+            return;
+        nextMintUtc = DateTime.UtcNow.AddSeconds(10);
+
+        var phrase = Plugin.Configuration.SyncPassphrase;
+        if (phrase.Length == 0)
+            return;
+
+        var inside = EstateSensor.IsInside();
+        var rows = Plugin.Garden.Ledger.Beds
+            .Where(b => b.Estate == estate && b.IsPot == inside && b.WireEntity is null)
+            .ToList();
+        if (rows.Count == 0)
+            return;
+
+        var houseId = EstateSensor.CurrentHouseId();
+        if (houseId == 0)
+            return;
+
+        var namingKey = HouseholdKeys.NamingKey(phrase);
+        var minted = 0;
+        foreach (var row in rows)
+        {
+            if (row.IsPot)
+            {
+                row.WireEntity = EntityName.ForPot(namingKey, houseId, row.MapKey);
+                minted++;
+            }
+            else if (NearestPatchId(row.PatchOrdinal) is var patchId && patchId != 0)
+            {
+                row.WireEntity = EntityName.ForBed(namingKey, houseId, patchId, row.BedSlot);
+                minted++;
+            }
+        }
+
+        if (minted == 0)
+            return;
+
+        var landed = ForeignApply.RetryParked(Plugin.Garden.Ledger, DateTimeOffset.UtcNow);
+        Plugin.Garden.Save();
+        Plugin.Log.Information(
+            $"[Sync] wire identity minted for {minted} row(s) at {estate.DisplayLabel()}"
+            + (landed > 0 ? $" - {landed} parked household receipt(s) applied" : ""));
     }
 
     /// <summary>Refreshes the UI-facing map reads WITHOUT posting observations. The

@@ -17,6 +17,13 @@ public sealed class ClaimedBed
     public DateTimeOffset FirstRecorded { get; init; }
     public DateTimeOffset? LastTended { get; set; }
 
+    /// <summary>This row's pseudonym on the household wire, minted at census time from live
+    /// game data (piece 4, ruled 2026-08-29) - the HMAC inputs (raw HouseId, gimmick patch
+    /// id) only exist while standing at the estate. Null until a visit mints it; wiped
+    /// wholesale when the household phrase changes (a new naming key invalidates every
+    /// cached id at once).</summary>
+    public string? WireEntity { get; set; }
+
     public List<Observation> RingStorage { get; init; } = [];   // public for serialization
 
     public IReadOnlyList<Observation> Ring => RingStorage;

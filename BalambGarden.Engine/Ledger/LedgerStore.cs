@@ -12,6 +12,18 @@ public sealed class LedgerStore
     public Dictionary<string, int> Bindings { get; set; } = [];
     public List<EstateRecord> Estates { get; set; } = [];
 
+    /// <summary>INBOX position in the household stream (sync ruling 9: the cursor is a claim
+    /// about what THIS FILE absorbed, so it rides this file - stored anywhere else it would
+    /// point past receipts a restored ledger never saw). "0" = full replay of the relay's
+    /// retained window.</summary>
+    public string RelayCursor { get; set; } = "0";
+
+    /// <summary>Foreign receipts that matched no local entity yet - the estate has not been
+    /// censused under this phrase, or the entity is genuinely orphaned. They wait HERE, beside
+    /// the cursor, for the same restore-coherence reason, and are retried whenever census
+    /// mints new entity ids. The stream never dams on them (piece 4 ruling, 2026-08-29).</summary>
+    public List<Sync.ParkedForeign> ForeignHold { get; set; } = [];
+
     /// <summary>Frame 2: visiting an estate is how it enters the roster; revisits only
     /// move LastVisited, so FirstSeen stays the discovery receipt.</summary>
     public EstateRecord UpsertEstate(Census.EstateKey key, DateTimeOffset now)
