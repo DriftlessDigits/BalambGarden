@@ -117,6 +117,21 @@ public class HouseholdKeysTests
         Assert.Equal(HouseholdKeys.KeyBytes, HouseholdKeys.NamingKey(Phrase).Length);
         Assert.Equal(HouseholdKeys.KeyBytes * 2, HouseholdKeys.AuthToken(Phrase).Length);
     }
+
+    /// <summary>THE cross-language contract (relay repo: test/derive.test.js). These bytes
+    /// were frozen by the relay's Node implementation; both sides must derive them from
+    /// "test-vector-passphrase" forever. If this test fails, the derivation changed and every
+    /// configured install's identity breaks - fix the code, never the vector.</summary>
+    [Fact]
+    public void Frozen_vectors_match_the_relay_contract()
+    {
+        Assert.Equal(
+            "a62b718db4317f073fb53c872fda423b37b34689153b6c239a28d555bc769d9d",
+            HouseholdKeys.AuthToken("test-vector-passphrase"));
+        Assert.Equal(
+            "07433adc87dee6f9e77737bd5a5cfbe8ee56f4013ed400a0890bdd8b87232c34",
+            Convert.ToHexStringLower(HouseholdKeys.NamingKey("test-vector-passphrase")));
+    }
 }
 
 public class EntityNameTests

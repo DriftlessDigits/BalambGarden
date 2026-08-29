@@ -25,10 +25,15 @@ public static class HouseholdKeys
     // Fixed application salt: not a secret, just domain separation - the same passphrase
     // used with some other tool derives unrelated keys. Versioned so a future derivation
     // change is a NEW key family, never a silent drift of this one.
-    private static readonly byte[] Salt = Encoding.UTF8.GetBytes("balamb-garden-sync-v1");
+    //
+    // THE CONSTANTS ARE THE RELAY'S (scripts/derive.js in DriftlessDigits/BalambRelay,
+    // pinned there and here by the same frozen vectors). The relay side minted the live
+    // credential first, so its spelling IS the contract - this file was realigned to it
+    // 2026-08-29 after shipping with a different salt/info trio that no vector guarded.
+    private static readonly byte[] Salt = Encoding.UTF8.GetBytes("BalambGarden.HouseholdSync.v1");
 
-    private static readonly byte[] AuthInfo = Encoding.UTF8.GetBytes("auth");
-    private static readonly byte[] NamingInfo = Encoding.UTF8.GetBytes("naming");
+    private static readonly byte[] AuthInfo = Encoding.UTF8.GetBytes("auth-token");
+    private static readonly byte[] NamingInfo = Encoding.UTF8.GetBytes("naming-key");
 
     public const int KeyBytes = 32;
 
