@@ -66,6 +66,13 @@ public sealed class ReceiptLog
     /// 0 = nothing sent.</summary>
     public long LastSentSeq { get; set; }
 
+    /// <summary>INBOX position: the relay's opaque cursor from the last page this install
+    /// applied; "0" = never read, full replay of the retained window. Deliberately NOT
+    /// touched by <see cref="MintEra"/> - eras name the OUTBOX's id-space, and where we have
+    /// read to in the household stream is a different fact entirely (re-reading after every
+    /// restore-triggered mint would replay foreign receipts already applied).</summary>
+    public string RelayCursor { get; set; } = "0";
+
     public List<LoggedReceipt> Entries { get; set; } = [];
 
     /// <summary>Assigns the next <see cref="Seq"/>, stamps the current <see cref="Era"/>, and

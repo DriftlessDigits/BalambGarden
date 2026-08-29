@@ -70,6 +70,27 @@ public class ReceiptLogTests
         Assert.Equal(0UL, back.Entries[0].HouseId);
     }
 
+    /// <summary>The relay cursor is INBOX state - where this install has read to in the
+    /// household stream - so it survives the round trip and, critically, survives an era
+    /// mint: eras are the OUTBOX's id-space, and re-reading the whole retained window after
+    /// every restore-triggered mint would replay foreign facts already applied.</summary>
+    [Fact]
+    public void Relay_cursor_persists_and_survives_an_era_mint()
+    {
+        var log = Live();
+        log.RelayCursor = "1042";
+        log.MintEra("freshx");
+        Assert.Equal("1042", log.RelayCursor);
+        var back = ReceiptLog.FromJson(log.ToJson());
+        Assert.Equal("1042", back.RelayCursor);
+    }
+
+    [Fact]
+    public void Relay_cursor_defaults_to_the_full_replay_position()
+    {
+        Assert.Equal("0", new ReceiptLog().RelayCursor);
+    }
+
     [Fact]
     public void Append_assigns_monotonic_seq_from_one()
     {
