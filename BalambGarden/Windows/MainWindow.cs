@@ -1581,7 +1581,10 @@ public class MainWindow : Window, IDisposable
     /// <summary>True only when a fresh read of THIS estate's map shows the slot vacant.
     /// Away from the estate there is no read at all, and "I cannot see it" is never
     /// evidence that something is gone. Pots (08-16): the settled-object guard stands in
-    /// for the outdoor TryGetValue - an unsettled world answers false, never "empty".</summary>
+    /// for the outdoor TryGetValue - an unsettled world answers false, never "empty" - AND
+    /// the map must have answered this visit (2026-08-28: objects can settle BEFORE the
+    /// DataMap on a cold zone-in, the unreceipted order that nearly cleared the FC records
+    /// on 08-23 - without this clause every pot flashes amber until the retry lands).</summary>
     private static bool ReadsEmptyNow(ClaimedBed bed, bool isHere)
     {
         if (!isHere)
@@ -1589,6 +1592,7 @@ public class MainWindow : Window, IDisposable
         if (bed.IsPot)
             return EstateSensor.IsInside()
                 && ObjectSensor.SawHousingObjects
+                && CensusPump.MapAnsweredThisVisit
                 && !CensusPump.LastIndoor.ContainsKey(bed.MapKey);
         if (!CensusPump.LastOutdoor.TryGetValue(bed.MapKey, out var readings))
             return false;
