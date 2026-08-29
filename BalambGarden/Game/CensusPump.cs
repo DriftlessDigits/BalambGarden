@@ -791,12 +791,17 @@ internal static class CensusPump
     /// waiting on it, so it is somebody's own hands and belongs on the manual branch.
     ///
     /// <para>A non-match NEVER clears the pending: our act is still waiting for its own line,
-    /// and a stranger's fertilize landing in earshot must not bury it.</para></summary>
-    internal static bool TryCloseChain(ChatVerdict verdict)
+    /// and a stranger's fertilize landing in earshot must not bury it.</para>
+    ///
+    /// <para><paramref name="itemSpecies"/> is the obtain lane's extra witness (capture
+    /// 2026-08-26): what the line's ItemPayload resolved to, 0 for unknown and for every
+    /// 57-catalog verdict. <see cref="ReceiptLifecycle.Matches"/> owns the rule - a resolvable
+    /// contradiction refuses the close and the pending times out honestly.</para></summary>
+    internal static bool TryCloseChain(ChatVerdict verdict, ushort itemSpecies = 0)
     {
         if (openPending is not { } pending)
             return false;
-        if (!ReceiptLifecycle.Matches(pending, verdict, DateTimeOffset.UtcNow))
+        if (!ReceiptLifecycle.Matches(pending, verdict, DateTimeOffset.UtcNow, itemSpecies))
             return false;
 
         openPending = null;

@@ -7,6 +7,55 @@ public class ChatLineTests
 {
     private const int SystemMessage = 57;
     private const int ErrorMessage = 60;
+    private const int LootNotice = 62;
+
+    // ---- The obtain lane (capture 2026-08-26: harvest closes on LootNotice/62, not 57) ----
+
+    [Theory]
+    [InlineData("You obtain 9 krakka roots.")]
+    [InlineData("You obtain a bouquet of red sunflowers.")]
+    [InlineData("You obtain 3 kukuru beans.")]
+    public void An_obtain_line_on_the_loot_channel_from_us_is_a_harvest_candidate(string text)
+        => Assert.Equal(ChatVerdict.HarvestObtain, ChatLine.ClassifyObtain(LootNotice, true, text));
+
+    [Fact]
+    public void The_obtain_words_on_the_success_channel_are_nothing()
+        // 2026-08-26's deafness lesson cuts both ways: the 57 catalog never hears obtains, and
+        // the obtain lane never hears 57 - one line, one lane, decided by structure.
+        => Assert.Equal(ChatVerdict.None, ChatLine.ClassifyObtain(SystemMessage, true, "You obtain 9 krakka roots."));
+
+    [Fact]
+    public void Somebody_elses_obtain_is_not_our_harvest()
+        => Assert.Equal(ChatVerdict.None, ChatLine.ClassifyObtain(LootNotice, false, "You obtain 9 krakka roots."));
+
+    [Theory]
+    [InlineData("You spent 303 gil.")]
+    [InlineData("Drift says: You obtain 9 krakka roots.")]
+    [InlineData("")]
+    public void Non_obtain_words_on_the_loot_channel_are_nothing(string text)
+        => Assert.Equal(ChatVerdict.None, ChatLine.ClassifyObtain(LootNotice, true, text));
+
+    [Fact]
+    public void A_harvest_obtain_is_a_harvest_receipt()
+        => Assert.Equal(SyncKind.Harvest, ChatLine.KindOf(ChatVerdict.HarvestObtain));
+
+    [Fact]
+    public void The_obtain_line_names_no_container()
+    {
+        // "You obtain 9 krakka roots." says nothing about bed-vs-pot - unlike every 57 line,
+        // where the game's own sentence names the container. The desk must know the difference.
+        Assert.False(ChatLine.NamesContainer(ChatVerdict.HarvestObtain));
+        Assert.Throws<ArgumentOutOfRangeException>(() => ChatLine.IsPotVerdict(ChatVerdict.HarvestObtain));
+    }
+
+    [Theory]
+    [InlineData(ChatVerdict.FertilizeBed)]
+    [InlineData(ChatVerdict.FertilizePot)]
+    [InlineData(ChatVerdict.PlantPot)]
+    [InlineData(ChatVerdict.TendBed)]
+    [InlineData(ChatVerdict.WaterPot)]
+    public void Every_success_channel_verdict_names_its_container(ChatVerdict v)
+        => Assert.True(ChatLine.NamesContainer(v));
 
     [Fact]
     public void The_bed_success_line_classifies()

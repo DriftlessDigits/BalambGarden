@@ -65,15 +65,30 @@ public static class ReceiptLifecycle
     /// <para>The container check is not redundant with the kind check - a pot fertilize and a
     /// bed fertilize are the same <see cref="SyncKind"/>, and the game's own sentence is the
     /// only thing that tells them apart. Requiring both is what stops a bed act being closed by
-    /// the line from a pot somebody else's hands were in.</para>
+    /// the line from a pot somebody else's hands were in. The obtain line is the one sentence
+    /// that names NO container (capture 2026-08-26), so for it the check has nothing to check
+    /// and the pending's own container is the only claim standing -
+    /// <see cref="ChatLine.NamesContainer"/> decides which reading applies.</para>
+    ///
+    /// <para><paramref name="itemSpecies"/> is the obtain lane's extra witness: the ItemPayload
+    /// names what arrived. The shape is generic (venture yields and loot rolls ride it), so a
+    /// resolvable item that CONTRADICTS the species the pending banked refuses the close - the
+    /// pending then times out chain-unconfirmed, the honest word. 0 on either side is absence,
+    /// and absence is not a mismatch: a flower's bouquet resolves to nothing, and the armed
+    /// identity plus the window carry the claim alone.</para>
     ///
     /// <para>A negative elapsed is not "very recent": the clock moved under us, and that is not
     /// evidence - the same reading <see cref="FertilizeCorroboration"/> gives it.</para></summary>
-    public static bool Matches(PendingReceipt pending, ChatVerdict verdict, DateTimeOffset now)
+    public static bool Matches(
+        PendingReceipt pending, ChatVerdict verdict, DateTimeOffset now, ushort itemSpecies = 0)
     {
         if (verdict == ChatVerdict.None)
             return false;
-        if (ChatLine.KindOf(verdict) != pending.Kind || ChatLine.IsPotVerdict(verdict) != pending.IsPot)
+        if (ChatLine.KindOf(verdict) != pending.Kind)
+            return false;
+        if (ChatLine.NamesContainer(verdict) && ChatLine.IsPotVerdict(verdict) != pending.IsPot)
+            return false;
+        if (itemSpecies != 0 && pending.Species != 0 && itemSpecies != pending.Species)
             return false;
 
         var elapsed = now - pending.OpenedAt;
