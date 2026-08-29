@@ -165,6 +165,20 @@ public class ForeignApplyTests
         Assert.Equal(SyncKind.Tend, parked.Receipt.Kind);
     }
 
+    /// <summary>Ruling 10 display law: external vs internal, derived - never stored twice.
+    /// The clock is external exactly when the ring's External observation stamped it.</summary>
+    [Fact]
+    public void External_watering_is_derivable_from_the_ring()
+    {
+        var ledger = WithBed();
+        ForeignApply.ApplyPage(ledger, [Foreign(SyncKind.Tend)], OwnUser, T0);
+        Assert.True(ledger.Beds[0].LastTendedIsExternal);
+
+        // A later LOCAL tend takes the clock back: nothing external stamped THIS time.
+        ledger.Beds[0].LastTended = T0.AddHours(2);
+        Assert.False(ledger.Beds[0].LastTendedIsExternal);
+    }
+
     [Fact]
     public void Cursor_defaults_to_the_full_replay_position()
     {
