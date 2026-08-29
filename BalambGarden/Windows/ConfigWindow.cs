@@ -1,6 +1,7 @@
 using System;
 using System.Numerics;
 using Dalamud.Bindings.ImGui;
+using Dalamud.Interface;
 using Dalamud.Interface.Utility.Raii;
 using Dalamud.Interface.Windowing;
 
@@ -122,11 +123,9 @@ public class ConfigWindow : Window, IDisposable
         // the phrase is a garden password, not a bank one - letting the typist SEE it is
         // cheaper than the wrong-household debugging session.
         ImGui.SameLine();
-        using (ImRaii.PushFont(Dalamud.Interface.UiBuilder.IconFont))
+        using (ImRaii.PushFont(UiBuilder.IconFont))
         {
-            var icon = revealPhrase
-                ? Dalamud.Interface.FontAwesomeIcon.EyeSlash
-                : Dalamud.Interface.FontAwesomeIcon.Eye;
+            var icon = revealPhrase ? FontAwesomeIcon.EyeSlash : FontAwesomeIcon.Eye;
             if (ImGui.SmallButton(icon.ToIconString()))
                 revealPhrase = !revealPhrase;
         }
