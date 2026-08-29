@@ -16,7 +16,7 @@ public class ConfigWindow : Window, IDisposable
         Flags = ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoScrollbar |
                 ImGuiWindowFlags.NoScrollWithMouse;
 
-        Size = new Vector2(400, 540);
+        Size = new Vector2(400, 500);
         SizeCondition = ImGuiCond.Always;
 
         configuration = Plugin.Configuration;
@@ -93,8 +93,8 @@ public class ConfigWindow : Window, IDisposable
         ImGui.Text("Household sync");
 
         var phrase = configuration.SyncPassphrase;
-        ImGui.SetNextItemWidth(260f);
-        ImGui.InputText("Household phrase", ref phrase, 256,
+        ImGui.SetNextItemWidth(230f);
+        ImGui.InputText("##HouseholdPhrase", ref phrase, 256,
             revealPhrase ? ImGuiInputTextFlags.None : ImGuiInputTextFlags.Password);
         if (ImGui.IsItemDeactivatedAfterEdit())
         {
@@ -121,7 +121,8 @@ public class ConfigWindow : Window, IDisposable
 
         // The unmask eye: typos in a masked field derive a whole different household, and
         // the phrase is a garden password, not a bank one - letting the typist SEE it is
-        // cheaper than the wrong-household debugging session.
+        // cheaper than the wrong-household debugging session. Sits between field and label
+        // so the fixed-width window never clips it.
         ImGui.SameLine();
         using (ImRaii.PushFont(UiBuilder.IconFont))
         {
@@ -131,6 +132,8 @@ public class ConfigWindow : Window, IDisposable
         }
         if (ImGui.IsItemHovered())
             ImGui.SetTooltip(revealPhrase ? "Hide the phrase" : "Show the phrase");
+        ImGui.SameLine();
+        ImGui.Text("Household phrase");
 
         if (configuration.SyncPassphrase.Length == 0)
         {
@@ -146,15 +149,17 @@ public class ConfigWindow : Window, IDisposable
 
         // Open-household ruling 2026-08-29: no admin step exists - typing the phrase IS the
         // whole setup. This id is the namespace the relay files this household's rows under;
-        // it earns its pixels the day someone is debugging rows in the database.
-        ImGui.TextDisabled("Household id (how the relay files your rows):");
-        ImGui.TextWrapped(fingerprint);
-        if (ImGui.Button("Copy household id"))
+        // it earns ONE line (Drift's redline: five was not the best use of space) - the full
+        // value rides the tooltip and the copy, the day someone is debugging database rows.
+        ImGui.TextDisabled($"Household id  {fingerprint[..8]}…{fingerprint[^4..]}");
+        ImGui.SameLine();
+        if (ImGui.SmallButton("copy"))
             ImGui.SetClipboardText(fingerprint);
         if (ImGui.IsItemHovered())
             ImGui.SetTooltip(
-                "Debug identity only - nothing to configure anywhere.\n"
-                + "It cannot be turned back into the phrase.");
+                $"{fingerprint}\n"
+                + "Debug identity only (how the relay files your rows) - nothing to\n"
+                + "configure anywhere. It cannot be turned back into the phrase.");
     }
 
     /// <summary>How far the dashboard's patch sweep reaches. Wider finds a far corner of a
