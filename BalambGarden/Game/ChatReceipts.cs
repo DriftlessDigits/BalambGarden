@@ -224,14 +224,14 @@ internal static unsafe class ChatReceipts
         var (proceed, reason) = HarvestCorroboration.Check(itemSpecies, containerSpecies);
         if (!proceed)
         {
-            // A disagreement is the poisoning case caught in the act - loud. The two absence
-            // cases are quieter: an unresolvable item at a garden target is most often the
-            // named flower gap, and an unknown container is an unread map - both are honest
-            // refusals, not findings.
-            if (itemSpecies != 0 && containerSpecies != 0)
-                Plugin.Log.Warning($"[ChatReceipts] manual harvest refused (fail closed): {reason}");
-            else
-                Plugin.Log.Information($"[ChatReceipts] manual harvest not receipted: {reason}");
+            // Every refusal at a garden target is LOUD, at least for the shakedown (ruled
+            // 2026-08-28): a disagreement is the poisoning case caught in the act, and the two
+            // absence cases are how a gate that refuses a REAL harvest - an alias gap, an
+            // unread map - would surface as a pile in the log instead of hiding at info for
+            // weeks (the fertilize corroboration sat inert since birth for exactly this class,
+            // 08-23). Quiet the absence pair back down once the gate is field-proven. The
+            // no-garden-target case above stays debug - that one is every loot roll in the game.
+            Plugin.Log.Warning($"[ChatReceipts] manual harvest refused (fail closed): {reason}");
             return;
         }
 
