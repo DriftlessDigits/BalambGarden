@@ -34,6 +34,11 @@ namespace BalambGarden.Chains;
 /// </summary>
 internal sealed unsafe class PotChain : ChainBase
 {
+    /// <summary>Pot cadence has no between-beds delay - bare TendPace between pots plus a
+    /// few paced clicks each (Open at line ~257). The base seed would price a pot run like
+    /// a bed run and crash at the first boundary.</summary>
+    protected override double SeedMsPerUnit() => 4.0 * Plugin.Configuration.TendPaceMS;
+
     private const int HarvestWaitMS = 20_000;
     private const int HumanStepLimitMS = PlantFlow.HumanFillTimeoutMS + 15_000;
 

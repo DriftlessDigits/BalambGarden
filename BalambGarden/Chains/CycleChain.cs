@@ -64,6 +64,12 @@ internal sealed class ReplantPlan
 /// </summary>
 internal sealed unsafe class CycleChain : ChainBase
 {
+    /// <summary>A cycle unit is harvest AND replant - two dialogues where a tend runs one,
+    /// so the seed doubles the click budget. A seed, not a claim: the EWMA takes over at
+    /// the first boundary.</summary>
+    protected override double SeedMsPerUnit()
+        => Plugin.Configuration.PostTendDelayMS + (8.0 * Plugin.Configuration.TendPaceMS);
+
     /// <summary>How long to wait for the chat obtain line after selecting Harvest. The
     /// harvest itself fires on the selection (capture F4); this budget covers animation and
     /// chat latency, nothing more.</summary>

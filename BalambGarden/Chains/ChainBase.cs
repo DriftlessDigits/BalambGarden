@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using BalambGarden.Engine.Derivations;
 using ECommons;
 using ECommons.Automation.LegacyTaskManager;
 
@@ -33,38 +34,26 @@ internal abstract class ChainBase : IDisposable
 
     internal TimeSpan Elapsed => Busy ? DateTime.UtcNow - RunStartUtc : TimeSpan.Zero;
 
-    /// <summary>Countdown ETA, pace frozen at unit boundaries (POC/Scrooge ruling -
-    /// a live-clock pace bills the current unit's wait to every future unit).</summary>
+    /// <summary>Countdown ETA. The pace model (EWMA, sawtooth story) lives in
+    /// <see cref="RunPace"/> where it is desk-tested; this property only feeds it the
+    /// clock. lastUnitAt doubles as the anchor: before the first boundary it still sits
+    /// at RunStartUtc, which is exactly where the seed's countdown should start.</summary>
     internal TimeSpan? Eta
     {
         get
         {
             if (!Busy || TotalUnits == 0)
                 return null;
-            var done = UnitsDone;
-            var remaining = TotalUnits - done;
-            if (remaining <= 0)
-                return null;
-
-            double msPerUnit;
-            DateTime anchor;
-            if (done > 0)
-            {
-                msPerUnit = (lastUnitAt - RunStartUtc).TotalMilliseconds / done;
-                anchor = lastUnitAt;
-            }
-            else
-            {
-                msPerUnit = SeedMsPerUnit();
-                anchor = RunStartUtc;
-            }
-
-            var spent = (DateTime.UtcNow - anchor).TotalMilliseconds;
-            return TimeSpan.FromMilliseconds(Math.Max(0, (msPerUnit * remaining) - spent));
+            var spent = (DateTime.UtcNow - lastUnitAt).TotalMilliseconds;
+            return RunPace.Eta(pace, TotalUnits - UnitsDone, spent);
         }
     }
 
-    /// <summary>Pre-first-completion ETA seed; chains override with their own shape.</summary>
+    private RunPace pace;
+
+    /// <summary>Pre-first-completion ETA seed; chains override with their own shape
+    /// (a pot paces at bare TendPace between units - no between-beds delay - and a
+    /// harvest+replant bed runs two dialogues where a tend runs one).</summary>
     protected virtual double SeedMsPerUnit()
         => Plugin.Configuration.PostTendDelayMS + (4.0 * Plugin.Configuration.TendPaceMS);
 
@@ -103,6 +92,7 @@ internal abstract class ChainBase : IDisposable
         UnitsDone = 0;
         RunStartUtc = DateTime.UtcNow;
         lastUnitAt = RunStartUtc;
+        pace = new RunPace(SeedMsPerUnit());
         TotalUnits = units;
         LastOutcome = startOutcome;
         running = this;
@@ -114,7 +104,9 @@ internal abstract class ChainBase : IDisposable
     {
         Report.Add(line);
         UnitsDone++;
-        lastUnitAt = DateTime.UtcNow;
+        var now = DateTime.UtcNow;
+        pace = pace.Advance((now - lastUnitAt).TotalMilliseconds);
+        lastUnitAt = now;
     }
 
     /// <summary>A line for the feed that is not a completed unit - "waiting on you",
