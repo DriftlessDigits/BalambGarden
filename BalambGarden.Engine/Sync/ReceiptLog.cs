@@ -16,7 +16,14 @@ namespace BalambGarden.Engine.Sync;
 /// third, stamped from the log's era at Append time so an entry carries the life it was born
 /// under forever: that is what lets <see cref="ReceiptLog.Unsent"/> tell this era's outbox from
 /// a retired era's history. The user third never touches the Engine - it lives in config and
-/// arrives as a parameter at send time.</para></summary>
+/// arrives as a parameter at send time.</para>
+///
+/// <para><see cref="HouseId"/> is the raw 8-byte HouseId, banked at ACT time (ruled
+/// 2026-08-29, option A): the wire canonical hashes the game's own identity, and EstateKey is
+/// a lossy decomposition that cannot give those bytes back. 0 = unknown (a pre-upgrade entry,
+/// or a read that never answered) - the send path refuses it, the same law as patch id 0.
+/// LOCAL-PLAINTEXT ONLY like everything here; on the wire it exists solely inside the entity
+/// HMAC.</para></summary>
 public sealed record LoggedReceipt(
     [property: JsonPropertyName("seq")] long Seq,
     [property: JsonPropertyName("era")] string Era,
@@ -29,7 +36,8 @@ public sealed record LoggedReceipt(
     [property: JsonPropertyName("bedSlot")] int BedSlot,
     [property: JsonPropertyName("patchId")] ushort PatchId,
     [property: JsonPropertyName("potKey")] int PotKey,
-    [property: JsonPropertyName("data")] SyncData Data);
+    [property: JsonPropertyName("data")] SyncData Data,
+    [property: JsonPropertyName("houseId")] ulong HouseId = 0);
 
 /// <summary>The local append-only receipt log. One structure, two duties: (a) local history -
 /// "already fed within the hour" and future pacing analysis read it; (b) the sync outbox
@@ -78,7 +86,8 @@ public sealed class ReceiptLog
         int bedSlot,
         ushort patchId,
         int potKey,
-        SyncData? data = null)
+        SyncData? data = null,
+        ulong houseId = 0)
     {
         if (Era.Length == 0)
             throw new InvalidOperationException(
@@ -96,7 +105,8 @@ public sealed class ReceiptLog
             BedSlot: bedSlot,
             PatchId: patchId,
             PotKey: potKey,
-            Data: data ?? SyncData.Empty);
+            Data: data ?? SyncData.Empty,
+            HouseId: houseId);
         Entries.Add(entry);
         return entry;
     }
