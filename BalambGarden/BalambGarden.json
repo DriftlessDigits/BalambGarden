@@ -13,5 +13,5 @@
   "InternalName": "BalambGarden",
   "IconUrl": "https://raw.githubusercontent.com/DriftlessDigits/DalamudPluginRepo/main/plugins/BalambGarden/images/icon.png",
   "ImageUrls": [],
-  "Changelog": "Hover the Watered column to see when a bed or pot was last fertilized - and whether the game will let you feed it again yet. Only shows up once the plugin has actually seen a feeding, by button or by hand."
+  "Changelog": "Harvests count now: whether a button did the picking or you did, the window sees it and the pot reads empty right away - no more rows stuck saying ripe after the crop is in your bag. Ripe pots stopped nagging 'water now' (the game won't let you water a finished crop anyway). Water All and Tend All skip anything ripe or empty, so the rounds are quicker and the button counts only what it will actually touch. And walking into a house no longer flashes every pot amber while the game catches up."
 }
