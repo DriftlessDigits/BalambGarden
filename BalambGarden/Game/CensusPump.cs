@@ -462,8 +462,14 @@ internal static class CensusPump
     /// <para>Returns nothing on purpose, unlike every other receipt path: a chat receipt has
     /// no chain feed to report into, so the gates say what happened in the log instead of
     /// handing a line to a run nobody launched.</para></summary>
+    /// <param name="knownSpecies">What the caller already proved was acted on, 0 for nothing
+    /// - the manual harvest's twice-witnessed item species (ruled 2026-08-28: the map reads a
+    /// just-harvested container as ZEROED, so the post-SightNow read below answers 0 for the
+    /// one verb whose receipt knew the species best; "if we are confident we did a thing,
+    /// show it"). The map still wins when it answers - this only fills its silence.</param>
     internal static void OnChatReceipt(
-        SyncKind kind, bool isPot, int potKey, int patchOrdinal, int bedSlot, ushort patchId)
+        SyncKind kind, bool isPot, int potKey, int patchOrdinal, int bedSlot, ushort patchId,
+        ushort knownSpecies = 0)
     {
         var estate = EstateSensor.Current();
         if (estate is null)
@@ -500,6 +506,9 @@ internal static class CensusPump
             species = beds[bedSlot].SpeciesIndex;
             stage = beds[bedSlot].Stage;
         }
+
+        if (species == 0)
+            species = knownSpecies;
 
         var now = DateTimeOffset.UtcNow;
 

@@ -237,7 +237,8 @@ internal static unsafe class ChatReceipts
 
         Plugin.Log.Information($"[ChatReceipts] manual harvest corroboration: {reason}");
         CensusPump.OnChatReceipt(
-            SyncKind.Harvest, isPot, potKey, patchOrdinal, bedSlot, patchId);
+            SyncKind.Harvest, isPot, potKey, patchOrdinal, bedSlot, patchId,
+            knownSpecies: itemSpecies);
     }
 
     /// <summary>The species the obtained item resolves to, 0 when it resolves to none. The
