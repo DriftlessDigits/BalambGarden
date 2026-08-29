@@ -80,6 +80,9 @@ public class ConfigWindow : Window, IDisposable
     private string fingerprintFor = "";
     private string fingerprint = "";
 
+    // Session-only: the eye never persists - a fresh window always opens masked.
+    private bool revealPhrase;
+
     /// <summary>Household sync (design ruling 16; admin/user split ruled 2026-08-28). The
     /// phrase field is the on-switch - empty is OFF, and the phrase never leaves this config.
     /// The fingerprint line is the admin's half: exactly the AUTH_TOKEN_HASH the relay
@@ -90,7 +93,8 @@ public class ConfigWindow : Window, IDisposable
 
         var phrase = configuration.SyncPassphrase;
         ImGui.SetNextItemWidth(260f);
-        ImGui.InputText("Household phrase", ref phrase, 256, ImGuiInputTextFlags.Password);
+        ImGui.InputText("Household phrase", ref phrase, 256,
+            revealPhrase ? ImGuiInputTextFlags.None : ImGuiInputTextFlags.Password);
         if (ImGui.IsItemDeactivatedAfterEdit())
         {
             // Trimmed to match the relay's setup flow - a copy-pasted phrase with a stray
@@ -113,6 +117,21 @@ public class ConfigWindow : Window, IDisposable
                 "One phrase for the whole household - each install types the same one.\n"
                 + "It stays in this config file and is never sent anywhere.\n"
                 + "Leave it empty to keep sync off entirely.");
+
+        // The unmask eye: typos in a masked field derive a whole different household, and
+        // the phrase is a garden password, not a bank one - letting the typist SEE it is
+        // cheaper than the wrong-household debugging session.
+        ImGui.SameLine();
+        using (ImRaii.PushFont(Dalamud.Interface.UiBuilder.IconFont))
+        {
+            var icon = revealPhrase
+                ? Dalamud.Interface.FontAwesomeIcon.EyeSlash
+                : Dalamud.Interface.FontAwesomeIcon.Eye;
+            if (ImGui.SmallButton(icon.ToIconString()))
+                revealPhrase = !revealPhrase;
+        }
+        if (ImGui.IsItemHovered())
+            ImGui.SetTooltip(revealPhrase ? "Hide the phrase" : "Show the phrase");
 
         if (configuration.SyncPassphrase.Length == 0)
         {
