@@ -5,10 +5,11 @@ namespace BalambGarden.Engine.Sync;
 /// nothing happens for.
 ///
 /// <para>The three verdicts after the fertilize pair were added for the receipt lifecycle
-/// (ratified 2026-08-23) off the same day's field capture. APPENDED, never reordered: the
-/// fertilize pair keeps its numbers, the way <see cref="Census.ReceiptVerb"/> does, so a
-/// value that ever reaches a persisted surface means the same thing forever.</para></summary>
-public enum ChatVerdict { None, FertilizeBed, FertilizePot, PlantPot, TendBed, WaterPot }
+/// (ratified 2026-08-23) off the same day's field capture; HarvestObtain off the 2026-08-26
+/// harvest capture. APPENDED, never reordered: the fertilize pair keeps its numbers, the way
+/// <see cref="Census.ReceiptVerb"/> does, so a value that ever reaches a persisted surface
+/// means the same thing forever.</para></summary>
+public enum ChatVerdict { None, FertilizeBed, FertilizePot, PlantPot, TendBed, WaterPot, HarvestObtain }
 
 /// <summary>The chat classifier: one pure function over (channel, who acted, words), no
 /// Dalamud types, no game state, desk-testable. Built on the fertilize recon capture of
@@ -40,6 +41,12 @@ public static class ChatLine
     /// <summary>The refusal channel, numeric 60. Named but never matched - see the type
     /// summary: refusals are not actions.</summary>
     public const int ErrorMessageKind = 60;
+
+    /// <summary>The loot channel, numeric 62 - where the harvest close line actually lands
+    /// (capture 2026-08-26: 'You obtain 9 krakka roots.' arrived as LootNotice with a local
+    /// player attribution and an ItemPayload, NOT as SystemMessage/57; the 57-only aperture is
+    /// why the shipped self-capture never heard the one line it was built to catch).</summary>
+    public const int LootNoticeKind = 62;
 
     /// <summary>The bed success line, verbatim (capture 2026-08-23).</summary>
     public const string BedFertilizeText = "You fertilize the crop.";
@@ -86,6 +93,24 @@ public static class ChatLine
         };
     }
 
+    /// <summary>The obtain lane - the harvest close (capture 2026-08-26). A separate function
+    /// rather than a wider <see cref="Classify"/> because the two lanes match on OPPOSITE
+    /// principles: the 57 catalog is exact words on a fixed channel, this is a fixed channel
+    /// with words that VARY by count and crop ('You obtain 9 krakka roots.') - so the text is
+    /// only asked for its shape, never its vocabulary. One line lands in one lane, decided by
+    /// the channel; the obtain words on 57 are nothing here, the same way a 57 sentence is
+    /// nothing to Classify on 62.
+    ///
+    /// <para>NOTE WHAT THIS DOES NOT DECIDE. The shape is generic - venture yields, loot rolls
+    /// and quest rewards ride it too - and the line names no container. Classification only
+    /// says "an obtain-shaped line from our own hands"; whether it is a HARVEST is the desk's
+    /// question (an open Harvest pending, chain branch) or the corroboration's
+    /// (<see cref="HarvestCorroboration"/>, manual branch).</para></summary>
+    public static ChatVerdict ClassifyObtain(int logKind, bool fromLocalPlayer, string text)
+        => logKind == LootNoticeKind && fromLocalPlayer && Census.ObtainLine.IsObtain(text)
+            ? ChatVerdict.HarvestObtain
+            : ChatVerdict.None;
+
     /// <summary>The kind a verdict is a receipt FOR - the join the lifecycle closes on
     /// (ratified 2026-08-23). Pure and here rather than in the adapter because the mapping is
     /// the same fact the classifier already knows: the words named the act.</summary>
@@ -98,14 +123,30 @@ public static class ChatLine
         ChatVerdict.PlantPot => SyncKind.Plant,
         ChatVerdict.TendBed => SyncKind.Tend,
         ChatVerdict.WaterPot => SyncKind.PotWater,
+        ChatVerdict.HarvestObtain => SyncKind.Harvest,
         _ => throw new ArgumentOutOfRangeException(nameof(v), v, "No receipt kind for this verdict"),
+    };
+
+    /// <summary>Whether the verdict's own sentence named a container at all. Every 57-catalog
+    /// sentence does ("...in this flowerpot", "This crop...") - the obtain line does not: 'You
+    /// obtain 9 krakka roots.' is silent on bed-vs-pot, so the lifecycle's container check has
+    /// nothing to check and must not invent an answer (capture 2026-08-26).</summary>
+    /// <exception cref="ArgumentOutOfRangeException">None named nothing at all.</exception>
+    public static bool NamesContainer(ChatVerdict v) => v switch
+    {
+        ChatVerdict.HarvestObtain => false,
+        ChatVerdict.FertilizeBed or ChatVerdict.FertilizePot or ChatVerdict.PlantPot
+            or ChatVerdict.TendBed or ChatVerdict.WaterPot => true,
+        _ => throw new ArgumentOutOfRangeException(nameof(v), v, "No sentence behind this verdict"),
     };
 
     /// <summary>Whether the verdict's own sentence says a POT was acted on. The game names the
     /// container in its words, which is why container-ness is decided at the classifier and
     /// never guessed downstream - and why the lifecycle can refuse to close a bed pending on a
     /// pot line even when the kinds agree.</summary>
-    /// <exception cref="ArgumentOutOfRangeException">None names no container.</exception>
+    /// <exception cref="ArgumentOutOfRangeException">None names no container - and neither
+    /// does HarvestObtain (<see cref="NamesContainer"/>), so asking either is a caller bug.
+    /// </exception>
     public static bool IsPotVerdict(ChatVerdict v) => v switch
     {
         ChatVerdict.FertilizePot or ChatVerdict.PlantPot or ChatVerdict.WaterPot => true,
@@ -180,5 +221,42 @@ public static class FertilizeCorroboration
         return inspectedSpecies == bedSpecies
             ? (true, "crop name agrees with the bed")
             : (false, "crop name disagrees with the bed");
+    }
+}
+
+/// <summary>The manual-harvest check (built from the 2026-08-26 harvest capture) - MANDATORY
+/// two-witness agreement, deliberately stricter than <see cref="FertilizeCorroboration"/>'s
+/// absence-proceeds.
+///
+/// <para>THE ASYMMETRY HAS A RECEIPT. The fertilize sentences are garden-specific words
+/// nothing else ever prints, so their weak point is only WHICH bed - absence of corroboration
+/// can proceed. The obtain shape is the game's generic loot channel: quest rewards, coffers,
+/// and a from-inventory lockbox that needs NO target ride the same structure, so a stale bed
+/// or pot on previous-target plus an absence-proceeds rule would mint phantom harvests.
+/// Here BOTH witnesses must speak and agree: the line's ItemPayload names what arrived, the
+/// last map read names what grew in the previous-target's container, and only their agreement
+/// is a harvest. Anything less is logged and dropped.</para>
+///
+/// <para>NAMED COST: manual FLOWER harvests never receipt - their obtain names an item
+/// ("bouquet of red sunflowers") that resolves to no species. A mod flower harvest still
+/// closes through its pending, where the armed identity carries the claim. Reopen trigger:
+/// a receipted bouquet-to-species join (TalkAliases is the reveal-never-invent home).</para></summary>
+public static class HarvestCorroboration
+{
+    /// <summary>Rules on whether a manual harvest may be receipted.</summary>
+    /// <param name="itemSpecies">The species the obtained item resolved to, 0 when it
+    /// resolved to none (not a crop item, or a flower bouquet).</param>
+    /// <param name="containerSpecies">What the last map read said grew in the container the
+    /// previous-target named, 0 when unknown (unread side, unbound patch, empty).</param>
+    public static (bool Proceed, string Reason) Check(ushort itemSpecies, ushort containerSpecies)
+    {
+        if (itemSpecies == 0)
+            return (false, "obtained item resolves to no crop species - not receipted (generic obtain line)");
+        if (containerSpecies == 0)
+            return (false, "container species unknown - one witness is not enough on a generic line");
+
+        return itemSpecies == containerSpecies
+            ? (true, "obtained item agrees with the container's crop")
+            : (false, "obtained item disagrees with the container's crop");
     }
 }

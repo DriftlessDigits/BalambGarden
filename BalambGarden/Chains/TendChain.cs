@@ -42,9 +42,12 @@ internal sealed unsafe class TendChain : ChainBase
     private Func<string>? _pendingReceipt;
 
     internal void TendOne(BedObject bed) => Tend([bed]);
-    internal void TendPatch(PatchGroup patch) => Tend(patch.Beds);
-    internal void TendAll(IEnumerable<PatchGroup> patches)
-        => Tend(patches.SelectMany(p => p.Beds).ToList());
+
+    /// <summary>The sweep entry: the caller hands the beds a sweep should visit - already
+    /// filtered through <see cref="Engine.Derivations.TendSweep"/> at the button, where the
+    /// count is claimed (ruled 2026-08-28, the pot Water All precedent extended to beds). The
+    /// chain does not re-filter: what it is handed is what was promised.</summary>
+    internal void TendMany(List<BedObject> beds) => Tend(beds);
 
     private void Tend(List<BedObject> beds)
     {

@@ -442,7 +442,7 @@ public class MainWindow : Window, IDisposable
         List<ClaimedBed> beds, bool isHere, bool actionable, DateTimeOffset now)
     {
         DrawUnclaimedLine(patches, beds);
-        DrawTendAll(patches, actionable);
+        DrawTendAll(record.Key, patches, actionable);
 
         foreach (var rollup in rollups)
             DrawRollupRow(record, rollup, patches, isHere, actionable, now);
@@ -451,7 +451,7 @@ public class MainWindow : Window, IDisposable
         // needs a row, or a patch whose identity has not been matched yet would be
         // unreachable from the window.
         foreach (var patch in patches.Where(p => rollups.All(r => r.PatchOrdinal != p.Ordinal)))
-            DrawUnclaimedPatchRow(patch, actionable);
+            DrawUnclaimedPatchRow(record.Key, patch, actionable);
     }
 
     /// <summary>One grammar (UI ruling 2026-08-15): pots render through the same rollup
@@ -514,7 +514,7 @@ public class MainWindow : Window, IDisposable
     /// <summary>Tend All, or - when nothing is in reach - the sentence that says what to
     /// do about it. A greyed-out "Tend All (0 beds, 0 patches)" is a dead control taking
     /// the best seat in the window; prose in its place actually helps.</summary>
-    private void DrawTendAll(List<PatchGroup> patches, bool actionable)
+    private void DrawTendAll(EstateKey estate, List<PatchGroup> patches, bool actionable)
     {
         if (patches.Count == 0)
             return;
@@ -526,25 +526,44 @@ public class MainWindow : Window, IDisposable
             return;
         }
 
+        // The sweep skips what the live map confirmed ripe or empty (TendSweep, ruled
+        // 2026-08-28 - the pot Water All precedent on beds): the game refuses those tends
+        // anyway, and the button must not claim waters it cannot pour.
+        var sweep = inReach
+            .OrderBy(p => p.Ordinal)
+            .Select(p => (Patch: p, Beds: SweepBeds(estate, p)))
+            .ToList();
+        var totalBeds = sweep.Sum(s => s.Beds.Count);
+        if (totalBeds == 0)
+        {
+            ImGui.TextDisabled("Every bed in reach is ripe or empty - nothing to water.");
+            return;
+        }
+
         // The button names its coverage outright - "2 patches" made the player guess
         // WHICH two, and a press should never be a guess. Ordinals are +1 in display.
-        var totalBeds = inReach.Sum(p => p.Beds.Count);
-        var names = string.Join(", ", inReach.OrderBy(p => p.Ordinal).Select(p => p.Ordinal + 1));
+        var names = string.Join(", ", sweep.Select(s => s.Patch.Ordinal + 1));
         var word = inReach.Count > 1 ? "Patches" : "Patch";
         using (ImRaii.Disabled(plugin.AnyChainBusy || !actionable))
         {
             if (ImGui.Button($"Tend All ({word} {names} · {totalBeds} beds)"))
             {
-                plugin.TendChain.TendAll(inReach);
+                plugin.TendChain.TendMany(sweep.SelectMany(s => s.Beds).ToList());
                 plugin.Launched(plugin.TendChain);
             }
         }
 
         if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
-            ImGui.SetTooltip("Waters every bed of every patch in reach:\n" + string.Join("\n",
-                patches.OrderBy(p => p.Ordinal).Select(p => p.InReach
-                    ? $"Patch {p.Ordinal + 1} - in reach ({p.Beds.Count} beds)"
-                    : $"Patch {p.Ordinal + 1} - out of reach ({p.Distance:F1}y)")));
+            ImGui.SetTooltip("Waters every growing bed of every patch in reach:\n" + string.Join("\n",
+                patches.OrderBy(p => p.Ordinal).Select(p =>
+                {
+                    if (!p.InReach)
+                        return $"Patch {p.Ordinal + 1} - out of reach ({p.Distance:F1}y)";
+                    var visiting = sweep.FirstOrDefault(s => s.Patch == p).Beds?.Count ?? 0;
+                    var left = p.Beds.Count - visiting;
+                    return $"Patch {p.Ordinal + 1} - in reach ({visiting} beds"
+                        + (left > 0 ? $"; {left} ripe/empty skipped)" : ")");
+                })));
 
         BusyTip();
         UnrosteredTip(actionable);
@@ -727,11 +746,13 @@ public class MainWindow : Window, IDisposable
         }
     }
 
-    /// <summary>Map keys of pots the live map says are wilting RIGHT NOW (b4=1) - the only
-    /// water claim a pot cell makes is the game's own, observed, never predicted.</summary>
+    /// <summary>Map keys of pots the live map says are wilting RIGHT NOW - the only water
+    /// claim a pot cell makes is the game's own, observed, never predicted. Ripe pots are
+    /// excluded even at b4=1 (<see cref="PotWiltRule"/>, field receipt 2026-08-26: stage 4
+    /// offers no watering verb, so the byte is not a water claim there).</summary>
     private static HashSet<int> WiltingPotKeys()
         => CensusPump.LastIndoor
-            .Where(kv => kv.Value.Wilt == 1)
+            .Where(kv => PotWiltRule.Claims(kv.Value.Wilt, kv.Value.Stage))
             .Select(kv => kv.Key)
             .ToHashSet();
 
@@ -858,9 +879,13 @@ public class MainWindow : Window, IDisposable
 
         using (ImRaii.Disabled(plugin.AnyChainBusy || !actionable))
         {
-            if (ImGui.SmallButton("Water Patch"))
+            // Same sweep filter as Tend All: confirmed ripe/empty beds are not visited.
+            var sweep = SweepBeds(record.Key, patch);
+            if (sweep.Count == 0)
+                ImGui.TextDisabled("ripe or empty - nothing to water");
+            else if (ImGui.SmallButton("Water Patch"))
             {
-                plugin.TendChain.TendPatch(patch);
+                plugin.TendChain.TendMany(sweep);
                 plugin.Launched(plugin.TendChain);
             }
 
@@ -959,7 +984,7 @@ public class MainWindow : Window, IDisposable
 
     /// <summary>A patch in front of you with nothing recorded in it. No rollup can exist
     /// for it (rollups read the ledger), but a verb has to, or nothing here is reachable.</summary>
-    private void DrawUnclaimedPatchRow(PatchGroup patch, bool actionable)
+    private void DrawUnclaimedPatchRow(EstateKey estate, PatchGroup patch, bool actionable)
     {
         using var id = ImRaii.PushId($"unclaimed{patch.PatchId}");
 
@@ -976,15 +1001,39 @@ public class MainWindow : Window, IDisposable
 
         using (ImRaii.Disabled(plugin.AnyChainBusy || !actionable))
         {
-            if (ImGui.SmallButton("Water Patch"))
+            // An unclaimed patch is usually unbound, so the map filter passes everything
+            // through (fail open) - the uniform path costs nothing and stays honest if a
+            // bound-but-forgotten patch ever lands here.
+            var sweep = SweepBeds(estate, patch);
+            if (sweep.Count == 0)
+                ImGui.TextDisabled("ripe or empty - nothing to water");
+            else if (ImGui.SmallButton("Water Patch"))
             {
-                plugin.TendChain.TendPatch(patch);
+                plugin.TendChain.TendMany(sweep);
                 plugin.Launched(plugin.TendChain);
             }
         }
 
         BusyTip();
         UnrosteredTip(actionable);
+    }
+
+    /// <summary>The beds of this patch a SWEEP should visit - <see cref="TendSweep"/> against
+    /// the live map: confirmed ripe/empty beds are left out (the game refuses those tends;
+    /// the pot Water All precedent, ruled onto beds 2026-08-28), and a bed the map has not
+    /// answered for is INCLUDED - skipping on ignorance could leave a thirsty crop dry, so
+    /// the game's own menu keeps the last word exactly as before the filter existed.</summary>
+    private static List<BedObject> SweepBeds(EstateKey estate, PatchGroup patch)
+    {
+        IReadOnlyList<BedReading>? readings =
+            Plugin.Garden.Census.BoundKey(estate, patch.Ordinal) is { } key
+            && CensusPump.LastOutdoor.TryGetValue(key, out var read) ? read : null;
+
+        return patch.Beds.Where(b =>
+        {
+            var r = readings?.FirstOrDefault(x => x.Slot == b.Gimmick.BedIndex);
+            return TendSweep.Include(r is not null, r?.Occupied ?? false, r?.Stage ?? 0);
+        }).ToList();
     }
 
     // ------------------------------------------------------------------ bed grid
@@ -1087,11 +1136,13 @@ public class MainWindow : Window, IDisposable
             //
             // Pots are OBSERVED, not predicted: the map itself says wilting (byte[4]=1,
             // 08-16 Papa's twins - pots DO wilt for normal crops; the flower no-wilt
-            // evidence stands separately). No clock model, just what the game showed us.
+            // evidence stands separately). No clock model, just what the game showed us -
+            // except at stage 4, where the byte is not a water claim (PotWiltRule,
+            // field receipt 2026-08-26: a ripe pot offers no watering verb at all).
             if (bed.IsPot)
             {
                 if (CensusPump.LastIndoor.TryGetValue(bed.MapKey, out var livePot)
-                    && livePot.Wilt == 1)
+                    && PotWiltRule.Claims(livePot.Wilt, livePot.Stage))
                 {
                     ImGui.SameLine();
                     ImGui.TextColored(Amber, "· wilting - water now");
@@ -1258,7 +1309,7 @@ public class MainWindow : Window, IDisposable
         var waterable = pots
             .Where(p => p.InReach && p.MapKey is { } key
                 && CensusPump.LastIndoor.TryGetValue(key, out var reading)
-                && reading.Stage != 4)
+                && reading.Occupied && reading.Stage != 4)
             .ToList();
         var ripeInReach = beds.Any(b =>
             b.IsPot && b.Latest?.Stage == 4
@@ -1530,7 +1581,10 @@ public class MainWindow : Window, IDisposable
     /// <summary>True only when a fresh read of THIS estate's map shows the slot vacant.
     /// Away from the estate there is no read at all, and "I cannot see it" is never
     /// evidence that something is gone. Pots (08-16): the settled-object guard stands in
-    /// for the outdoor TryGetValue - an unsettled world answers false, never "empty".</summary>
+    /// for the outdoor TryGetValue - an unsettled world answers false, never "empty" - AND
+    /// the map must have answered this visit (2026-08-28: objects can settle BEFORE the
+    /// DataMap on a cold zone-in, the unreceipted order that nearly cleared the FC records
+    /// on 08-23 - without this clause every pot flashes amber until the retry lands).</summary>
     private static bool ReadsEmptyNow(ClaimedBed bed, bool isHere)
     {
         if (!isHere)
@@ -1538,7 +1592,11 @@ public class MainWindow : Window, IDisposable
         if (bed.IsPot)
             return EstateSensor.IsInside()
                 && ObjectSensor.SawHousingObjects
-                && !CensusPump.LastIndoor.ContainsKey(bed.MapKey);
+                && CensusPump.MapAnsweredThisVisit
+                // A zeroed entry is PRESENT and unoccupied - the map's own "this pot is
+                // empty" receipt (08-26: harvest zeroes in place), stronger evidence than
+                // the key being absent, and both mean the same thing here.
+                && !(CensusPump.LastIndoor.TryGetValue(bed.MapKey, out var live) && live.Occupied);
         if (!CensusPump.LastOutdoor.TryGetValue(bed.MapKey, out var readings))
             return false;
         return readings.FirstOrDefault(r => r.Slot == bed.BedSlot) is { Occupied: false };

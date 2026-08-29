@@ -81,6 +81,8 @@ internal static unsafe class ChatReceipts
             var fromLocalPlayer = message.SourceKind == XivChatRelationKind.LocalPlayer;
             var text = message.Message.TextValue;
             var verdict = ChatLine.Classify(logKind, fromLocalPlayer, text);
+            if (verdict == ChatVerdict.None)
+                verdict = ChatLine.ClassifyObtain(logKind, fromLocalPlayer, text);
 
             if (verdict == ChatVerdict.None)
             {
@@ -89,12 +91,19 @@ internal static unsafe class ChatReceipts
                 return;
             }
 
+            // The obtain lane's extra witness: the ItemPayload rides the line (capture
+            // 2026-08-26 - count in text, id in payload), and resolving it through the same
+            // species join the Talk path uses gives the desk and the manual branch something
+            // the generic obtain words cannot: what actually arrived.
+            var itemSpecies = verdict == ChatVerdict.HarvestObtain
+                ? ItemSpeciesOf(message) : (ushort)0;
+
             // The pending desk FIRST: a line that closes one of our own acts is that act's
             // confirmation and nothing else. Asking before the identity decode is deliberate -
             // the chain already knows exactly which bed it acted on, so running the
             // previous-target ladder against a chain's own line could only ever produce a
             // second, weaker answer to a question already settled.
-            if (CensusPump.TryCloseChain(verdict))
+            if (CensusPump.TryCloseChain(verdict, itemSpecies))
                 return;
 
             // RULING 5 (2026-08-23): the manual branch never runs while a chain is driving. One
@@ -112,7 +121,9 @@ internal static unsafe class ChatReceipts
             }
 
             var previous = Svc.Targets.PreviousTarget;
-            if (ChatLine.IsPotVerdict(verdict))
+            if (verdict == ChatVerdict.HarvestObtain)
+                OnManualHarvest(previous, itemSpecies);
+            else if (ChatLine.IsPotVerdict(verdict))
                 OnPot(verdict, previous);
             else
                 OnBed(verdict, previous);
@@ -159,13 +170,95 @@ internal static unsafe class ChatReceipts
     /// shortlist of a line or two.</para></summary>
     private static void NoteUnmatched(int logKind, bool fromLocalPlayer, string text)
     {
-        if (logKind != ChatLine.SystemMessageKind || !fromLocalPlayer)
+        // BOTH success shapes, by the 2026-08-26 lesson: the harvest close rode LootNotice/62
+        // and this instrument's 57-only aperture made it structurally deaf to the one line it
+        // was built to catch - the mod harvest's pending sat open while the obtain line sailed
+        // past unlogged. Any channel a close has ever ridden stays in the aperture.
+        if (logKind != ChatLine.SystemMessageKind && logKind != ChatLine.LootNoticeKind)
+            return;
+        if (!fromLocalPlayer)
             return;
         if (CensusPump.OpenPendingKind is not { } kind)
             return;
 
         Plugin.Log.Information(
             $"[ChatReceipts] unmatched line while {kind} receipt open - candidate close text: '{text}'");
+    }
+
+    /// <summary>The manual harvest branch - an obtain line that closed no act of ours while no
+    /// chain was driving. The obtain shape is GENERIC (loot rolls, quest rewards, lockboxes
+    /// opened from inventory with no target at all), so unlike the 57 verbs this branch demands
+    /// <see cref="HarvestCorroboration"/>'s two agreeing witnesses before anything is receipted:
+    /// the ItemPayload's species and the last map read of the previous-target's container. A
+    /// non-garden previous-target is ordinary gameplay here, not a finding - it goes at debug,
+    /// where the fertilize branch's equivalent warns.</summary>
+    private static void OnManualHarvest(IGameObject? previous, ushort itemSpecies)
+    {
+        bool isPot;
+        int potKey = -1;
+        int patchOrdinal = 0, bedSlot = 0;
+        ushort patchId = 0, containerSpecies;
+
+        if (BedOf(previous) is { } bed)
+        {
+            isPot = false;
+            patchOrdinal = bed.PatchOrdinal;
+            bedSlot = bed.BedIndex;
+            patchId = bed.PatchId;
+            containerSpecies = KnownBedSpecies(bed.PatchOrdinal, bed.BedIndex);
+        }
+        else if (PotKeyOf(previous) is { } key)
+        {
+            isPot = true;
+            potKey = key;
+            containerSpecies = CensusPump.LastIndoor.TryGetValue(key, out var pot)
+                ? pot.SpeciesIndex : (ushort)0;
+        }
+        else
+        {
+            Plugin.Log.Debug(
+                "[ChatReceipts] obtain line with no bed or flowerpot on previous-target - not a harvest");
+            return;
+        }
+
+        var (proceed, reason) = HarvestCorroboration.Check(itemSpecies, containerSpecies);
+        if (!proceed)
+        {
+            // Every refusal at a garden target is LOUD, at least for the shakedown (ruled
+            // 2026-08-28): a disagreement is the poisoning case caught in the act, and the two
+            // absence cases are how a gate that refuses a REAL harvest - an alias gap, an
+            // unread map - would surface as a pile in the log instead of hiding at info for
+            // weeks (the fertilize corroboration sat inert since birth for exactly this class,
+            // 08-23). Quiet the absence pair back down once the gate is field-proven. The
+            // no-garden-target case above stays debug - that one is every loot roll in the game.
+            Plugin.Log.Warning($"[ChatReceipts] manual harvest refused (fail closed): {reason}");
+            return;
+        }
+
+        Plugin.Log.Information($"[ChatReceipts] manual harvest corroboration: {reason}");
+        CensusPump.OnChatReceipt(
+            SyncKind.Harvest, isPot, potKey, patchOrdinal, bedSlot, patchId,
+            knownSpecies: itemSpecies);
+    }
+
+    /// <summary>The species the obtained item resolves to, 0 when it resolves to none. The
+    /// id rides the line's ItemPayload (capture 2026-08-26); the name comes off the game's own
+    /// Item sheet; the join is the same one the Talk path uses, so its pigment stripping and
+    /// receipted aliases apply here too. A flower's bouquet is an item that is not a species,
+    /// and it resolves - honestly - to nothing.</summary>
+    private static ushort ItemSpeciesOf(IHandleableChatMessage message)
+    {
+        var payload = message.Message.Payloads
+            .OfType<Dalamud.Game.Text.SeStringHandling.Payloads.ItemPayload>()
+            .FirstOrDefault();
+        if (payload is null)
+            return 0;
+
+        var name = Chains.PlantFlow.ItemName(payload.ItemId);
+        if (name.Length == 0)
+            return 0;
+
+        return Plugin.Tables.SpeciesIndexByName(name) ?? 0;
     }
 
     private static void OnBed(ChatVerdict verdict, IGameObject? previous)

@@ -30,6 +30,41 @@ public class CensusEngineTests
         Assert.Equal(ObservationSource.TendReceipt, obs.Source);
     }
 
+    [Fact] // a harvest receipt EMPTIES the record (ruled 2026-08-28: "if we are confident we
+    // did a thing, show it") - the receipt is itself the emptying witness, so the row must not
+    // keep claiming the old contents until the two-settled-reads reconcile catches up. The row
+    // survives; its contents and clocks leave with the crop, exactly like a reads-empty rebase.
+    public void HarvestReceiptEmptiesTheRecord()
+    {
+        var engine = new CensusEngine(new LedgerStore());
+        engine.Bind(Gardener, 0, mapKey: 110);
+        engine.OnReceipt(Tend(slot: 3, stage: 4));
+
+        var bed = engine.OnReceipt(new ReceiptEvent(
+            Gardener, PatchOrdinal: 0, BedSlot: 3, ReceiptVerb.Harvest,
+            SpeciesIndex: 0x41, Stage: 4, At: T0.AddHours(1)));
+
+        Assert.NotNull(bed);
+        Assert.Null(bed!.Latest);
+        Assert.Null(bed.LastTended);
+        Assert.Single(engine.LedgerBeds); // the row itself stays - it is still our bed
+    }
+
+    [Fact] // a harvest on an unrecorded-but-bound bed still claims the row (we stood there and
+    // did it) - just an empty one, which is the truth of it post-harvest
+    public void HarvestReceiptOnFreshRowClaimsItEmpty()
+    {
+        var engine = new CensusEngine(new LedgerStore());
+        engine.Bind(Gardener, 0, mapKey: 110);
+
+        var bed = engine.OnReceipt(new ReceiptEvent(
+            Gardener, PatchOrdinal: 0, BedSlot: 3, ReceiptVerb.Harvest,
+            SpeciesIndex: 0, Stage: 0, At: T0));
+
+        Assert.NotNull(bed);
+        Assert.Null(bed!.Latest);
+    }
+
     [Fact] // no binding = no claim: a receipt can't attach to a patch we can't identify
     public void UnboundPatchReceiptDoesNotClaim()
     {

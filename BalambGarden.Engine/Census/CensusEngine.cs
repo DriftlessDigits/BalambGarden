@@ -34,6 +34,16 @@ public sealed class CensusEngine(LedgerStore ledger)
             ledger.Beds.Add(bed);
         }
 
+        // A harvest receipt is the EMPTYING witness (ruled 2026-08-28): the game's own line
+        // said the crop left, so the record clears NOW rather than re-affirming contents the
+        // receipt just disproved and waiting for the two-settled-reads reconcile to catch up.
+        // Same shape as the reads-empty rebase: the row stays, the old plant's claims leave.
+        if (e.Verb is ReceiptVerb.Harvest)
+        {
+            bed.Rebase();
+            return bed;
+        }
+
         // A fertilize receipt still proves the row (it is a bed we stood at and touched), but
         // it contributes no reading - see SourceFor.
         if (SourceFor(e.Verb) is { } source)
@@ -165,7 +175,10 @@ public sealed class CensusEngine(LedgerStore ledger)
     {
         ReceiptVerb.Tend => ObservationSource.TendReceipt,
         ReceiptVerb.Plant => ObservationSource.PlantReceipt,
-        ReceiptVerb.Harvest => ObservationSource.HarvestReceipt,
+        // Harvest never reaches here since 2026-08-28 - OnReceipt rebases and returns before
+        // observing. Null keeps it honest if a new call site ever asks; the enum value stays
+        // (persisted rings may hold pre-08-28 HarvestReceipt observations).
+        ReceiptVerb.Harvest => null,
         ReceiptVerb.PotWater => ObservationSource.TendReceipt,
         ReceiptVerb.Fertilize => null,
         _ => ObservationSource.MapSighting,

@@ -164,6 +164,16 @@ internal static class CensusPump
     private static HashSet<int>? priorPotKeys;
     private static bool mapAnsweredThisVisit;
 
+    /// <summary>Whether the indoor map has answered at the estate underfoot this visit -
+    /// proof it is talking. Since the sensor keeps zeroed entries (2026-08-28), an all-empty
+    /// room answers too: "every entry zeroed" is an answer, and only a map that has not
+    /// settled yet says nothing at all. The reconcile has always demanded this before believing
+    /// absence; the DISPLAY's amber "reads empty now - harvested?" needs the same clause
+    /// (field receipt 2026-08-28: a cold zone-in settles objects before the DataMap, and
+    /// every recorded pot flashed amber off the pre-settle empty read until the retry
+    /// landed - the recording side learned this on 08-23, the display side tonight).</summary>
+    internal static bool MapAnsweredThisVisit => mapAnsweredThisVisit;
+
     internal static void SightNow()
     {
         var estate = EstateSensor.Current();
@@ -462,8 +472,14 @@ internal static class CensusPump
     /// <para>Returns nothing on purpose, unlike every other receipt path: a chat receipt has
     /// no chain feed to report into, so the gates say what happened in the log instead of
     /// handing a line to a run nobody launched.</para></summary>
+    /// <param name="knownSpecies">What the caller already proved was acted on, 0 for nothing
+    /// - the manual harvest's twice-witnessed item species (ruled 2026-08-28: the map reads a
+    /// just-harvested container as ZEROED, so the post-SightNow read below answers 0 for the
+    /// one verb whose receipt knew the species best; "if we are confident we did a thing,
+    /// show it"). The map still wins when it answers - this only fills its silence.</param>
     internal static void OnChatReceipt(
-        SyncKind kind, bool isPot, int potKey, int patchOrdinal, int bedSlot, ushort patchId)
+        SyncKind kind, bool isPot, int potKey, int patchOrdinal, int bedSlot, ushort patchId,
+        ushort knownSpecies = 0)
     {
         var estate = EstateSensor.Current();
         if (estate is null)
@@ -500,6 +516,9 @@ internal static class CensusPump
             species = beds[bedSlot].SpeciesIndex;
             stage = beds[bedSlot].Stage;
         }
+
+        if (species == 0)
+            species = knownSpecies;
 
         var now = DateTimeOffset.UtcNow;
 
@@ -791,12 +810,17 @@ internal static class CensusPump
     /// waiting on it, so it is somebody's own hands and belongs on the manual branch.
     ///
     /// <para>A non-match NEVER clears the pending: our act is still waiting for its own line,
-    /// and a stranger's fertilize landing in earshot must not bury it.</para></summary>
-    internal static bool TryCloseChain(ChatVerdict verdict)
+    /// and a stranger's fertilize landing in earshot must not bury it.</para>
+    ///
+    /// <para><paramref name="itemSpecies"/> is the obtain lane's extra witness (capture
+    /// 2026-08-26): what the line's ItemPayload resolved to, 0 for unknown and for every
+    /// 57-catalog verdict. <see cref="ReceiptLifecycle.Matches"/> owns the rule - a resolvable
+    /// contradiction refuses the close and the pending times out honestly.</para></summary>
+    internal static bool TryCloseChain(ChatVerdict verdict, ushort itemSpecies = 0)
     {
         if (openPending is not { } pending)
             return false;
-        if (!ReceiptLifecycle.Matches(pending, verdict, DateTimeOffset.UtcNow))
+        if (!ReceiptLifecycle.Matches(pending, verdict, DateTimeOffset.UtcNow, itemSpecies))
             return false;
 
         openPending = null;

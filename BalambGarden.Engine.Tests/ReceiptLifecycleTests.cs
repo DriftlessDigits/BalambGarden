@@ -57,6 +57,51 @@ public class ReceiptLifecycleTests
     public void A_line_from_before_the_act_is_not_evidence()
         => Assert.False(ReceiptLifecycle.Matches(Bed(), ChatVerdict.TendBed, Opened.AddSeconds(-1)));
 
+    // ---- The harvest close (capture 2026-08-26: LootNotice/62 obtain line, no container) ----
+
+    [Fact]
+    public void The_obtain_line_closes_a_harvest_in_either_container()
+    {
+        // The line names no container, so the pending's own container is the only claim standing
+        // - a bed harvest and a pot harvest both close on the same words.
+        Assert.True(ReceiptLifecycle.Matches(
+            Bed(SyncKind.Harvest), ChatVerdict.HarvestObtain, Opened.AddSeconds(4)));
+        Assert.True(ReceiptLifecycle.Matches(
+            Pot(SyncKind.Harvest), ChatVerdict.HarvestObtain, Opened.AddSeconds(4)));
+    }
+
+    [Fact]
+    public void An_obtain_line_never_closes_a_non_harvest_act()
+        => Assert.False(ReceiptLifecycle.Matches(Bed(), ChatVerdict.HarvestObtain, Opened.AddSeconds(1)));
+
+    [Fact]
+    public void An_item_that_contradicts_the_pending_species_refuses_the_close()
+        // The obtain shape is generic - a venture yield or loot roll inside the window rides the
+        // same structure. The ItemPayload is the game naming what arrived; if that resolves to a
+        // species and the pending banked a different one, this is not our line. The pending then
+        // times out chain-unconfirmed, which is the honest word for it.
+        => Assert.False(ReceiptLifecycle.Matches(
+            Pot(SyncKind.Harvest), ChatVerdict.HarvestObtain, Opened.AddSeconds(1), itemSpecies: 12));
+
+    [Fact]
+    public void An_unresolvable_item_still_closes_a_harvest()
+        // Flowers: the obtain names a bouquet, which is an item, not a species - it resolves to
+        // nothing. Absence is not a mismatch on the chain branch; the pending's armed identity
+        // plus the 6s window carry the claim.
+        => Assert.True(ReceiptLifecycle.Matches(
+            Pot(SyncKind.Harvest), ChatVerdict.HarvestObtain, Opened.AddSeconds(1), itemSpecies: 0));
+
+    [Fact]
+    public void An_agreeing_item_closes_a_harvest()
+        => Assert.True(ReceiptLifecycle.Matches(
+            Pot(SyncKind.Harvest), ChatVerdict.HarvestObtain, Opened.AddSeconds(1), itemSpecies: 88));
+
+    [Fact]
+    public void An_obtain_line_past_the_window_does_not_close_a_harvest()
+        => Assert.False(ReceiptLifecycle.Matches(
+            Pot(SyncKind.Harvest), ChatVerdict.HarvestObtain,
+            Opened + ReceiptLifecycle.CloseWindow + TimeSpan.FromMilliseconds(1)));
+
     [Fact]
     public void None_closes_nothing_and_does_not_throw()
     {
