@@ -222,10 +222,24 @@ public sealed class Plugin : IDalamudPlugin
             remembered, Garden.Receipts.Era, Garden.Receipts.Counter, Sync.MachineStamp.Hash());
         Log.Information($"[Garden] era check: {reason}");
 
-        if (verdict == BalambGarden.Engine.Sync.EraVerdict.MintFresh)
+        // The v2 upgrade mint (option A, ruled 2026-08-29): entries written before HouseId
+        // was banked can never mint their wire entity, and one of them would dam the outbox
+        // forever (a single high-water mark cannot skip). A fresh era retires them to
+        // history-never-cargo by construction - the mechanism the log already has. Version
+        // is the trigger so this fires exactly once, not on every load.
+        var v2Upgrade = Garden.Receipts.Version < 2;
+
+        if (verdict == BalambGarden.Engine.Sync.EraVerdict.MintFresh || v2Upgrade)
         {
             var era = BalambGarden.Engine.Sync.SyncId.NewSlug();
             Garden.Receipts.MintEra(era);
+            if (v2Upgrade)
+            {
+                Garden.Receipts.Version = 2;
+                Log.Information(
+                    "[Garden] receipt log upgraded to v2 - pre-upgrade entries stay local "
+                    + "history and never sync (they carry no house id)");
+            }
             Log.Information($"[Garden] minted era '{era}' - the counter restarts under it");
             Garden.SaveReceipts();   // writes the log, then refreshes the memory with it
         }
@@ -245,6 +259,7 @@ public sealed class Plugin : IDalamudPlugin
         if (!PlayerState.IsLoaded)
             return;
         Game.CensusPump.Tick();
+        Sync.RelaySender.Tick();
 #if DEBUG
         AutoArmWatcher();
 #endif

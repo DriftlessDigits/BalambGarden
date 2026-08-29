@@ -79,6 +79,11 @@ public class Configuration : IPluginConfiguration
     /// JSON on disk is ruled acceptable: anyone at the keyboard is outside the threat model.</summary>
     public string SyncPassphrase { get; set; } = "";
 
+    /// <summary>Where the household relay lives. Defaults to the household's own deployment
+    /// (LIVE 2026-08-28); a setting rather than a constant so a future self-hoster is not
+    /// recompiling over a URL. The sender appends /receipts.</summary>
+    public string SyncRelayUrl { get; set; } = "https://balamb.driftlessdigits.com";
+
     /// <summary>This install's identity - the user third of the wire id "user:era:counter"
     /// (identity amendment, ruled 2026-08-23). Minted once, empty until then, and never
     /// re-minted: it is what marks a receipt mine-vs-external forever, on both sides of a

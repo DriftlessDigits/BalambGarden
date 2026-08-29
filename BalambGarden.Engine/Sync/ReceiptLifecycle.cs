@@ -30,7 +30,8 @@ public sealed record PendingReceipt(
     int PotKey,
     ushort Species,
     byte Stage,
-    bool Delivered = false);
+    bool Delivered = false,
+    ulong HouseId = 0);
 
 /// <summary>The join between an act and its confirmation: one pure rule set, no Dalamud types,
 /// no game state, desk-testable (the receipt lifecycle, ratified 2026-08-23).

@@ -546,7 +546,8 @@ internal static class CensusPump
         Plugin.Garden.Receipts.Append(
             kind, SyncSource.Chat, now, estate, isPot,
             patchOrdinal: patchOrdinal, bedSlot: bedSlot, patchId: patchId, potKey: potKey,
-            data: new SyncData(Species: species == 0 ? null : species));
+            data: new SyncData(Species: species == 0 ? null : species),
+            houseId: EstateSensor.CurrentHouseId());
         Plugin.Garden.SaveReceipts();
 
         var where = isPot
@@ -747,9 +748,13 @@ internal static class CensusPump
                 + "recording as chain-unconfirmed");
         }
 
+        // The raw HouseId banks at the ACT like every other identity here (option A, ruled
+        // 2026-08-29): the wire canonical needs the game's own 8 bytes, and by close time -
+        // or a chain-unconfirmed timeout - the player may be standing somewhere else.
         openPending = new PendingReceipt(
             KindFor(verb), isPot, DateTimeOffset.UtcNow, estate,
-            patchOrdinal, bedSlot, patchId, potKey, species, stage, delivered);
+            patchOrdinal, bedSlot, patchId, potKey, species, stage, delivered,
+            HouseId: EstateSensor.CurrentHouseId());
     }
 
     /// <summary>The chain's own receipt reporting in: this act really did complete, and here is
@@ -890,7 +895,8 @@ internal static class CensusPump
                 patchId: pending.PatchId, potKey: pending.PotKey,
                 data: new SyncData(
                     Species: pending.Species == 0 ? null : pending.Species,
-                    Stage: pending.Stage == 0 ? null : pending.Stage));
+                    Stage: pending.Stage == 0 ? null : pending.Stage),
+                houseId: pending.HouseId);
             Plugin.Garden.SaveReceipts();
         }
         catch (Exception ex)
