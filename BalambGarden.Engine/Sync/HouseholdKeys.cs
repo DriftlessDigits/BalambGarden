@@ -47,6 +47,15 @@ public static class HouseholdKeys
     public static byte[] NamingKey(string passphrase)
         => Derive(passphrase, NamingInfo);
 
+    /// <summary>The relay fingerprint - the admin/user role split, ruled 2026-08-28. This is
+    /// exactly what the relay stores and compares (auth.js: SHA-256 over the bearer token
+    /// STRING as UTF-8, not over its raw bytes), so the admin sets AUTH_TOKEN_HASH by copying
+    /// this value verbatim - the mod displays it, and the phrase itself never leaves the
+    /// config. Safe to show and to travel: it is one-way twice from the passphrase.</summary>
+    public static string RelayFingerprint(string passphrase)
+        => Convert.ToHexStringLower(
+            SHA256.HashData(Encoding.UTF8.GetBytes(AuthToken(passphrase))));
+
     private static byte[] Derive(string passphrase, byte[] info)
         => HKDF.DeriveKey(
             HashAlgorithmName.SHA256,

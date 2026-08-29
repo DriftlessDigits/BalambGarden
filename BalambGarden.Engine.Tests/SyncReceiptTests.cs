@@ -132,6 +132,18 @@ public class HouseholdKeysTests
             "07433adc87dee6f9e77737bd5a5cfbe8ee56f4013ed400a0890bdd8b87232c34",
             Convert.ToHexStringLower(HouseholdKeys.NamingKey("test-vector-passphrase")));
     }
+
+    /// <summary>The fingerprint is what the relay's auth.js stores and compares: SHA-256 of
+    /// the bearer token STRING (the lowercase hex, as UTF-8 - not of the token's raw bytes).
+    /// The admin copies this out of the mod config and sets it as AUTH_TOKEN_HASH; the
+    /// expected value here was computed independently over the frozen auth-token vector.</summary>
+    [Fact]
+    public void Fingerprint_is_the_relays_stored_hash_of_the_auth_token()
+    {
+        Assert.Equal(
+            "deb74306e1057c16c01a559344fc721108fda38ad565124a15343a9e6cce32d8",
+            HouseholdKeys.RelayFingerprint("test-vector-passphrase"));
+    }
 }
 
 public class EntityNameTests

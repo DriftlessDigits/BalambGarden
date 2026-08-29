@@ -15,7 +15,7 @@ public class ConfigWindow : Window, IDisposable
         Flags = ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoScrollbar |
                 ImGuiWindowFlags.NoScrollWithMouse;
 
-        Size = new Vector2(400, 400);
+        Size = new Vector2(400, 540);
         SizeCondition = ImGuiCond.Always;
 
         configuration = Plugin.Configuration;
@@ -39,6 +39,8 @@ public class ConfigWindow : Window, IDisposable
     public override void Draw()
     {
         DrawBehaviour();
+        ImGui.Separator();
+        DrawSync();
         ImGui.Separator();
         DrawSensing();
         ImGui.Separator();
@@ -71,6 +73,57 @@ public class ConfigWindow : Window, IDisposable
             configuration.JitterMS = jitter;
             configuration.Save();
         }
+    }
+
+    // Fingerprint memo: HKDF twice per frame would be pure waste, and the value only
+    // changes when the phrase does. Keyed by the phrase itself, never displayed with it.
+    private string fingerprintFor = "";
+    private string fingerprint = "";
+
+    /// <summary>Household sync (design ruling 16; admin/user split ruled 2026-08-28). The
+    /// phrase field is the on-switch - empty is OFF, and the phrase never leaves this config.
+    /// The fingerprint line is the admin's half: exactly the AUTH_TOKEN_HASH the relay
+    /// expects, safe to display and copy because it is one-way twice from the phrase.</summary>
+    private void DrawSync()
+    {
+        ImGui.Text("Household sync");
+
+        var phrase = configuration.SyncPassphrase;
+        ImGui.SetNextItemWidth(260f);
+        ImGui.InputText("Household phrase", ref phrase, 256, ImGuiInputTextFlags.Password);
+        if (ImGui.IsItemDeactivatedAfterEdit())
+        {
+            // Trimmed to match the relay's setup flow - a copy-pasted phrase with a stray
+            // trailing space would otherwise derive a whole different identity.
+            configuration.SyncPassphrase = phrase.Trim();
+            configuration.Save();
+        }
+        if (ImGui.IsItemHovered())
+            ImGui.SetTooltip(
+                "One phrase for the whole household - each install types the same one.\n"
+                + "It stays in this config file and is never sent anywhere.\n"
+                + "Leave it empty to keep sync off entirely.");
+
+        if (configuration.SyncPassphrase.Length == 0)
+        {
+            ImGui.TextDisabled("Sync is off - enter the household phrase to turn it on.");
+            return;
+        }
+
+        if (fingerprintFor != configuration.SyncPassphrase)
+        {
+            fingerprintFor = configuration.SyncPassphrase;
+            fingerprint = BalambGarden.Engine.Sync.HouseholdKeys.RelayFingerprint(fingerprintFor);
+        }
+
+        ImGui.TextDisabled("Relay fingerprint (server-side AUTH_TOKEN_HASH):");
+        ImGui.TextWrapped(fingerprint);
+        if (ImGui.Button("Copy fingerprint"))
+            ImGui.SetClipboardText(fingerprint);
+        if (ImGui.IsItemHovered())
+            ImGui.SetTooltip(
+                "Whoever runs the relay sets this value as AUTH_TOKEN_HASH.\n"
+                + "It cannot be turned back into the phrase.");
     }
 
     /// <summary>How far the dashboard's patch sweep reaches. Wider finds a far corner of a
