@@ -24,6 +24,19 @@ public sealed class LedgerStore
     /// mints new entity ids. The stream never dams on them (piece 4 ruling, 2026-08-29).</summary>
     public List<Sync.ParkedForeign> ForeignHold { get; set; } = [];
 
+    /// <summary>The phrase-change invariant (open-household ruling 2026-08-29; hoisted here
+    /// from the config UI at the QA pass): a new phrase is a NEW HOUSEHOLD, and everything
+    /// scoped to the old one leaves TOGETHER - the entity cache (minted under the old naming
+    /// key, can never match again), the parked receipts (came from the old stream), and the
+    /// cursor (points into it). Any future household-scoped field joins this method.</summary>
+    public void ResetHousehold()
+    {
+        foreach (var bed in Beds)
+            bed.WireEntity = null;
+        ForeignHold.Clear();
+        RelayCursor = "0";
+    }
+
     /// <summary>Frame 2: visiting an estate is how it enters the roster; revisits only
     /// move LastVisited, so FirstSeen stays the discovery receipt.</summary>
     public EstateRecord UpsertEstate(Census.EstateKey key, DateTimeOffset now)

@@ -86,6 +86,20 @@ public static class EntityName
     public static string ForPot(byte[] namingKey, ulong houseId, int furnitureIndex)
         => Mint(namingKey, $"pot|{houseId:x16}|{furnitureIndex}");
 
+    /// <summary>The one pot-vs-bed dispatch (QA pass 2026-08-29 - a second mint site had
+    /// appeared in the pump, and the two must agree byte-for-byte or a locally-minted id
+    /// never matches an incoming one). Null when the canonical's inputs are incomplete
+    /// (house id 0; a bed with patch id 0) - the honest "cannot mint yet", never a guess.</summary>
+    public static string? For(
+        byte[] namingKey, ulong houseId, bool isPot, int potKey, ushort patchId, int bedSlot)
+    {
+        if (houseId == 0)
+            return null;
+        if (isPot)
+            return ForPot(namingKey, houseId, potKey);
+        return patchId == 0 ? null : ForBed(namingKey, houseId, patchId, bedSlot);
+    }
+
     private static string Mint(byte[] namingKey, string canonical)
         => Convert.ToHexStringLower(
             HMACSHA256.HashData(namingKey, Encoding.UTF8.GetBytes(canonical)));

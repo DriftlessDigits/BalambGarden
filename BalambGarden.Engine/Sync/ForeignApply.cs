@@ -26,10 +26,27 @@ public static class ForeignApply
     /// nothing anyway - the longest grow is ~10 days (ruling 9's own cut).</summary>
     public static readonly TimeSpan ParkedLifetime = TimeSpan.FromDays(30);
 
+    /// <summary>The whole inbox step, one call: apply the page, then advance the cursor.
+    /// Coupled here on purpose - never advancing past a receipt that did not land SOMEWHERE
+    /// (applied, parked, skipped, or loudly dropped) is the cursor design's load-bearing
+    /// invariant, and it should not depend on statement order in a poller callback.</summary>
+    public static ForeignOutcome AbsorbPage(
+        LedgerStore ledger, RelayPage page, string ownUser, DateTimeOffset now)
+    {
+        var outcome = ApplyPage(ledger, page.Receipts, ownUser, now);
+        ledger.RelayCursor = page.Cursor;
+        return outcome;
+    }
+
     public static ForeignOutcome ApplyPage(
         LedgerStore ledger, IReadOnlyList<SyncReceipt> page, string ownUser, DateTimeOffset now)
     {
         int applied = 0, ownSkipped = 0, parked = 0, dropped = 0;
+
+        // One pass over the hold up front: the cursor-0 full-window replay on a fresh
+        // install parks everything, and an Any() per receipt over a growing list is the
+        // quadratic shape that would make that one framework-thread callback crawl.
+        var heldIds = ledger.ForeignHold.Select(p => p.Receipt.Id).ToHashSet();
 
         foreach (var receipt in page)
         {
@@ -54,7 +71,7 @@ public static class ForeignApply
             }
 
             parked++;
-            if (!ledger.ForeignHold.Any(p => p.Receipt.Id == receipt.Id))
+            if (heldIds.Add(receipt.Id))
                 ledger.ForeignHold.Add(new ParkedForeign(receipt, now));
         }
 
@@ -63,14 +80,13 @@ public static class ForeignApply
     }
 
     /// <summary>Re-runs the parking lot - called after census mints new entity ids. Returns
-    /// how many landed.</summary>
+    /// how many landed. (RemoveAll's predicate applies as it tests - one pass, and a landed
+    /// receipt leaves the hold in the same breath.)</summary>
     public static int RetryParked(LedgerStore ledger, DateTimeOffset now)
     {
-        var landed = ledger.ForeignHold.Where(p => TryApply(ledger, p.Receipt)).ToList();
-        foreach (var p in landed)
-            ledger.ForeignHold.Remove(p);
+        var landed = ledger.ForeignHold.RemoveAll(p => TryApply(ledger, p.Receipt));
         Prune(ledger, now);
-        return landed.Count;
+        return landed;
     }
 
     private static void Prune(LedgerStore ledger, DateTimeOffset now)
@@ -94,44 +110,37 @@ public static class ForeignApply
             case SyncKind.PotWater:
                 if (bed.LastTended is null || receipt.At > bed.LastTended)
                     bed.LastTended = receipt.At;
-                ObserveOnce(bed, receipt, receipt.Data.Stage ?? 0);
+                ObserveOnce(bed, receipt);
                 return true;
 
             case SyncKind.Plant:
-                ObserveOnce(bed, receipt, stage: 0);
-                return true;
-
             case SyncKind.Stage:
-                ObserveOnce(bed, receipt, receipt.Data.Stage ?? 0);
-                return true;
-
             case SyncKind.Ripe:
-                ObserveOnce(bed, receipt, stage: 4);
-                return true;
-
-            case SyncKind.Fertilize:
-                // Applied-as-noop: a feed is not a reading locally either (SourceFor returns
-                // null for it). The named gap - the fed-check not hearing foreign feeds -
-                // waits on its own ruling; the game's own refusal line is the backstop.
-                return true;
-
-            case SyncKind.PotWilt:
-                // Applied-as-noop: pot wilt is map-published locally and warnings always
-                // derive locally (design law) - a foreign wilt claim adds nothing a visit
-                // does not already answer better.
+                ObserveOnce(bed, receipt);
                 return true;
 
             default:
-                return true;   // a future kind we matched but do not understand: absorbed, honest no-op
+                // Absorbed, honest no-op. Fertilize: a feed is not a reading locally either
+                // (SourceFor returns null); the fed-check gap waits on its own ruling and
+                // the game's refusal line is the backstop. PotWilt: wilt is map-published
+                // locally and warnings always derive locally - a foreign claim adds nothing
+                // a visit does not answer better. A future kind we matched but do not
+                // understand lands here too.
+                return true;
         }
     }
 
-    /// <summary>The ring dedup that makes restore-replay safe: an identical external
-    /// observation (same instant) is the same fact arriving twice, not two facts.</summary>
-    private static void ObserveOnce(ClaimedBed bed, SyncReceipt receipt, byte stage)
+    /// <summary>The ring write, deduped through the SAME rule the display reads
+    /// (<see cref="ClaimedBed.HasExternalAt"/>): an identical external observation is the
+    /// same fact arriving twice, not two facts - what makes restore-replay safe. Stage:
+    /// Ripe IS stage 4 (the shared constant); otherwise what the sender knew, 0 = unknown.</summary>
+    private static void ObserveOnce(ClaimedBed bed, SyncReceipt receipt)
     {
-        if (bed.Ring.Any(o => o.Source == ObservationSource.External && o.At == receipt.At))
+        if (bed.HasExternalAt(receipt.At))
             return;
+        var stage = receipt.Kind == SyncKind.Ripe
+            ? GardenStage.Ripe
+            : receipt.Data.Stage ?? 0;
         bed.Observe(new Observation(
             receipt.At, receipt.Data.Species ?? 0, stage, ObservationSource.External));
     }

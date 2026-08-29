@@ -223,22 +223,19 @@ public sealed class Plugin : IDalamudPlugin
                 Configuration.SyncCounterRemembered,
                 Configuration.SyncMachineHash);
 
+        // The v2 upgrade is one of EraGuard's own mint reasons (QA pass 2026-08-29 - every
+        // way a counter's life ends lives in that one tested rule); this side only stamps
+        // the version once the guard has ruled, so the reason fires exactly once.
         var (verdict, reason) = BalambGarden.Engine.Sync.EraGuard.Check(
-            remembered, Garden.Receipts.Era, Garden.Receipts.Counter, Sync.MachineStamp.Hash());
+            remembered, Garden.Receipts.Era, Garden.Receipts.Counter, Sync.MachineStamp.Hash(),
+            Garden.Receipts.Version);
         Log.Information($"[Garden] era check: {reason}");
 
-        // The v2 upgrade mint (option A, ruled 2026-08-29): entries written before HouseId
-        // was banked can never mint their wire entity, and one of them would dam the outbox
-        // forever (a single high-water mark cannot skip). A fresh era retires them to
-        // history-never-cargo by construction - the mechanism the log already has. Version
-        // is the trigger so this fires exactly once, not on every load.
-        var v2Upgrade = Garden.Receipts.Version < 2;
-
-        if (verdict == BalambGarden.Engine.Sync.EraVerdict.MintFresh || v2Upgrade)
+        if (verdict == BalambGarden.Engine.Sync.EraVerdict.MintFresh)
         {
             var era = BalambGarden.Engine.Sync.SyncId.NewSlug();
             Garden.Receipts.MintEra(era);
-            if (v2Upgrade)
+            if (Garden.Receipts.Version < 2)
             {
                 Garden.Receipts.Version = 2;
                 Log.Information(

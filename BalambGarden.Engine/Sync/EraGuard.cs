@@ -50,8 +50,17 @@ public static class EraGuard
     /// <param name="logCounter">The receipt log's current counter.</param>
     /// <param name="currentMachineHash">This machine's opaque fingerprint, hashed config-side.</param>
     public static (EraVerdict Verdict, string Reason) Check(
-        EraMemory? remembered, string logEra, long logCounter, string currentMachineHash)
+        EraMemory? remembered, string logEra, long logCounter, string currentMachineHash,
+        int logVersion = 2)
     {
+        // The v2 upgrade (option A, 2026-08-29; a mint REASON here rather than a bolt-on in
+        // the plugin, per the QA pass): a pre-houseId log's entries can never mint their
+        // wire entities, and one of them would dam the outbox forever - a fresh era retires
+        // them to history-never-cargo. Checked first: it is structural and certain, true
+        // regardless of what config remembers.
+        if (logVersion < 2)
+            return (EraVerdict.MintFresh, "receipt log v1 -> v2");
+
         if (string.IsNullOrEmpty(logEra))
             return (EraVerdict.MintFresh, "fresh log");
 

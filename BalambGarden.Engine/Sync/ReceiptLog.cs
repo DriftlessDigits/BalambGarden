@@ -49,7 +49,9 @@ public sealed record LoggedReceipt(
 /// Corrections arrive as later facts.</para></summary>
 public sealed class ReceiptLog
 {
-    public int Version { get; set; } = 1;
+    // 2 = entries bank HouseId (option A, 2026-08-29). A fresh log is born current; only a
+    // persisted v1 file loads as 1, and EraGuard mints its way out of that era.
+    public int Version { get; set; } = 2;
 
     /// <summary>The name of the counter's current life, empty until first minted. Lives HERE,
     /// beside the counter it protects, because the two only mean anything together: an era
@@ -65,7 +67,6 @@ public sealed class ReceiptLog
     /// <summary>Outbox high-water mark: everything at or below this Seq has been sent.
     /// 0 = nothing sent.</summary>
     public long LastSentSeq { get; set; }
-
 
     public List<LoggedReceipt> Entries { get; set; } = [];
 

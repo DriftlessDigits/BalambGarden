@@ -31,12 +31,8 @@ public static class RelayFeed
 
         if (wire?.Receipts is null || string.IsNullOrEmpty(wire.Cursor))
             return null;
-
-        foreach (var r in wire.Receipts)
-        {
-            if (r is null || string.IsNullOrEmpty(r.Id) || string.IsNullOrEmpty(r.Entity))
-                return null;
-        }
+        if (wire.Receipts.Any(r => r is null || string.IsNullOrEmpty(r.Id) || string.IsNullOrEmpty(r.Entity)))
+            return null;
 
         return new RelayPage(wire.Receipts, wire.Cursor);
     }

@@ -35,8 +35,13 @@ public sealed class ClaimedBed
     /// together. A later local tend moves the clock past the stamp and the answer flips
     /// back by construction.</summary>
     [System.Text.Json.Serialization.JsonIgnore]
-    public bool LastTendedIsExternal => LastTended is { } t
-        && RingStorage.Any(o => o.Source == ObservationSource.External && o.At == t);
+    public bool LastTendedIsExternal => LastTended is { } t && HasExternalAt(t);
+
+    /// <summary>Whether the ring holds an External observation at this exact instant - the
+    /// ONE rule both the display flag above and ForeignApply's replay dedup share, so the
+    /// two can never drift apart on what "external" means.</summary>
+    public bool HasExternalAt(DateTimeOffset at)
+        => RingStorage.Any(o => o.Source == ObservationSource.External && o.At == at);
     public Observation? Latest => RingStorage.Count == 0 ? null : RingStorage[^1];
 
     public void Observe(Observation o)

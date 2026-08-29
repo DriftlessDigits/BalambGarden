@@ -184,4 +184,33 @@ public class ForeignApplyTests
     {
         Assert.Equal("0", new LedgerStore().RelayCursor);
     }
+
+    /// <summary>Apply-then-advance is a load-bearing invariant (QA pass 2026-08-29: hoisted
+    /// from statement order in the poller into one tested call).</summary>
+    [Fact]
+    public void Absorbing_a_page_applies_and_advances_the_cursor_together()
+    {
+        var ledger = WithBed();
+        var page = new RelayPage([Foreign(SyncKind.Tend)], "77");
+        var outcome = ForeignApply.AbsorbPage(ledger, page, OwnUser, T0);
+        Assert.Equal(1, outcome.Applied);
+        Assert.Equal("77", ledger.RelayCursor);
+    }
+
+    /// <summary>The phrase-change invariant (QA pass: hoisted from the config window): a new
+    /// naming key invalidates the entity cache, the parked receipts and the cursor TOGETHER -
+    /// any future household-scoped field joins this method, not a UI callback.</summary>
+    [Fact]
+    public void Reset_household_clears_all_three_surfaces_together()
+    {
+        var ledger = WithBed();
+        ForeignApply.ApplyPage(ledger, [Foreign(SyncKind.Tend, entity: "no-match")], OwnUser, T0);
+        ledger.RelayCursor = "1042";
+
+        ledger.ResetHousehold();
+
+        Assert.Null(ledger.Beds[0].WireEntity);
+        Assert.Empty(ledger.ForeignHold);
+        Assert.Equal("0", ledger.RelayCursor);
+    }
 }

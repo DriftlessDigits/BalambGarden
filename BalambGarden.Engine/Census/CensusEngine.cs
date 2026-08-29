@@ -6,7 +6,10 @@ namespace BalambGarden.Engine.Census;
 /// sync on change only). Stage = a climb; Ripe = reaching 4, the payoff signal. Emitted from
 /// the one place prev-vs-reading already meet; the pump decides whether it becomes a logged
 /// receipt (it may lack a patch id or house id to mint the wire identity with).</summary>
-public sealed record SightingChange(int Slot, Sync.SyncKind Kind, ushort Species, byte Stage);
+/// <para><see cref="Ordinal"/> is the row's own patch ordinal (the pot's map key when
+/// IsPot) - carried so the pump routes the change without re-deriving what this engine
+/// already knew (QA pass 2026-08-29).</para>
+public sealed record SightingChange(int Ordinal, int Slot, Sync.SyncKind Kind, ushort Species, byte Stage);
 
 /// <summary>The join + census brain. Receipts and sightings are the only write paths (spec:
 /// Permission Architecture, 2026-08-15): a row exists because the game showed us something at
@@ -132,8 +135,8 @@ public sealed class CensusEngine(LedgerStore ledger)
                 && prev.Stage != reading.Stage && reading.Stage > 0)
             {
                 changes.Add(new SightingChange(
-                    reading.Slot,
-                    reading.Stage == 4 ? Sync.SyncKind.Ripe : Sync.SyncKind.Stage,
+                    bed.PatchOrdinal, reading.Slot,
+                    reading.Stage == GardenStage.Ripe ? Sync.SyncKind.Ripe : Sync.SyncKind.Stage,
                     reading.SpeciesIndex, reading.Stage));
             }
 

@@ -143,16 +143,11 @@ internal static class CensusPump
 
     private static DateTime nextMintUtc = DateTime.MinValue;
 
-    /// <summary>Mints wire entity ids for this estate's rows (piece 4, ruled 2026-08-29):
-    /// "both installs mint identical IDs independently at census time" is literal - the HMAC
-    /// inputs (raw HouseId, gimmick patch id) only exist while standing here.
-    ///
-    /// <para>STANCE IS PART OF THE IDENTITY: indoors the HouseId carries the room, outdoors
-    /// it is the plot's - so pots mint only while inside and beds only while outside, or two
-    /// installs standing on opposite sides of the front door would mint two names for one
-    /// container. A bed whose gimmick is not in scan range stays null for the next pass
-    /// (NearestPatchId's honest 0). Any fresh mint retries the parked foreign receipts -
-    /// this is the moment a parked fact can finally land.</para></summary>
+    /// <summary>The mint sweep's game half (piece 4; the pure half - the stance rule, the
+    /// row selection - is <see cref="WireIdentity.MintPending"/>, desk-tested). This keeps
+    /// the throttle, contributes the two sensed inputs (HouseId underfoot, gimmick patch
+    /// ids), retries the parked foreign receipts after any fresh mint - the moment a parked
+    /// fact can finally land - and saves.</summary>
     private static void MintWireEntities(EstateKey estate)
     {
         if (!CoveredHere || DateTime.UtcNow < nextMintUtc)
@@ -163,33 +158,9 @@ internal static class CensusPump
         if (phrase.Length == 0)
             return;
 
-        var inside = EstateSensor.IsInside();
-        var rows = Plugin.Garden.Ledger.Beds
-            .Where(b => b.Estate == estate && b.IsPot == inside && b.WireEntity is null)
-            .ToList();
-        if (rows.Count == 0)
-            return;
-
-        var houseId = EstateSensor.CurrentHouseId();
-        if (houseId == 0)
-            return;
-
-        var namingKey = HouseholdKeys.NamingKey(phrase);
-        var minted = 0;
-        foreach (var row in rows)
-        {
-            if (row.IsPot)
-            {
-                row.WireEntity = EntityName.ForPot(namingKey, houseId, row.MapKey);
-                minted++;
-            }
-            else if (NearestPatchId(row.PatchOrdinal) is var patchId && patchId != 0)
-            {
-                row.WireEntity = EntityName.ForBed(namingKey, houseId, patchId, row.BedSlot);
-                minted++;
-            }
-        }
-
+        var minted = WireIdentity.MintPending(
+            Plugin.Garden.Ledger, estate, EstateSensor.IsInside(),
+            HouseholdKeys.NamingKey(phrase), EstateSensor.CurrentHouseId(), NearestPatchId);
         if (minted == 0)
             return;
 
@@ -271,14 +242,17 @@ internal static class CensusPump
                         $"[Census] pot-gate pruned {pruned} phantom pot row(s) at {estate.DisplayLabel()}");
             }
 
+            // One reusable change list for the whole pass; receipts save ONCE after the
+            // loop (a 30-pot room must not pay 30 whole-file writes in one sighting).
+            var changes = new List<SightingChange>();
             foreach (var (key, pot) in LastIndoor)
             {
-                var changes = new List<SightingChange>();
                 landed += Plugin.Garden.Census.OnMapSighting(estate, key,
                     [new BedReading(0, pot.SpeciesIndex, pot.Stage, pot.Extra, pot.Occupied)], now,
                     isPot: true, mayRecord: CoveredHere, changes: changes);
-                MintSightingReceipts(estate, isPot: true, potKey: key, patchOrdinal: 0, changes, now);
             }
+            if (MintSightingReceipts(estate, isPot: true, changes, now) > 0)
+                Plugin.Garden.SaveReceipts();
 
             // A harvested pot's entry VANISHES from the map (08-15), so the loop above
             // never hears about it - absence from a SETTLED read is the emptying receipt
@@ -312,75 +286,86 @@ internal static class CensusPump
         else
         {
             LastOutdoor = MapSensor.ReadOutdoor();
+            var changes = new List<SightingChange>();
             foreach (var (key, beds) in LastOutdoor)
-            {
-                var changes = new List<SightingChange>();
                 landed += Plugin.Garden.Census.OnMapSighting(estate, key, beds, now,
                     mayRecord: CoveredHere, changes: changes);
-                if (changes.Count > 0
-                    && Plugin.Garden.Census.OrdinalOfKey(estate, key) is { } ordinal)
-                    MintSightingReceipts(estate, isPot: false, potKey: -1, ordinal, changes, now);
-            }
+            if (MintSightingReceipts(estate, isPot: false, changes, now) > 0)
+                Plugin.Garden.SaveReceipts();
             if (CoveredHere && landed > 0)
                 Plugin.Garden.Save();
         }
     }
 
-    /// <summary>A sighted change becomes one line of history (piece 6: observations sync on
-    /// change, and the mint discipline lives HERE, in the client). Guards are the wire
-    /// identity's inputs, honest-skip like everywhere else: no house id or - for a bed - no
-    /// gimmick in scan range means this change stays local-only (the ring already recorded
-    /// it; only the receipt line is foregone, and the next change tries again). PotWilt
-    /// minting deliberately absent: b4's meaning is still an open watch (progression theory,
-    /// discriminator pending) and the receiver no-ops the kind - nothing is claimed of an
-    /// uninterpreted byte.</summary>
-    private static void MintSightingReceipts(
-        EstateKey estate, bool isPot, int potKey, int patchOrdinal,
-        List<SightingChange> changes, DateTimeOffset now)
+    /// <summary>Sighted changes become history lines (piece 6: observations sync on change,
+    /// and the mint discipline lives HERE, in the client). Guards are the wire identity's
+    /// inputs, honest-skip like everywhere else: no house id or - for a bed - no gimmick in
+    /// scan range means a change stays local-only (the ring already recorded it; only the
+    /// receipt line is foregone, and the next change tries again). PotWilt minting
+    /// deliberately absent: b4's meaning is still an open watch and the receiver no-ops the
+    /// kind. Returns the minted count; the CALLER saves once per pass - a whole-file write
+    /// per map key was the QA pass's worst find.</summary>
+    private static int MintSightingReceipts(
+        EstateKey estate, bool isPot, List<SightingChange> changes, DateTimeOffset now)
     {
         if (changes.Count == 0)
-            return;
+            return 0;
 
         var houseId = EstateSensor.CurrentHouseId();
         if (houseId == 0)
         {
             Plugin.Log.Debug("[Sync] sighted change with no house id - stays local-only");
-            return;
-        }
-
-        var patchId = isPot ? (ushort)0 : NearestPatchId(patchOrdinal);
-        if (!isPot && patchId == 0)
-        {
-            Plugin.Log.Debug(
-                $"[Sync] sighted change at patch {patchOrdinal + 1} with no gimmick in scan "
-                + "range - stays local-only");
-            return;
+            return 0;
         }
 
         var minted = 0;
         foreach (var change in changes)
         {
-            try
+            var patchId = isPot ? (ushort)0 : NearestPatchId(change.Ordinal);
+            if (!isPot && patchId == 0)
             {
-                Plugin.Garden.Receipts.Append(
+                Plugin.Log.Debug(
+                    $"[Sync] sighted change at patch {change.Ordinal + 1} with no gimmick in "
+                    + "scan range - stays local-only");
+                continue;
+            }
+
+            if (SafeAppend(
                     change.Kind, SyncSource.Sighting, now, estate, isPot,
-                    patchOrdinal: patchOrdinal, bedSlot: isPot ? 0 : change.Slot,
-                    patchId: patchId, potKey: potKey,
+                    patchOrdinal: isPot ? 0 : change.Ordinal,
+                    bedSlot: isPot ? 0 : change.Slot,
+                    patchId: patchId,
+                    potKey: isPot ? change.Ordinal : -1,
                     data: new SyncData(
                         Species: change.Species == 0 ? null : change.Species,
                         Stage: change.Stage),
-                    houseId: houseId);
+                    houseId: houseId))
                 minted++;
-            }
-            catch (Exception ex)
-            {
-                // Same law as AppendHistory: the tick may not die for a history line.
-                Plugin.Log.Warning($"[Sync] {change.Kind} observation not logged: {ex.Message}");
-            }
         }
+        return minted;
+    }
 
-        if (minted > 0)
-            Plugin.Garden.SaveReceipts();
+    /// <summary>The append contract, once (QA pass: three sites had grown their own copy):
+    /// a history line may refuse (no era minted yet, ruled at ReceiptLog.Append), and the
+    /// callers are a chat handler and the frame tick - a lost line is a smaller harm than a
+    /// dead tick. The caller owns SaveReceipts, batched at its own boundary.</summary>
+    private static bool SafeAppend(
+        SyncKind kind, SyncSource source, DateTimeOffset at, EstateKey estate, bool isPot,
+        int patchOrdinal, int bedSlot, ushort patchId, int potKey, SyncData data, ulong houseId)
+    {
+        try
+        {
+            Plugin.Garden.Receipts.Append(
+                kind, source, at, estate, isPot,
+                patchOrdinal: patchOrdinal, bedSlot: bedSlot, patchId: patchId, potKey: potKey,
+                data: data, houseId: houseId);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Plugin.Log.Warning($"[Sync] {kind} receipt not written to history: {ex.Message}");
+            return false;
+        }
     }
 
     internal static string OnBedReceipt(
@@ -1016,22 +1001,15 @@ internal static class CensusPump
     /// tick.</para></summary>
     private static void AppendHistory(PendingReceipt pending, SyncSource source)
     {
-        try
-        {
-            Plugin.Garden.Receipts.Append(
+        if (SafeAppend(
                 pending.Kind, source, pending.OpenedAt, pending.Estate, pending.IsPot,
                 patchOrdinal: pending.PatchOrdinal, bedSlot: pending.BedSlot,
                 patchId: pending.PatchId, potKey: pending.PotKey,
                 data: new SyncData(
                     Species: pending.Species == 0 ? null : pending.Species,
                     Stage: pending.Stage == 0 ? null : pending.Stage),
-                houseId: pending.HouseId);
+                houseId: pending.HouseId))
             Plugin.Garden.SaveReceipts();
-        }
-        catch (Exception ex)
-        {
-            Plugin.Log.Warning($"[Census] {pending.Kind} receipt not written to history: {ex.Message}");
-        }
     }
 
     /// <summary>FALLBACK ONLY (ruled 2026-08-23): the primary patch id is the acted object's

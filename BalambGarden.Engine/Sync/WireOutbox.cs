@@ -9,9 +9,10 @@ namespace BalambGarden.Engine.Sync;
 public sealed record WireBatch(
     IReadOnlyList<SyncReceipt> Receipts, long ThroughSeq, string? Refusal);
 
-/// <summary>Send-time minting: unsent log entries become wire <see cref="SyncReceipt"/>s.
-/// This is the one place entity pseudonyms are minted (the log stays local-plaintext) and
-/// the one guard's home (schema ruling 2026-08-23 + option A 2026-08-29): an entry whose
+/// <summary>Send-time minting: unsent log entries become wire <see cref="SyncReceipt"/>s
+/// (the log stays local-plaintext; <see cref="EntityName.For"/> owns the pseudonym rule this
+/// and the census-time mint share). The one guard's home (schema ruling 2026-08-23 + option
+/// A 2026-08-29): an entry whose
 /// HMAC input is incomplete - patch id 0 on a bed, house id 0 on anything - is REFUSED,
 /// fail closed, no resolution machinery. A 0 in the canonical would mint a phantom entity
 /// no other install can independently derive.
@@ -38,20 +39,17 @@ public static class WireOutbox
             if (envelopes.Count == MaxBatch)
                 break;
 
-            if (e.HouseId == 0)
+            // EntityName.For owns the pot-vs-bed dispatch and the incomplete-input rule;
+            // the noun here only makes the dam's warning name WHICH input was missing.
+            var entity = EntityName.For(
+                namingKey, e.HouseId, e.IsPot,
+                potKey: e.PotKey, patchId: e.PatchId, bedSlot: e.BedSlot);
+            if (entity is null)
             {
-                refusal = $"entry seq {e.Seq} carries house id 0 - cannot mint its entity";
+                var missing = e.HouseId == 0 ? "house id" : "patch id";
+                refusal = $"entry seq {e.Seq} carries {missing} 0 - cannot mint its entity";
                 break;
             }
-            if (!e.IsPot && e.PatchId == 0)
-            {
-                refusal = $"entry seq {e.Seq} carries patch id 0 - cannot mint its entity";
-                break;
-            }
-
-            var entity = e.IsPot
-                ? EntityName.ForPot(namingKey, e.HouseId, e.PotKey)
-                : EntityName.ForBed(namingKey, e.HouseId, e.PatchId, e.BedSlot);
 
             envelopes.Add(new SyncReceipt(
                 Id: SyncId.Format(userId, e.Era, e.Seq),

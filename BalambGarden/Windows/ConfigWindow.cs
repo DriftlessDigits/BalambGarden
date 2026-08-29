@@ -101,14 +101,10 @@ public class ConfigWindow : Window, IDisposable
                 configuration.SyncPassphrase = trimmed;
                 configuration.Save();
 
-                // A new phrase is a NEW HOUSEHOLD: every cached entity id was minted under
-                // the old naming key and can never match again, the parked receipts came
-                // from the old stream, and the cursor points into it. Full inbox reset -
-                // one estate lap re-mints, cursor 0 replays the new household's window.
-                foreach (var bed in Plugin.Garden.Ledger.Beds)
-                    bed.WireEntity = null;
-                Plugin.Garden.Ledger.ForeignHold.Clear();
-                Plugin.Garden.Ledger.RelayCursor = "0";
+                // A new phrase is a NEW HOUSEHOLD - the ledger owns what that means
+                // (LedgerStore.ResetHousehold, desk-tested); this window only reports the
+                // edit. One estate lap re-mints; cursor 0 replays the new stream's window.
+                Plugin.Garden.Ledger.ResetHousehold();
                 Plugin.Garden.Save();
             }
         }

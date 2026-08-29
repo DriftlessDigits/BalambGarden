@@ -1,7 +1,5 @@
 using System;
 using System.Net.Http;
-using System.Net.Http.Headers;
-using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 using BalambGarden.Engine.Sync;
@@ -10,9 +8,9 @@ using ECommons.DalamudServices;
 namespace BalambGarden.Sync;
 
 /// <summary>The outbox's ride to the relay (client arc piece 2). Ticks on the framework
-/// thread, self-throttled like the pump; the HTTP round-trip runs off-thread and only the
-/// ack - MarkSent + save - comes back to the framework thread, so the log is never touched
-/// from two threads.
+/// thread, self-throttled like the pump; the HTTP round-trip runs off-thread via
+/// <see cref="RelayClient"/> and only the ack - MarkSent + save - comes back to the
+/// framework thread, so the log is never touched from two threads.
 ///
 /// <para>OFFLINE IS THE OUTBOX, not a second queue: receipts.json already persists every
 /// unsent entry, so a send that never happens costs nothing and the next tick simply tries
@@ -24,8 +22,6 @@ namespace BalambGarden.Sync;
 /// every tick.</para></summary>
 internal static class RelaySender
 {
-    private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(15) };
-
     private static readonly TimeSpan IdlePace = TimeSpan.FromSeconds(60);
     private static readonly TimeSpan FailureBackoff = TimeSpan.FromMinutes(5);
     private static readonly TimeSpan DamBackoff = TimeSpan.FromMinutes(15);
@@ -47,12 +43,12 @@ internal static class RelaySender
         // must not mean 60 walks a second.
         nextAttemptUtc = DateTime.UtcNow + IdlePace;
 
-        var log = Plugin.Garden.Receipts;
         var user = Plugin.Configuration.SyncUserId;
         if (user.Length == 0)
             return;   // WireSyncIdentity mints at load; empty here means load never ran
 
-        var batch = WireOutbox.Build(log, user, HouseholdKeys.NamingKey(phrase));
+        var batch = WireOutbox.Build(
+            Plugin.Garden.Receipts, user, HouseholdKeys.NamingKey(phrase));
 
         if (batch.Refusal is { } refusal)
         {
@@ -76,8 +72,6 @@ internal static class RelaySender
 
         inFlight = true;
         var body = WireOutbox.ToJson(batch.Receipts);
-        var token = HouseholdKeys.AuthToken(phrase);
-        var url = Plugin.Configuration.SyncRelayUrl.TrimEnd('/') + "/receipts";
         var count = batch.Receipts.Count;
         var throughSeq = batch.ThroughSeq;
 
@@ -85,17 +79,13 @@ internal static class RelaySender
         {
             try
             {
-                using var request = new HttpRequestMessage(HttpMethod.Post, url);
-                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-                request.Headers.Add("X-Balamb-Client", RelayClient.Stamp);
-                request.Content = new StringContent(body, Encoding.UTF8, "application/json");
+                var (status, payload) =
+                    await RelayClient.Send(HttpMethod.Post, RelayClient.Endpoint(), phrase, body)
+                        .ConfigureAwait(false);
 
-                using var response = await Http.SendAsync(request).ConfigureAwait(false);
-                var payload = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
-
-                if (!response.IsSuccessStatusCode)
+                if (status is < 200 or >= 300)
                 {
-                    OnFailure($"relay answered {(int)response.StatusCode}: {Truncate(payload)}");
+                    Backoff($"relay answered {status}: {Truncate(payload)}");
                     return;
                 }
 
@@ -106,7 +96,6 @@ internal static class RelaySender
                     // (kept acks re-sends too), so the mark is safe on any 200.
                     Plugin.Garden.Receipts.MarkSent(throughSeq);
                     Plugin.Garden.SaveReceipts();
-                    inFlight = false;
                     Plugin.Log.Information(
                         $"[Sync] sent {count} receipt(s) through seq {throughSeq}"
                         + (inserted is { } n ? $" ({n} new to the relay)" : ""));
@@ -114,7 +103,11 @@ internal static class RelaySender
             }
             catch (Exception ex)
             {
-                OnFailure(ex.Message);
+                Backoff(ex.Message);
+            }
+            finally
+            {
+                inFlight = false;   // the one place the flag clears, whatever path ran
             }
         });
     }
@@ -122,11 +115,11 @@ internal static class RelaySender
     /// <summary>Failure never touches the log: the outbox still holds everything, and the
     /// next attempt re-builds the same batch - the relay's idempotent insert makes a repeat
     /// harmless even if this failure was actually a lost ack.</summary>
-    private static void OnFailure(string why)
+    private static void Backoff(string why)
     {
         nextAttemptUtc = DateTime.UtcNow + FailureBackoff;
-        inFlight = false;
-        Plugin.Log.Warning($"[Sync] send failed ({why}) - outbox keeps everything, retrying in {FailureBackoff.TotalMinutes:0}m");
+        Plugin.Log.Warning(
+            $"[Sync] send failed ({why}) - outbox keeps everything, retrying in {FailureBackoff.TotalMinutes:0}m");
     }
 
     private static int? ParseInserted(string payload)
@@ -138,7 +131,7 @@ internal static class RelaySender
         }
         catch
         {
-            return null;   // cosmetic only - the 200 already carried the ack
+            return null;   // cosmetic only - the 2xx already carried the ack
         }
     }
 
