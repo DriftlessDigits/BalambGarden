@@ -148,9 +148,15 @@ internal static unsafe class MapSensor
                 continue;
             try
             {
+                // Unoccupied readings are KEPT (ruled 2026-08-28): harvest zeroes a pot's
+                // entry in place (08-26 triptych), so a zeroed entry is the map POSITIVELY
+                // saying "this pot is empty" - dropping it conflated "map not settled" with
+                // "settled, all empty", which left an all-empty room unable to prove the map
+                // ever answered (every record stuck rendering "?"). Consumers that only want
+                // growing pots filter on Occupied themselves.
                 if (MapFormat.DecodeIndoorEntry(
                         bytes, s => Plugin.Tables.SeedIdBySpeciesIndex(s) is not null)
-                    is { Occupied: true } pot)
+                    is { } pot)
                     result[key] = pot;
             }
             catch (Exception ex)

@@ -236,7 +236,10 @@ internal sealed unsafe class PotChain : ChainBase
             _nextDisplayPoll = DateTime.UtcNow.AddMilliseconds(SettlePollMS);
 
             CensusPump.RefreshDisplayOnly();
-            var missing = wanted.Where(k => !CensusPump.LastIndoor.ContainsKey(k)).ToList();
+            // A replanted pot has settled when its entry reads OCCUPIED - a zeroed entry
+            // still present from before the plant is the old world, not the new one.
+            var missing = wanted.Where(k =>
+                !(CensusPump.LastIndoor.TryGetValue(k, out var r) && r.Occupied)).ToList();
             if (missing.Count == 0)
                 return true;
 

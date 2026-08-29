@@ -1309,7 +1309,7 @@ public class MainWindow : Window, IDisposable
         var waterable = pots
             .Where(p => p.InReach && p.MapKey is { } key
                 && CensusPump.LastIndoor.TryGetValue(key, out var reading)
-                && reading.Stage != 4)
+                && reading.Occupied && reading.Stage != 4)
             .ToList();
         var ripeInReach = beds.Any(b =>
             b.IsPot && b.Latest?.Stage == 4
@@ -1593,7 +1593,10 @@ public class MainWindow : Window, IDisposable
             return EstateSensor.IsInside()
                 && ObjectSensor.SawHousingObjects
                 && CensusPump.MapAnsweredThisVisit
-                && !CensusPump.LastIndoor.ContainsKey(bed.MapKey);
+                // A zeroed entry is PRESENT and unoccupied - the map's own "this pot is
+                // empty" receipt (08-26: harvest zeroes in place), stronger evidence than
+                // the key being absent, and both mean the same thing here.
+                && !(CensusPump.LastIndoor.TryGetValue(bed.MapKey, out var live) && live.Occupied);
         if (!CensusPump.LastOutdoor.TryGetValue(bed.MapKey, out var readings))
             return false;
         return readings.FirstOrDefault(r => r.Slot == bed.BedSlot) is { Occupied: false };

@@ -164,8 +164,10 @@ internal static class CensusPump
     private static HashSet<int>? priorPotKeys;
     private static bool mapAnsweredThisVisit;
 
-    /// <summary>Whether the indoor map has answered non-empty at the estate underfoot this
-    /// visit - proof it is talking. The reconcile has always demanded this before believing
+    /// <summary>Whether the indoor map has answered at the estate underfoot this visit -
+    /// proof it is talking. Since the sensor keeps zeroed entries (2026-08-28), an all-empty
+    /// room answers too: "every entry zeroed" is an answer, and only a map that has not
+    /// settled yet says nothing at all. The reconcile has always demanded this before believing
     /// absence; the DISPLAY's amber "reads empty now - harvested?" needs the same clause
     /// (field receipt 2026-08-28: a cold zone-in settles objects before the DataMap, and
     /// every recorded pot flashed amber off the pre-settle empty read until the retry
