@@ -30,6 +30,46 @@ public class ReceiptLogTests
         => log.Append(kind, SyncSource.Chain, at, Garden, isPot: true,
             patchOrdinal: 0, bedSlot: 0, patchId: 0, potKey: potKey);
 
+    /// <summary>Ruled 2026-08-29 (piece 2, option A): the raw HouseId is banked on the entry
+    /// at act time, because the wire canonical (`bed|houseId|...`) needs the game's own 8
+    /// bytes and EstateKey is a lossy decomposition that cannot give them back.</summary>
+    [Fact]
+    public void Append_banks_the_house_id_on_the_entry()
+    {
+        var log = Live();
+        var entry = log.Append(SyncKind.Tend, SyncSource.Chain, T0, Garden, isPot: false,
+            patchOrdinal: 0, bedSlot: 3, patchId: 0x3312, potKey: -1,
+            houseId: 0x0037015401CB0039UL);
+        Assert.Equal(0x0037015401CB0039UL, entry.HouseId);
+    }
+
+    [Fact]
+    public void House_id_survives_the_json_round_trip()
+    {
+        var log = Live();
+        log.Append(SyncKind.Tend, SyncSource.Chain, T0, Garden, isPot: false,
+            patchOrdinal: 0, bedSlot: 3, patchId: 0x3312, potKey: -1,
+            houseId: 0x0037015401CB0039UL);
+        var back = ReceiptLog.FromJson(log.ToJson());
+        Assert.Equal(0x0037015401CB0039UL, back.Entries[0].HouseId);
+    }
+
+    /// <summary>A pre-upgrade log has no houseId on its entries; they load as the honest 0
+    /// (unsendable - the send guard's job), never as an invented value.</summary>
+    [Fact]
+    public void Legacy_entries_without_the_field_load_as_zero()
+    {
+        var log = Live();
+        log.Append(SyncKind.Tend, SyncSource.Chain, T0, Garden, isPot: false,
+            patchOrdinal: 0, bedSlot: 3, patchId: 0x3312, potKey: -1,
+            houseId: 0x0037015401CB0039UL);
+        var json = log.ToJson();
+        var token = $",\r\n      \"houseId\": {0x0037015401CB0039UL}";
+        Assert.Contains(token, json);   // guards the surgery below against format drift
+        var back = ReceiptLog.FromJson(json.Replace(token, ""));
+        Assert.Equal(0UL, back.Entries[0].HouseId);
+    }
+
     [Fact]
     public void Append_assigns_monotonic_seq_from_one()
     {

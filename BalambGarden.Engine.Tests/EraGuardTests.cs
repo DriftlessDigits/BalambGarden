@@ -22,6 +22,18 @@ public class EraGuardTests
         Assert.Equal(EraVerdict.Keep, verdict);
     }
 
+    /// <summary>The v2 upgrade is a mint REASON, not a plugin bolt-on (QA pass 2026-08-29:
+    /// hoisted from an || in Plugin.cs so every way a counter's life ends lives in this one
+    /// tested rule). An otherwise-intact v1 log must still mint - its entries can never mint
+    /// wire entities, and one of them would dam the outbox forever.</summary>
+    [Fact]
+    public void A_pre_house_id_log_mints_even_when_otherwise_intact()
+    {
+        var (verdict, reason) = EraGuard.Check(Remembered, "q7f3nx", 42, Machine, logVersion: 1);
+        Assert.Equal(EraVerdict.MintFresh, verdict);
+        Assert.Equal("receipt log v1 -> v2", reason);
+    }
+
     [Fact]
     public void A_fresh_or_parked_log_mints()
     {

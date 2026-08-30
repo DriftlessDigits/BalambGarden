@@ -155,4 +155,22 @@ internal static unsafe class EstateSensor
         var housing = HousingManager.Instance();
         return housing != null && housing->IsInside();
     }
+
+    /// <summary>The raw 8-byte HouseId underfoot, 0 when nothing answers - banked on receipt
+    /// entries at act time (option A, ruled 2026-08-29) because the wire canonical hashes the
+    /// game's own identity and EstateKey cannot give the bytes back. Indoors the indoor read
+    /// (it carries the room - a private chamber is its own estate, matching
+    /// <see cref="Current"/>'s split); outdoors the general read, the same one the roster
+    /// recon's "here" line prints (ReconProbe). The outdoor read is instrument-proven but not
+    /// yet outcome-receipted in the yard - the WireOutbox guard refuses a 0, so a wrong "no
+    /// answer" costs a send, never a phantom entity.</summary>
+    internal static ulong CurrentHouseId()
+    {
+        var housing = HousingManager.Instance();
+        if (housing == null)
+            return 0;
+        return housing->IsInside()
+            ? housing->GetCurrentIndoorHouseId().Id
+            : housing->GetCurrentHouseId().Id;
+    }
 }

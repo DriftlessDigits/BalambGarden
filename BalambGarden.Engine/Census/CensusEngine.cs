@@ -2,6 +2,15 @@ using BalambGarden.Engine.Ledger;
 
 namespace BalambGarden.Engine.Census;
 
+/// <summary>A sighted state CHANGE on a claimed row (piece 6, schema ruling 12: observations
+/// sync on change only). Stage = a climb; Ripe = reaching 4, the payoff signal. Emitted from
+/// the one place prev-vs-reading already meet; the pump decides whether it becomes a logged
+/// receipt (it may lack a patch id or house id to mint the wire identity with).</summary>
+/// <para><see cref="Ordinal"/> is the row's own patch ordinal (the pot's map key when
+/// IsPot) - carried so the pump routes the change without re-deriving what this engine
+/// already knew (QA pass 2026-08-29).</para>
+public sealed record SightingChange(int Ordinal, int Slot, Sync.SyncKind Kind, ushort Species, byte Stage);
+
 /// <summary>The join + census brain. Receipts and sightings are the only write paths (spec:
 /// Permission Architecture, 2026-08-15): a row exists because the game showed us something at
 /// an estate we are rostered for. No Claim() method exists.</summary>
@@ -71,7 +80,7 @@ public sealed class CensusEngine(LedgerStore ledger)
     /// key stays ephemeral regardless - that is the neighbors' garden passing by.</summary>
     public int OnMapSighting(
         EstateKey estate, int mapKey, IReadOnlyList<Sensing.BedReading> beds, DateTimeOffset at,
-        bool isPot = false, bool mayRecord = false)
+        bool isPot = false, bool mayRecord = false, ICollection<SightingChange>? changes = null)
     {
         if (mayRecord && isPot && BoundKey(estate, mapKey, isPot: true) is null)
             Bind(estate, mapKey, mapKey, isPot: true);
@@ -113,6 +122,22 @@ public sealed class CensusEngine(LedgerStore ledger)
             else if (mayRecord && IsNewTenancy(bed.Latest, reading))
             {
                 bed.Rebase();
+            }
+
+            // The change reads BEFORE the observe, against what the ledger believed walking
+            // in. A rebase above already nulled Latest, so a replant emits nothing - its
+            // story restarts with its own plant receipt. A reading of stage 0 is unknown and
+            // never a change; a climb FROM a stage-0 belief (a plant receipt's honest
+            // unknown) does emit - first real knowledge travels (the 08-28 more-data
+            // amendment: richer receipts serve the fresh-install replay). A brand-new row
+            // has no belief at all and emits nothing.
+            if (mayRecord && changes is not null && bed.Latest is { } prev
+                && prev.Stage != reading.Stage && reading.Stage > 0)
+            {
+                changes.Add(new SightingChange(
+                    bed.PatchOrdinal, reading.Slot,
+                    reading.Stage == GardenStage.Ripe ? Sync.SyncKind.Ripe : Sync.SyncKind.Stage,
+                    reading.SpeciesIndex, reading.Stage));
             }
 
             bed.Observe(new Observation(at, reading.SpeciesIndex, reading.Stage, ObservationSource.MapSighting));

@@ -1219,8 +1219,11 @@ public class MainWindow : Window, IDisposable
                       + (now - f < TimeSpan.FromHours(1)
                           ? " (game refuses a refeed within the hour)" : "")
                     : "";
+                // Ruling 10: a household hand marks itself, ours says nothing extra - and
+                // never WHOSE, only external.
                 ImGui.SetTooltip((bed.LastTended is { } t
                     ? $"watered {WindowFormat.Exact(t.ToLocalTime())}"
+                      + (bed.LastTendedIsExternal ? " - external" : "")
                     : "no watering receipt for this record yet") + fedLine);
             }
 

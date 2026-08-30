@@ -141,6 +141,10 @@ public sealed class Plugin : IDalamudPlugin
         // does. Not debug-gated: the receipt it writes is the product.
         Game.ChatReceipts.Start();
 
+        // A zone line pulls the next relay poll close (piece 3's zone-in cadence) - the
+        // moment you arrive somewhere is the moment a foreign receipt would matter.
+        Svc.ClientState.TerritoryChanged += OnZoneLine;
+
 #if DEBUG
         // Scoped recording: the persisted flag means "arm near pots", and a rezone ends
         // the scene a recording was scoped to. The proximity check in OnFrameworkUpdate
@@ -165,6 +169,7 @@ public sealed class Plugin : IDalamudPlugin
         PluginInterface.UiBuilder.OpenConfigUi -= ToggleConfigUi;
         PluginInterface.UiBuilder.OpenMainUi -= ToggleMainUi;
         Svc.Framework.Update -= OnFrameworkUpdate;
+        Svc.ClientState.TerritoryChanged -= OnZoneLine;
 #if DEBUG
         Svc.ClientState.TerritoryChanged -= OnTerritoryChanged;
 #endif
@@ -218,14 +223,25 @@ public sealed class Plugin : IDalamudPlugin
                 Configuration.SyncCounterRemembered,
                 Configuration.SyncMachineHash);
 
+        // The v2 upgrade is one of EraGuard's own mint reasons (QA pass 2026-08-29 - every
+        // way a counter's life ends lives in that one tested rule); this side only stamps
+        // the version once the guard has ruled, so the reason fires exactly once.
         var (verdict, reason) = BalambGarden.Engine.Sync.EraGuard.Check(
-            remembered, Garden.Receipts.Era, Garden.Receipts.Counter, Sync.MachineStamp.Hash());
+            remembered, Garden.Receipts.Era, Garden.Receipts.Counter, Sync.MachineStamp.Hash(),
+            Garden.Receipts.Version);
         Log.Information($"[Garden] era check: {reason}");
 
         if (verdict == BalambGarden.Engine.Sync.EraVerdict.MintFresh)
         {
             var era = BalambGarden.Engine.Sync.SyncId.NewSlug();
             Garden.Receipts.MintEra(era);
+            if (Garden.Receipts.Version < 2)
+            {
+                Garden.Receipts.Version = 2;
+                Log.Information(
+                    "[Garden] receipt log upgraded to v2 - pre-upgrade entries stay local "
+                    + "history and never sync (they carry no house id)");
+            }
             Log.Information($"[Garden] minted era '{era}' - the counter restarts under it");
             Garden.SaveReceipts();   // writes the log, then refreshes the memory with it
         }
@@ -238,6 +254,8 @@ public sealed class Plugin : IDalamudPlugin
         }
     }
 
+    private static void OnZoneLine(uint territory) => Sync.RelayPoller.NoteZoneIn();
+
     /// <summary>Nothing sensed before the player exists: no character, no estate,
     /// no census. The pump throttles itself past this gate.</summary>
     private void OnFrameworkUpdate(IFramework framework)
@@ -245,6 +263,8 @@ public sealed class Plugin : IDalamudPlugin
         if (!PlayerState.IsLoaded)
             return;
         Game.CensusPump.Tick();
+        Sync.RelaySender.Tick();
+        Sync.RelayPoller.Tick();
 #if DEBUG
         AutoArmWatcher();
 #endif
