@@ -32,8 +32,7 @@ public class VerdictTests
             LastTended = Now.AddHours(-tendedHoursAgo),
         };
         // Krakka Root (0x31): the 24h wilt tier the other derivation tests use.
-        bed.Observe(new Observation(Now.AddHours(-tendedHoursAgo), 0x31, stage,
-            ObservationSource.TendReceipt));
+        Seed.Sight(bed, Now.AddHours(-tendedHoursAgo), 0x31, stage);
         return bed;
     }
 

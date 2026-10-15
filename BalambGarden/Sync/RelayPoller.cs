@@ -1,6 +1,9 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
+using BalambGarden.Engine.Ledger;
 using BalambGarden.Engine.Sync;
 using ECommons.DalamudServices;
 
@@ -77,16 +80,35 @@ internal static class RelayPoller
                     return;
                 }
 
-                if (page.Receipts.Count == 0)
-                    return;   // caught up; the echoed cursor equals ours
-
                 await Svc.Framework.RunOnFrameworkThread(() =>
                 {
+                    if (page.Receipts.Count == 0)
+                    {
+                        // Caught up; the echoed cursor equals ours. The one thing still owed
+                        // on a quiet poll is a history write that failed last time - rows
+                        // already in memory, cursor held until they are on disk.
+                        if (Plugin.Garden.History.Dirty && Plugin.Garden.SaveHistory())
+                            Plugin.Log.Information("[Sync] history save retried and landed");
+                        return;
+                    }
+
+                    var now = DateTimeOffset.UtcNow;
                     var outcome = ForeignApply.AbsorbPage(
-                        Plugin.Garden.Ledger, page,
-                        Plugin.Configuration.SyncUserId, DateTimeOffset.UtcNow);
+                        Plugin.Garden.Ledger, page, Plugin.Configuration.SyncUserId, now,
+                        Plugin.Garden.History, Plugin.Garden.SaveHistory);
+
+                    // The parking lot re-runs on every page while anything is held, not only
+                    // after a mint (pass-3 #5): a row held back by a failed history save
+                    // must not wait days for the next census visit.
+                    var rebases = new List<RebaseEvent>(outcome.Rebases);
+                    var landed = Plugin.Garden.Ledger.ForeignHold.Count > 0
+                        ? ForeignApply.RetryParked(
+                            Plugin.Garden.Ledger, now, Plugin.Garden.History, Plugin.Garden.SaveHistory, rebases)
+                        : 0;
+
                     Plugin.Garden.Save();
-                    Report(outcome);
+                    Game.CensusPump.ReportRebases(rebases);
+                    Report(outcome, landed);
                 }).ConfigureAwait(false);
             }
             catch (Exception ex)
@@ -100,14 +122,24 @@ internal static class RelayPoller
         });
     }
 
-    private static void Report(ForeignOutcome outcome)
+    private static void Report(ForeignOutcome outcome, int landed)
     {
-        if (outcome.Applied > 0 || outcome.Parked > 0)
+        if (outcome.Applied > 0 || outcome.Parked > 0 || landed > 0)
             Plugin.Log.Information(
                 $"[Sync] household receipts: {outcome.Applied} applied"
                 + (outcome.Parked > 0
                     ? $", {outcome.Parked} parked (their estates await a census visit)" : "")
+                + (landed > 0 ? $", {landed} parked earlier now landed" : "")
+                + (outcome.HistoryToRecord.Count > 0
+                    ? $", {outcome.HistoryToRecord.Count} plant/harvest row(s) to history" : "")
+                + (outcome.Contradicted > 0
+                    ? $", {outcome.Contradicted} older sighting(s) contradicted the record (replant evidence, ledger untouched)" : "")
                 + (outcome.OwnSkipped > 0 ? $", {outcome.OwnSkipped} own echoed back" : ""));
+
+        if (!outcome.CursorAdvanced)
+            Plugin.Log.Warning(
+                $"[Sync] history save failed - cursor held at {Plugin.Garden.Ledger.RelayCursor}; "
+                + "the page is fetched again next poll and re-recorded by id");
 
         if (outcome.Dropped > 0)
             Plugin.Log.Warning(

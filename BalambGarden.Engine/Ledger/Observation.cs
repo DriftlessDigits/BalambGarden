@@ -10,8 +10,11 @@ public static class GardenStage
     public const byte Ripe = 4;
 }
 
-// External is APPENDED (2026-08-29, piece 4): persisted rings hold these as ordinals, so the
-// pre-existing values keep their numbers forever - the ChainUnconfirmed precedent.
+// Persisted BY NAME (the ledger's JsonStringEnumConverter), never by ordinal - so RENAMING a
+// member is the hazard, not reordering (corrected 2026-10-14; earlier comments here said
+// ordinals). Every member stays because v2 files still carry rings with these words
+// (TendReceipt, HarvestReceipt, StatusTalk) and the v2->v3 fold reads them. Since the tenancy
+// record (2026-10-14) only MapSighting, RipeSkip, PlantReceipt and External are ever written.
 public enum ObservationSource { MapSighting, TendReceipt, PlantReceipt, HarvestReceipt, StatusTalk, RipeSkip, External }
 
 public sealed record Observation(DateTimeOffset At, ushort SpeciesIndex, byte Stage, ObservationSource Source);

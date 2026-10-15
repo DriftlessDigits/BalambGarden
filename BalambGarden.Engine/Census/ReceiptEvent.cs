@@ -1,7 +1,7 @@
 namespace BalambGarden.Engine.Census;
 
-/// <summary>Fertilize is APPENDED, never inserted: persisted ledgers hold these as ordinals,
-/// so the existing four keep their numbers forever.</summary>
+/// <summary>Persisted by NAME in the trail (JsonStringEnumConverter), so renaming a member is
+/// the hazard, not reordering (corrected 2026-10-14). Fertilize was appended 2026-08-23.</summary>
 public enum ReceiptVerb { Tend, Harvest, Plant, PotWater, Fertilize }
 
 /// <summary>A completed interaction, parsed from dialogue by the game adapter.

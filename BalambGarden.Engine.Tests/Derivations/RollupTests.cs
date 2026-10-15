@@ -20,8 +20,7 @@ public class RollupTests
             LastTended = Now.AddHours(-tendedHoursAgo),
         };
         // Krakka Root (0x31): 24h wilt tier - drives the wilt states below
-        bed.Observe(new Observation(Now.AddHours(-tendedHoursAgo), 0x31, stage,
-            ObservationSource.TendReceipt));
+        Seed.Sight(bed, Now.AddHours(-tendedHoursAgo), 0x31, stage);
         return bed;
     }
 
@@ -50,7 +49,7 @@ public class RollupTests
     {
         var pot = new ClaimedBed
             { Estate = Gardener, MapKey = 129, PatchOrdinal = 0, BedSlot = 0, IsPot = true };
-        pot.Observe(new Observation(Now.AddHours(-2), 82, 1, ObservationSource.PlantReceipt));
+        Seed.Plant(pot, Now.AddHours(-2), 82, stage: 1);
 
         var rollup = Assert.Single(Rollups.ForEstate(Gardener, [pot], T, new ClockWiltSource(), Now));
         var daisy = Assert.Single(rollup.RipeBySpecies);
@@ -96,7 +95,7 @@ public class RollupTests
             Estate = Gardener, MapKey = 110, PatchOrdinal = 0, BedSlot = slot,
             LastTended = Now.AddHours(-1),
         };
-        bed.Observe(new Observation(Now.AddHours(-1), species, 2, ObservationSource.TendReceipt));
+        Seed.Sight(bed, Now.AddHours(-1), species, 2);
         return bed;
     }
 
@@ -131,8 +130,7 @@ public class RollupTests
             Estate = Gardener, MapKey = mapKey, PatchOrdinal = mapKey, BedSlot = 0, IsPot = true,
             LastTended = Now.AddHours(-tendedHoursAgo),
         };
-        pot.Observe(new Observation(Now.AddHours(-tendedHoursAgo), 0x31, stage,
-            ObservationSource.TendReceipt));
+        Seed.Sight(pot, Now.AddHours(-tendedHoursAgo), 0x31, stage);
         return pot;
     }
 

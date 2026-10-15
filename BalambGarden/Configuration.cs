@@ -111,6 +111,14 @@ public class Configuration : IPluginConfiguration
     /// and has no idea what it means.</summary>
     public string SyncMachineHash { get; set; } = "";
 
+    /// <summary>LOCAL labels for household hands: wire slug -> what this player calls that
+    /// install (Q2, ruled 2026-10-14: "no hard coded, player, or personal names. period. I like
+    /// the idea of a local alias as a setting"). Display vocabulary only. Never serialized to
+    /// the wire, the relay, the ledger, the history file or the repo; an unlabelled slug shows
+    /// as "household". Cleared with the rest of the household on a phrase change. The screen
+    /// that edits it is phase 2; phase 1 only keeps the seat warm.</summary>
+    public Dictionary<string, string> HandAliases { get; set; } = [];
+
     // The garden ledger: every tended bed's latest census record.
     public List<BedRecord> Ledger { get; set; } = [];
 

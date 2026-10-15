@@ -15,8 +15,11 @@ namespace BalambGarden.Engine.Sync;
 /// <see cref="ReceiptLog.Append"/> and never by a caller. <see cref="Era"/> is the middle
 /// third, stamped from the log's era at Append time so an entry carries the life it was born
 /// under forever: that is what lets <see cref="ReceiptLog.Unsent"/> tell this era's outbox from
-/// a retired era's history. The user third never touches the Engine - it lives in config and
-/// arrives as a parameter at send time.</para>
+/// a retired era's history. The user third never touches the Engine as an identity - it lives
+/// in config and arrives as a parameter at send time; where the Engine must say WHOSE hands did
+/// a thing (the tenancy record, the garden history) it holds the slug as an opaque
+/// <see cref="Ledger.Hand"/>, and a name exists nowhere in code or files. A LOCAL alias for a
+/// slug may live in plugin config for display and never serializes (ruled 2026-10-14).</para>
 ///
 /// <para><see cref="HouseId"/> is the raw 8-byte HouseId, banked at ACT time (ruled
 /// 2026-08-29, option A): the wire canonical hashes the game's own identity, and EstateKey is
@@ -56,8 +59,10 @@ public sealed class ReceiptLog
     /// <summary>The name of the counter's current life, empty until first minted. Lives HERE,
     /// beside the counter it protects, because the two only mean anything together: an era
     /// names the number-space a Seq was drawn from. The user third of a wire id is deliberately
-    /// absent - it lives in plugin config and arrives as a parameter at send time, so the
-    /// Engine never stores who anyone is.</summary>
+    /// absent - it lives in plugin config and arrives as a parameter at send time. The Engine
+    /// never stores who anyone IS: where it must record whose hands acted it keeps the opaque
+    /// slug (<see cref="Ledger.Hand"/>), and any label for a slug is local config, never a
+    /// file this type writes (ruled 2026-10-14).</summary>
     public string Era { get; set; } = "";
 
     /// <summary>Last <see cref="LoggedReceipt.Seq"/> handed out. Persisted so a restart never

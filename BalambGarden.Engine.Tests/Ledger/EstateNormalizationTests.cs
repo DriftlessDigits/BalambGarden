@@ -94,22 +94,22 @@ public class EstateNormalizationTests
         Assert.False(store.Bindings.ContainsKey(Outside.BindingKey(2)));
     }
 
-    [Fact] // two records for one bed union their observations - nothing is picked over
-    public void DuplicateBedsMergeTheirRings()
+    [Fact] // two records for one bed union their tenancy evidence - nothing is picked over
+    public void DuplicateBedsMergeTheirRecords()
     {
         var store = new LedgerStore();
         store.Estates.Add(Record(Outside, T0));
         store.Estates.Add(Record(Inside, T0));
 
         var kept = Bed(Outside, ordinal: 0, slot: 1);
-        kept.Observe(new Observation(T0.AddHours(3), 44, 2, ObservationSource.MapSighting));
+        Seed.Sight(kept, T0.AddHours(3), 44, 2);
         kept.LastTended = T0.AddHours(3);
         var twin = new ClaimedBed
         {
             Estate = Inside, MapKey = 1038, PatchOrdinal = 0, BedSlot = 1,
             FirstRecorded = T0.AddHours(-1), LastTended = T0.AddHours(5),
         };
-        twin.Observe(new Observation(T0.AddHours(1), 44, 1, ObservationSource.TendReceipt));
+        Seed.Sight(twin, T0.AddHours(1), 44, 1);
         store.Beds.Add(kept);
         store.Beds.Add(twin);
 
@@ -119,8 +119,9 @@ public class EstateNormalizationTests
         Assert.Equal(Outside, bed.Estate);
         Assert.Equal(T0.AddHours(-1), bed.FirstRecorded);        // earliest claim is the receipt
         Assert.Equal(T0.AddHours(5), bed.LastTended);        // latest tend wins
-        Assert.Equal(2, bed.Ring.Count);
-        Assert.Equal(T0.AddHours(1), bed.Ring[0].At);        // union, oldest first
+        Assert.Equal(2, bed.StageSeen.Count);                // union of both brackets
+        Assert.Equal(T0.AddHours(1), bed.StageSeen[1].FirstSeen);
+        Assert.Equal(T0.AddHours(3), bed.Latest!.At);        // newest reading wins
     }
 
     [Fact] // only the interior record carries a nickname: it comes along
@@ -274,8 +275,18 @@ public class EstateNormalizationTests
         Assert.Equal(Outside, bed.Estate);
         Assert.True(bed.IsPot);
         Assert.Equal(129, bed.MapKey);
-        Assert.Equal(94, Assert.Single(bed.Ring).SpeciesIndex);
+        Assert.Equal(94, Assert.Single(bed.LegacyRing!).SpeciesIndex);   // the v2 ring, read but not yet folded
+        Assert.Equal(2, store.Version);
         Assert.Equal(129, store.Bindings[Outside.BindingKey(129, isPot: true)]);
+
+        // The v2 -> v3 fold runs BEFORE the estate repair (pseudocode s7 placement).
+        Assert.Equal(1, LedgerMigration.FoldLegacyRings(store));
+        Assert.Equal(LedgerStore.CurrentVersion, store.Version);
+        Assert.Null(bed.LegacyRing);
+        Assert.Equal(94, bed.Latest!.SpeciesIndex);
+        Assert.Equal(2, bed.MaxStageSeen);
+        Assert.Equal(Hand.Own, bed.LastTendedBy);               // a TendReceipt entry at the clock's instant
+        Assert.DoesNotContain("RingStorage", store.ToJson());   // the ring never writes again
 
         // ...and the repair pass has nothing to say about it, twice.
         Assert.False(LedgerMigration.NormalizeEstates(store).Changed);

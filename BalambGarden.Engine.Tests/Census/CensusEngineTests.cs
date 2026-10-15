@@ -26,8 +26,8 @@ public class CensusEngineTests
         Assert.Equal(110, bed!.MapKey);
         Assert.Equal(3, bed.BedSlot);
         Assert.Equal(T0, bed.LastTended);
-        var obs = Assert.Single(bed.Ring);
-        Assert.Equal(ObservationSource.TendReceipt, obs.Source);
+        Assert.Equal(Hand.Own, bed.LastTendedBy);
+        Assert.Null(bed.Latest);                     // a tend is a clock, not a reading
     }
 
     [Fact] // a harvest receipt EMPTIES the record (ruled 2026-08-28: "if we are confident we
@@ -118,7 +118,7 @@ public class CensusEngineTests
 
         Assert.Equal(1, count);   // only the claimed bed
         var bed = Assert.Single(engine.LedgerBeds);
-        Assert.Equal(2, bed.Ring.Count);
+        Assert.Single(bed.StageSeen);
         Assert.Equal(ObservationSource.MapSighting, bed.Latest!.Source);
         Assert.Equal(2, bed.Latest.Stage);
     }
@@ -260,6 +260,7 @@ public class CensusEngineTests
     private static ClaimedBed TendedBed(CensusEngine engine, byte stage = 2)
     {
         engine.Bind(Gardener, 0, 110);
+        engine.OnMapSighting(Gardener, 110, [new BedReading(3, 0x41, stage, 0, true)], T0, mayRecord: true);
         return engine.OnReceipt(Tend(slot: 3, stage))!;
     }
 
@@ -273,9 +274,11 @@ public class CensusEngineTests
             [new BedReading(3, 0x30, 1, 0, true)], T0.AddDays(1), mayRecord: true);
 
         Assert.Single(engine.LedgerBeds);
-        var obs = Assert.Single(bed.Ring);           // old observations left with the old plant
-        Assert.Equal(0x30, obs.SpeciesIndex);
-        Assert.Null(bed.LastTended);                 // our watering receipt watered the OLD plant
+        Assert.Equal(0x30, bed.Latest!.SpeciesIndex);   // old evidence left with the old plant
+        Assert.Single(bed.StageSeen);
+        Assert.Equal(RebaseReason.NewTenancySighted, bed.TenancyResetReason);
+        Assert.Equal(T0, bed.TenancyResetAt);           // the cut = our last look at the old plant
+        Assert.Null(bed.LastTended);                    // our watering receipt watered the OLD plant
     }
 
     [Fact] // stage went BACKWARD on the same species = replanted same crop: also a new tenancy
@@ -287,8 +290,8 @@ public class CensusEngineTests
         engine.OnMapSighting(Gardener, 110,
             [new BedReading(3, 0x41, 1, 0, true)], T0.AddDays(1), mayRecord: true);
 
-        var obs = Assert.Single(bed.Ring);
-        Assert.Equal(1, obs.Stage);
+        Assert.Equal(1, bed.Latest!.Stage);
+        Assert.Equal(1, bed.MaxStageSeen);
         Assert.Null(bed.LastTended);
     }
 
@@ -301,7 +304,7 @@ public class CensusEngineTests
         engine.OnMapSighting(Gardener, 110,
             [new BedReading(3, 0x41, 3, 0, true)], T0.AddDays(1), mayRecord: true);
 
-        Assert.Equal(2, bed.Ring.Count);
+        Assert.Equal(2, bed.StageSeen.Count);        // stage 2 and stage 3 both bracketed
         Assert.Equal(T0, bed.LastTended);
     }
 
@@ -315,7 +318,8 @@ public class CensusEngineTests
             [new BedReading(3, 0, 0, 0, Occupied: false)], T0.AddDays(1), mayRecord: true);
 
         Assert.Single(engine.LedgerBeds);            // the bed is still ours...
-        Assert.Empty(bed.Ring);                      // ...but nothing grows in it
+        Assert.False(bed.HasTenancy);                // ...but nothing grows in it
+        Assert.Equal(RebaseReason.ReadsEmpty, bed.TenancyResetReason);
         Assert.Null(bed.LastTended);
         Assert.Equal(1, landed);                     // the rebase is a change worth saving
     }
@@ -332,7 +336,7 @@ public class CensusEngineTests
             [new BedReading(3, 0, 0, 0, Occupied: false)], T0.AddDays(2), mayRecord: true);
 
         Assert.Equal(0, landed);
-        Assert.Empty(bed.Ring);
+        Assert.False(bed.HasTenancy);
     }
 
     [Fact] // rebase is destructive, so it gates on mayRecord; unvouched sightings stay
@@ -346,8 +350,9 @@ public class CensusEngineTests
         engine.OnMapSighting(Gardener, 110,
             [new BedReading(3, 0x30, 1, 0, true)], T0.AddDays(1));
 
-        Assert.Equal(2, bed.Ring.Count);             // observed, never rebased
-        Assert.Equal(T0, bed.LastTended);            // the tend clock survived
+        Assert.Equal(0x30, bed.Latest!.SpeciesIndex);   // sighted, never rebased
+        Assert.Null(bed.TenancyResetAt);
+        Assert.Equal(T0, bed.LastTended);               // the tend clock survived
     }
 
     [Fact] // a harvested pot's map entry VANISHES (08-15): absent from a settled read = emptied
@@ -359,12 +364,14 @@ public class CensusEngineTests
             engine.OnMapSighting(estate, key, [new BedReading(0, 44, 3, 0, true)],
                 T0, isPot: true, mayRecord: true);
 
-        var rebased = engine.ReconcileAbsentPots(estate, presentKeys: [127]);
+        var rebased = engine.ReconcileAbsentPots(estate, presentKeys: [127], at: T0.AddHours(1));
 
         Assert.Equal(1, rebased);
         Assert.Equal(2, engine.LedgerBeds.Count);    // both rows survive
-        Assert.Empty(engine.LedgerBeds.First(b => b.MapKey == 126).Ring);
-        Assert.NotEmpty(engine.LedgerBeds.First(b => b.MapKey == 127).Ring);
+        var gone = engine.LedgerBeds.First(b => b.MapKey == 126);
+        Assert.False(gone.HasTenancy);
+        Assert.Equal(RebaseReason.PotAbsent, gone.TenancyResetReason);
+        Assert.True(engine.LedgerBeds.First(b => b.MapKey == 127).HasTenancy);
     }
 
     [Fact] // an already-empty row is already right - absence is not news twice
@@ -374,9 +381,9 @@ public class CensusEngineTests
         var estate = new EstateKey(344, 24, 41);
         engine.OnMapSighting(estate, 126, [new BedReading(0, 44, 3, 0, true)],
             T0, isPot: true, mayRecord: true);
-        engine.ReconcileAbsentPots(estate, presentKeys: []);
+        engine.ReconcileAbsentPots(estate, presentKeys: [], at: T0.AddHours(1));
 
-        Assert.Equal(0, engine.ReconcileAbsentPots(estate, presentKeys: []));
+        Assert.Equal(0, engine.ReconcileAbsentPots(estate, presentKeys: [], at: T0.AddHours(2)));
     }
 
     [Fact] // unknown species live (0) is a shrug, not a contradiction - never rebases
@@ -388,7 +395,8 @@ public class CensusEngineTests
         engine.OnMapSighting(Gardener, 110,
             [new BedReading(3, 0, 2, 0, true)], T0.AddDays(1), mayRecord: true);
 
-        Assert.Equal(2, bed.Ring.Count);
+        Assert.Single(bed.StageSeen);                // stage 2 twice = one bracket
+        Assert.Null(bed.TenancyResetAt);
         Assert.Equal(T0, bed.LastTended);
     }
 }
