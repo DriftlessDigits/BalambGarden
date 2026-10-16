@@ -115,4 +115,4 @@ The five canonical roles as TaskNotes `status` strings, same names. See `docs/ag
 
 ### Domain docs
 
-Single-context: one glossary node and the rulings (design-doc sections or ruling nodes) live in the vault, not this repo. See `docs/agents/domain.md`.
+Single-context: `GLOSSARY.md` at the repo root is the vocabulary; the rulings (the why) live in the maintainer's private notes and their mechanisms are in this file. See `docs/agents/domain.md`.

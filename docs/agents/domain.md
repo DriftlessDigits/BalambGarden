@@ -4,7 +4,7 @@ How the engineering skills should consume this project's domain documentation wh
 
 ## Before exploring, read these
 
-- **The glossary**: `Balamb Garden - Glossary` in the maintainer's private notes (one glossary per project; there is no `GLOSSARY.md` in this repo).
+- **`GLOSSARY.md`** at the repo root (one glossary, single context).
 - **The rulings (ADRs)**: a numbered ruling in the live design doc on that topic (`Balamb Garden - <Topic> - Design`, Rulings section), or a standalone note `Balamb Garden - Ruling - <topic>`, both in the maintainer's private notes. There is no `docs/adr/` in this repo. The project's Process hub indexes both under "Rulings and vocabulary".
 
 If any of these files don't exist, **proceed silently**. Don't flag their absence; don't suggest creating them upfront. The `/domain-modeling` skill (reached via `/grill-with-docs` and `/improve-codebase-architecture`) creates them lazily when terms or decisions actually get resolved.
