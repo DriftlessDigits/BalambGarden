@@ -4,10 +4,14 @@ using System.Text.Json.Serialization;
 namespace BalambGarden.Engine.Ledger;
 
 /// <summary>The persisted census: claimed beds + receipt-bound patch->key bindings.
-/// Fresh file in v0.2; the POC ledger is never read.</summary>
+/// Fresh file in v0.2; the POC ledger is never read. Version 3 (2026-10-14): rows carry a
+/// tenancy record instead of an observation ring - a v2 file loads through
+/// <see cref="LedgerMigration.FoldLegacyRings"/> once and is backed up beside itself first.</summary>
 public sealed class LedgerStore
 {
-    public int Version { get; set; } = 2;
+    public const int CurrentVersion = 3;
+
+    public int Version { get; set; } = CurrentVersion;
     public List<ClaimedBed> Beds { get; set; } = [];
     public Dictionary<string, int> Bindings { get; set; } = [];
     public List<EstateRecord> Estates { get; set; } = [];
@@ -27,12 +31,19 @@ public sealed class LedgerStore
     /// <summary>The phrase-change invariant (open-household ruling 2026-08-29; hoisted here
     /// from the config UI at the QA pass): a new phrase is a NEW HOUSEHOLD, and everything
     /// scoped to the old one leaves TOGETHER - the entity cache (minted under the old naming
-    /// key, can never match again), the parked receipts (came from the old stream), and the
-    /// cursor (points into it). Any future household-scoped field joins this method.</summary>
+    /// key, can never match again), the parked receipts (came from the old stream), the
+    /// cursor (points into it), and - ruled 2026-10-14 - WHOSE hands planted and watered
+    /// (slugs from the old household mean nothing in the new one). The timestamps themselves
+    /// stay: they are facts about the garden, not about the household. The plugin's alias map
+    /// is cleared by the same caller. Any future household-scoped field joins this method.</summary>
     public void ResetHousehold()
     {
         foreach (var bed in Beds)
+        {
             bed.WireEntity = null;
+            bed.PlantedBy = null;
+            bed.LastTendedBy = null;
+        }
         ForeignHold.Clear();
         RelayCursor = "0";
     }

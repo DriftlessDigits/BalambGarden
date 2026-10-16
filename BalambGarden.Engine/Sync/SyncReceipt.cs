@@ -19,8 +19,8 @@ public enum SyncKind { Plant, Harvest, Tend, Fertilize, PotWater, Stage, Ripe, P
 /// <para>ChainUnconfirmed is the receipt lifecycle's honest fourth word (ratified 2026-08-23,
 /// schema amended the same day so the word lands before the relay ships): the chain acted, the
 /// game's confirming line never arrived inside the window, and we are telling the history that
-/// instead of calling a belief a confirmation. APPENDED, never inserted - persisted logs hold
-/// these as ordinals, so Chain/Chat/Sighting keep their numbers forever.</para></summary>
+/// instead of calling a belief a confirmation. Persisted BY NAME (JsonStringEnumConverter on every
+/// store and the wire), so renaming a member is the hazard, not reordering (corrected 2026-10-14).</para></summary>
 public enum SyncSource { Chain, Chat, Sighting, ChainUnconfirmed }
 
 /// <summary>Plaintext on the envelope (Drift's redline 2026-08-23): pot-ness is inside the

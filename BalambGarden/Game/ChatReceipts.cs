@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using BalambGarden.Engine.Census;
 using BalambGarden.Engine.Sensing;
 using BalambGarden.Engine.Sync;
 using Dalamud.Game.Chat;
@@ -98,12 +99,16 @@ internal static unsafe class ChatReceipts
             var itemSpecies = verdict == ChatVerdict.HarvestObtain
                 ? ItemSpeciesOf(message) : (ushort)0;
 
+            // The yield (Q3, ruled 2026-10-14): the payload names the item, the text carries the
+            // count. Banked whichever branch closes the act; absent when the line gave neither.
+            var yield = verdict == ChatVerdict.HarvestObtain ? YieldOf(message, text) : null;
+
             // The pending desk FIRST: a line that closes one of our own acts is that act's
             // confirmation and nothing else. Asking before the identity decode is deliberate -
             // the chain already knows exactly which bed it acted on, so running the
             // previous-target ladder against a chain's own line could only ever produce a
             // second, weaker answer to a question already settled.
-            if (CensusPump.TryCloseChain(verdict, itemSpecies))
+            if (CensusPump.TryCloseChain(verdict, itemSpecies, yield))
                 return;
 
             // RULING 5 (2026-08-23): the manual branch never runs while a chain is driving. One
@@ -122,7 +127,7 @@ internal static unsafe class ChatReceipts
 
             var previous = Svc.Targets.PreviousTarget;
             if (verdict == ChatVerdict.HarvestObtain)
-                OnManualHarvest(previous, itemSpecies);
+                OnManualHarvest(previous, itemSpecies, yield);
             else if (ChatLine.IsPotVerdict(verdict))
                 OnPot(verdict, previous);
             else
@@ -192,7 +197,7 @@ internal static unsafe class ChatReceipts
     /// the ItemPayload's species and the last map read of the previous-target's container. A
     /// non-garden previous-target is ordinary gameplay here, not a finding - it goes at debug,
     /// where the fertilize branch's equivalent warns.</summary>
-    private static void OnManualHarvest(IGameObject? previous, ushort itemSpecies)
+    private static void OnManualHarvest(IGameObject? previous, ushort itemSpecies, SyncYield? yield)
     {
         bool isPot;
         int potKey = -1;
@@ -238,7 +243,23 @@ internal static unsafe class ChatReceipts
         Plugin.Log.Information($"[ChatReceipts] manual harvest corroboration: {reason}");
         CensusPump.OnChatReceipt(
             SyncKind.Harvest, isPot, potKey, patchOrdinal, bedSlot, patchId,
-            knownSpecies: itemSpecies);
+            knownSpecies: itemSpecies, yields: yield is { } y ? [y] : null);
+    }
+
+    /// <summary>The obtain line as a yield row: the ItemPayload's id (capture 2026-08-26) and
+    /// the count in the text ("You obtain 9 krakka roots." - an article counts as 1). Null when
+    /// the line carried no payload: a count without an item is not a yield. OPEN CAPTURE
+    /// QUESTION: whether a harvest ever prints more than one obtain line (crop + seed) - if it
+    /// does, the second line is a lost yield row, never a phantom harvest, because the
+    /// just-emptied container reads species 0 and the corroboration refuses it.</summary>
+    private static SyncYield? YieldOf(IHandleableChatMessage message, string text)
+    {
+        var payload = message.Message.Payloads
+            .OfType<Dalamud.Game.Text.SeStringHandling.Payloads.ItemPayload>()
+            .FirstOrDefault();
+        if (payload is null)
+            return null;
+        return new SyncYield(payload.ItemId, ObtainLine.Quantity(text) ?? 1);
     }
 
     /// <summary>The species the obtained item resolves to, 0 when it resolves to none. The

@@ -22,8 +22,8 @@ public class PipelineTests
         {
             var bed = new ClaimedBed
                 { Estate = estate, MapKey = mapKey, PatchOrdinal = ordinal, BedSlot = slot };
-            bed.Observe(new Observation(Now.AddHours(-2),
-                slot % 2 == 0 ? speciesEven : speciesOdd, stage, ObservationSource.TendReceipt));
+            Tests.Seed.Sight(bed, Now.AddHours(-2),
+                slot % 2 == 0 ? speciesEven : speciesOdd, stage);
             beds.Add(bed);
         }
         return beds;
@@ -197,7 +197,7 @@ public class PipelineTests
     public void BrokenAlternationIsAnAnomaly()
     {
         var beds = Patch(GardenerHouse, 0, 110, 0x41, 0x11, 1);
-        beds[5].Observe(new Observation(Now.AddHours(-1), 0x31, 1, ObservationSource.TendReceipt));
+        Tests.Seed.Sight(beds[5], Now.AddHours(-1), 0x31, 1);
 
         var tips = PipelineReader.Tips(beds, T, Now);
         var anomaly = tips.Single(t => t.Kind == TipKind.Anomaly);

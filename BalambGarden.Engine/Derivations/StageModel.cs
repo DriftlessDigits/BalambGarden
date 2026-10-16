@@ -2,6 +2,12 @@ using BalambGarden.Engine.Ledger;
 
 namespace BalambGarden.Engine.Derivations;
 
+/// <summary>A ripe-time estimate off the tenancy record. <see cref="Contradiction"/> flags a
+/// record whose stage brackets cannot all be true of one plant (a missed replant, or skew
+/// between installs): the window is then an honest estimate off the newest stage, never null
+/// and never a lie dressed as a bracket. The pump logs a contradiction once per row per visit.</summary>
+public sealed record RipeEstimate(EtaWindow Window, bool Contradiction);
+
 /// <summary>Stage-fraction timing model. Stage bands are equal thirds of growHours -
 /// a tunable model constant, calibration pending (spec: brackets).</summary>
 public static class StageModel
@@ -15,49 +21,60 @@ public static class StageModel
         _ => (0.0, 1.0),
     };
 
-    public static EtaWindow? RipeWindow(IReadOnlyList<Observation> ring, int growHours)
+    /// <summary>When this bed ripens (or ripened), from what the record holds about the current
+    /// tenancy. A witnessed sowing (<see cref="ClaimedBed.PlantedAt"/>) is the ONE legitimate
+    /// anchor: exact ripe time, zero-width window. Otherwise each stage bracket constrains the
+    /// sowing to [LastSeen(s) - Hi(s)G, FirstSeen(s) - Lo(s)G]; two or more stages seen =
+    /// bracketed, one = estimated. Null only when the record holds no stage evidence at all.</summary>
+    public static RipeEstimate? RipeWindow(ClaimedBed bed, int growHours)
     {
-        if (ring.Count == 0)
-            return null;
-
-        var anchor = ring.FirstOrDefault(o => o.Source == ObservationSource.PlantReceipt);
-        if (anchor is not null)
+        if (bed.PlantedAt is { } planted)
         {
-            var ripe = anchor.At.AddHours(growHours);
-            return new EtaWindow(ripe, ripe, Provenance.Anchored);
+            var ripe = planted.AddHours(growHours);
+            return new RipeEstimate(new EtaWindow(ripe, ripe, Provenance.Anchored), false);
         }
 
-        var staged = ring.Where(o => o.Stage is >= 1 and <= 4).OrderBy(o => o.At).ToList();
-        if (staged.Count == 0)
+        if (bed.StageSeen.Count == 0)
             return null;
 
-        var provenance = staged.Count >= 2 ? Provenance.Bracketed : Provenance.Estimated;
+        var provenance = bed.StageSeen.Count >= 2 ? Provenance.Bracketed : Provenance.Estimated;
 
-        var ripeSeen = staged.FirstOrDefault(o => o.Stage == 4);
-        if (ripeSeen is not null)
+        if (bed.StageSeen.TryGetValue(GardenStage.Ripe, out var ripeSeen))
         {
-            // Ripe was observed: it is ripe now; earliest possible ripe bounded by prior sightings.
-            return new EtaWindow(ripeSeen.At, ripeSeen.At, provenance);
+            // Became ripe between the last stage-3 sighting and the first stage-4 one. With no
+            // stage 3 on record - or an inverted pair, which is skew or a missed replant - the
+            // honest word is an estimate the width of one stage band.
+            var hi = ripeSeen.FirstSeen;
+            if (bed.StageSeen.TryGetValue(3, out var third) && third.LastSeen < hi)
+                return new RipeEstimate(new EtaWindow(third.LastSeen, hi, provenance), false);
+            return new RipeEstimate(
+                new EtaWindow(hi.AddHours(-growHours / 3.0), hi, Provenance.Estimated), false);
         }
 
-        // Each observation (t, stage s) constrains plant time to [t - Hi(s)*G, t - Lo(s)*G].
         var earliestPlant = DateTimeOffset.MinValue;
         var latestPlant = DateTimeOffset.MaxValue;
-        foreach (var o in staged)
+        foreach (var (stage, seen) in bed.StageSeen)
         {
-            var (lo, hi) = StageFraction(o.Stage);
-            var min = o.At.AddHours(-hi * growHours);
-            var max = o.At.AddHours(-lo * growHours);
+            var (lo, hi) = StageFraction(stage);
+            var min = seen.LastSeen.AddHours(-hi * growHours);
+            var max = seen.FirstSeen.AddHours(-lo * growHours);
             if (min > earliestPlant) earliestPlant = min;
             if (max < latestPlant) latestPlant = max;
         }
 
-        if (earliestPlant > latestPlant)
-            return null;   // contradictory sightings: report nothing rather than a lie
+        if (earliestPlant <= latestPlant)
+            return new RipeEstimate(
+                new EtaWindow(earliestPlant.AddHours(growHours), latestPlant.AddHours(growHours), provenance),
+                false);
 
-        return new EtaWindow(
-            earliestPlant.AddHours(growHours),
-            latestPlant.AddHours(growHours),
-            provenance);
+        // Contradictory brackets: estimate off the newest stage sighting and say so.
+        var newest = bed.StageSeen.MaxBy(kv => kv.Value.LastSeen);
+        var (nlo, nhi) = StageFraction(newest.Key);
+        return new RipeEstimate(
+            new EtaWindow(
+                newest.Value.LastSeen.AddHours((1 - nhi) * growHours),
+                newest.Value.LastSeen.AddHours((1 - nlo) * growHours),
+                Provenance.Estimated),
+            true);
     }
 }

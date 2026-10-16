@@ -18,7 +18,11 @@ namespace BalambGarden.Engine.Sync;
 /// opens AT THE ACT, before the chain's own receipt has run, so a pending can exist for an act
 /// that never actually completed. The flag is the difference between "we acted and the census
 /// landed, only the line is missing" and "we clicked and nothing came back at all" - and ruling
-/// 6 reads it at the timeout to decide whether history hears about this act at all.</para></summary>
+/// 6 reads it at the timeout to decide whether history hears about this act at all.</para>
+///
+/// <para><paramref name="Yields"/> is banked at CLOSE, not open (ruled 2026-10-14, Q3): the obtain
+/// line is the only witness to what and how many arrived, so a harvest pending carries its
+/// yield from the moment the line closes it to the moment its history line is written.</para></summary>
 public sealed record PendingReceipt(
     SyncKind Kind,
     bool IsPot,
@@ -31,7 +35,8 @@ public sealed record PendingReceipt(
     ushort Species,
     byte Stage,
     bool Delivered = false,
-    ulong HouseId = 0);
+    ulong HouseId = 0,
+    IReadOnlyList<SyncYield>? Yields = null);
 
 /// <summary>The join between an act and its confirmation: one pure rule set, no Dalamud types,
 /// no game state, desk-testable (the receipt lifecycle, ratified 2026-08-23).

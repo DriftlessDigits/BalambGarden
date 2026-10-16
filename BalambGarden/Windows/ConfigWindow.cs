@@ -108,16 +108,23 @@ public class ConfigWindow : Window, IDisposable
 
                 // A new phrase is a NEW HOUSEHOLD - the ledger owns what that means
                 // (LedgerStore.ResetHousehold, desk-tested); this window only reports the
-                // edit. One estate lap re-mints; cursor 0 replays the new stream's window.
+                // edit and clears the one household-scoped thing that lives in config: the
+                // local aliases, keyed by slugs from the old stream (ruled 2026-10-14 - a
+                // phrase change is a deliberate household reset, not a normal workflow).
+                // One estate lap re-mints; cursor 0 replays the new stream's window.
                 Plugin.Garden.Ledger.ResetHousehold();
                 Plugin.Garden.Save();
+                configuration.HandAliases.Clear();
+                configuration.Save();
             }
         }
         if (ImGui.IsItemHovered())
             ImGui.SetTooltip(
                 "One phrase for the whole household - each install types the same one.\n"
                 + "It stays in this config file and is never sent anywhere.\n"
-                + "Leave it empty to keep sync off entirely.");
+                + "Leave it empty to keep sync off entirely.\n"
+                + "Changing it is a household reset: who planted and watered what is forgotten\n"
+                + "and the household stream replays from the start. Your own records stay.");
 
         // The unmask eye: typos in a masked field derive a whole different household, and
         // the phrase is a garden password, not a bank one - letting the typist SEE it is

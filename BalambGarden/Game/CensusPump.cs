@@ -164,18 +164,46 @@ internal static class CensusPump
         if (minted == 0)
             return;
 
-        var landed = ForeignApply.RetryParked(Plugin.Garden.Ledger, DateTimeOffset.UtcNow);
+        var rebases = new List<RebaseEvent>();
+        var landed = ForeignApply.RetryParked(
+            Plugin.Garden.Ledger, DateTimeOffset.UtcNow, Plugin.Garden.History, Plugin.Garden.SaveHistory, rebases);
         Plugin.Garden.Save();
+        ReportRebases(rebases);
         Plugin.Log.Information(
             $"[Sync] wire identity minted for {minted} row(s) at {estate.DisplayLabel()}"
             + (landed > 0 ? $" - {landed} parked household receipt(s) applied" : ""));
     }
 
-    /// <summary>Refreshes the UI-facing map reads WITHOUT posting observations. The
-    /// post-run settle poll needs display truth a dozen times in a few seconds, and a
-    /// full sight each poll would flush every bed's eight-slot observation ring and
-    /// take the run's own receipt provenance with it (the PotChain snapshot learned
-    /// this first). Census state is untouched: the receipts already carry the truth.</summary>
+    /// <summary>Every tenancy reset, after its save (ruled 2026-10-14: rebase is reasoned and
+    /// logged). INF when the reset removed something or witnessed a harvest - a harvest is the
+    /// event the history is built around, and the map usually read the bed empty a beat before
+    /// the receipt arrived (pass-3 nit) - DEBUG for a bare-row plant, which is not news. Each
+    /// one also lands in the trail as the row's identity plus the reset's facts.</summary>
+    internal static void ReportRebases(IEnumerable<RebaseEvent> rebases)
+    {
+        foreach (var ev in rebases)
+        {
+            var bed = ev.Bed;
+            var where = bed.IsPot
+                ? $"pot (key {bed.MapKey})"
+                : $"patch {bed.PatchOrdinal + 1} bed {bed.BedSlot + 1}";
+            var line = $"[Census] tenancy reset {where} at {bed.Estate.DisplayLabel()}: {ev.Reason}"
+                       + $" cut={ev.Cut:u} by={ev.By?.Slug ?? "-"}"
+                       + (ev.RemovedAnything ? "" : " (nothing to remove)");
+            if (ev.RemovedAnything || ev.Reason == RebaseReason.HarvestWitnessed)
+                Plugin.Log.Information(line);
+            else
+                Plugin.Log.Debug(line);
+            if (Plugin.Configuration.TrailEnabled)
+                Plugin.Garden.Trail.Append(ev);
+        }
+    }
+
+    /// <summary>Refreshes the UI-facing map reads WITHOUT posting sightings. The post-run
+    /// settle poll needs display truth a dozen times in a few seconds; a full sight each poll
+    /// would widen every bracket's LastSeen for nothing and run the reconcile against a map
+    /// that may not have settled. Census state is untouched: the receipts already carry the
+    /// truth.</summary>
     internal static void RefreshDisplayOnly()
     {
         if (EstateSensor.Current() is null)
@@ -243,13 +271,15 @@ internal static class CensusPump
             }
 
             // One reusable change list for the whole pass; receipts save ONCE after the
-            // loop (a 30-pot room must not pay 30 whole-file writes in one sighting).
+            // loop (a 30-pot room must not pay 30 whole-file writes in one sighting). The
+            // rebase sink is reported after the ledger save, once per pass.
             var changes = new List<SightingChange>();
+            var rebases = new List<RebaseEvent>();
             foreach (var (key, pot) in LastIndoor)
             {
                 landed += Plugin.Garden.Census.OnMapSighting(estate, key,
                     [new BedReading(0, pot.SpeciesIndex, pot.Stage, pot.Extra, pot.Occupied)], now,
-                    isPot: true, mayRecord: CoveredHere, changes: changes);
+                    isPot: true, mayRecord: CoveredHere, changes: changes, rebases: rebases);
             }
             if (MintSightingReceipts(estate, isPot: true, changes, now) > 0)
                 Plugin.Garden.SaveReceipts();
@@ -271,7 +301,7 @@ internal static class CensusPump
                 && priorPotKeys is not null)
             {
                 var present = LastIndoor.Keys.Union(priorPotKeys).ToList();
-                var emptied = Plugin.Garden.Census.ReconcileAbsentPots(estate, present);
+                var emptied = Plugin.Garden.Census.ReconcileAbsentPots(estate, present, now, rebases);
                 if (emptied > 0)
                     Plugin.Log.Information(
                         $"[Census] {emptied} pot(s) read absent (harvested?) - contents cleared at {estate.DisplayLabel()}");
@@ -282,25 +312,28 @@ internal static class CensusPump
 
             if (CoveredHere && (landed > 0 || pruned > 0))
                 Plugin.Garden.Save();
+            ReportRebases(rebases);
         }
         else
         {
             LastOutdoor = MapSensor.ReadOutdoor();
             var changes = new List<SightingChange>();
+            var rebases = new List<RebaseEvent>();
             foreach (var (key, beds) in LastOutdoor)
                 landed += Plugin.Garden.Census.OnMapSighting(estate, key, beds, now,
-                    mayRecord: CoveredHere, changes: changes);
+                    mayRecord: CoveredHere, changes: changes, rebases: rebases);
             if (MintSightingReceipts(estate, isPot: false, changes, now) > 0)
                 Plugin.Garden.SaveReceipts();
             if (CoveredHere && landed > 0)
                 Plugin.Garden.Save();
+            ReportRebases(rebases);
         }
     }
 
     /// <summary>Sighted changes become history lines (piece 6: observations sync on change,
     /// and the mint discipline lives HERE, in the client). Guards are the wire identity's
     /// inputs, honest-skip like everywhere else: no house id or - for a bed - no gimmick in
-    /// scan range means a change stays local-only (the ring already recorded it; only the
+    /// scan range means a change stays local-only (the record already holds it; only the
     /// receipt line is foregone, and the next change tries again). PotWilt minting
     /// deliberately absent: b4's meaning is still an open watch and the receiver no-ops the
     /// kind. Returns the minted count; the CALLER saves once per pass - a whole-file write
@@ -346,16 +379,18 @@ internal static class CensusPump
     }
 
     /// <summary>The append contract, once (QA pass: three sites had grown their own copy):
-    /// a history line may refuse (no era minted yet, ruled at ReceiptLog.Append), and the
+    /// a receipt line may refuse (no era minted yet, ruled at ReceiptLog.Append), and the
     /// callers are a chat handler and the frame tick - a lost line is a smaller harm than a
-    /// dead tick. The caller owns SaveReceipts, batched at its own boundary.</summary>
+    /// dead tick. Goes through <see cref="GardenService.AppendOwn"/> so a plant or harvest
+    /// reaches the garden history in the same breath. The caller owns SaveReceipts, batched
+    /// at its own boundary.</summary>
     private static bool SafeAppend(
         SyncKind kind, SyncSource source, DateTimeOffset at, EstateKey estate, bool isPot,
         int patchOrdinal, int bedSlot, ushort patchId, int potKey, SyncData data, ulong houseId)
     {
         try
         {
-            Plugin.Garden.Receipts.Append(
+            Plugin.Garden.AppendOwn(
                 kind, source, at, estate, isPot,
                 patchOrdinal: patchOrdinal, bedSlot: bedSlot, patchId: patchId, potKey: potKey,
                 data: data, houseId: houseId);
@@ -435,7 +470,7 @@ internal static class CensusPump
 
         var receipt = new ReceiptEvent(
             estate, parsed.PatchOrdinal, parsed.BedSlot, verb, species, stage,
-            DateTimeOffset.UtcNow);
+            ActInstant(verb, isPot: false));
 
         // Still no binding: hold this receipt so a later one in the run can bring it
         // home. The current receipt is never held when the bind just landed - Deliver
@@ -479,8 +514,10 @@ internal static class CensusPump
         if (held.Count == 0)
             return;
 
+        var rebases = new List<RebaseEvent>();
         foreach (var receipt in held)
-            Plugin.Garden.Census.OnReceipt(receipt);
+            Plugin.Garden.Census.OnReceipt(receipt, rebases);
+        ReportRebases(rebases);
         Plugin.Log.Information($"[Census] replayed {held.Count} held receipt(s) after bind");
 
         // The run log's earlier lines read "not claimed: patch unbound", and they were
@@ -556,7 +593,7 @@ internal static class CensusPump
         Plugin.Garden.Census.Bind(estate, key, key, isPot: true);
         var stage = LastIndoor.TryGetValue(key, out var pot) ? pot.Stage : (byte)0;
         var receipt = new ReceiptEvent(
-            estate, key, 0, verb, species, stage, DateTimeOffset.UtcNow, IsPot: true);
+            estate, key, 0, verb, species, stage, ActInstant(verb, isPot: true), IsPot: true);
         var outcome = Deliver(receipt, $"pot (key {key}): {DisplayPlant(plantName)}");
 
         // A pot's identity in the history is its furniture key alone (ReceiptLog reads PotKey
@@ -591,9 +628,11 @@ internal static class CensusPump
     /// just-harvested container as ZEROED, so the post-SightNow read below answers 0 for the
     /// one verb whose receipt knew the species best; "if we are confident we did a thing,
     /// show it"). The map still wins when it answers - this only fills its silence.</param>
+    /// <param name="yields">What a manual harvest's obtain line said arrived - item id from the
+    /// payload, count from the text (Q3, ruled 2026-10-14) - null for every other kind.</param>
     internal static void OnChatReceipt(
         SyncKind kind, bool isPot, int potKey, int patchOrdinal, int bedSlot, ushort patchId,
-        ushort knownSpecies = 0)
+        ushort knownSpecies = 0, IReadOnlyList<SyncYield>? yields = null)
     {
         var estate = EstateSensor.Current();
         if (estate is null)
@@ -647,20 +686,23 @@ internal static class CensusPump
         if (Plugin.Configuration.TrailEnabled)
             Plugin.Garden.Trail.Append(receipt);
 
-        // A fertilize lands no observation by design (CensusEngine.SourceFor returns null for
-        // it - a feed is not a reading), but it still proves the row: we stood there and
-        // touched it. A manual TEND does land one, through the same engine path a chain tend
-        // uses, and that is the POINT of widening this entry: watering done by hand finally
-        // anchors the ledger instead of leaving a gap the pacing math reads as neglect.
-        var bed = Plugin.Garden.Census.OnReceipt(receipt);
+        // A fertilize lands nothing on the record by design (a feed is not a reading), but it
+        // still proves the row: we stood there and touched it. A manual TEND sets the water
+        // clock through the same engine path a chain tend uses, and that is the POINT of
+        // widening this entry: watering done by hand finally lands instead of leaving a gap
+        // the pacing math reads as neglect. A manual HARVEST is the emptying witness; a manual
+        // PLANT a new tenancy at this instant (own hands are never fenced).
+        var rebases = new List<RebaseEvent>();
+        var bed = Plugin.Garden.Census.OnReceipt(receipt, rebases);
         Plugin.Garden.Save();
+        ReportRebases(rebases);
 
-        // The history, which is the point: the ledger holds current state, the receipt log
-        // holds what happened. SaveReceipts refreshes config's memory of the counter with it.
-        Plugin.Garden.Receipts.Append(
+        // The receipt log (the outbox) and, for a plant or harvest, the garden history - one
+        // seam (GardenService.AppendOwn). SaveReceipts refreshes config's memory of the counter.
+        Plugin.Garden.AppendOwn(
             kind, SyncSource.Chat, now, estate, isPot,
             patchOrdinal: patchOrdinal, bedSlot: bedSlot, patchId: patchId, potKey: potKey,
-            data: new SyncData(Species: species == 0 ? null : species),
+            data: new SyncData(Species: species == 0 ? null : species, Yields: yields),
             houseId: EstateSensor.CurrentHouseId());
         Plugin.Garden.SaveReceipts();
 
@@ -699,6 +741,19 @@ internal static class CensusPump
         ReceiptVerb.Harvest => SyncKind.Harvest,
         _ => throw new ArgumentOutOfRangeException(nameof(verb), verb, "Not an action verb"),
     };
+
+    /// <summary>The instant a chain receipt carries. For a PLANT it is the act's own moment -
+    /// the pending opened when the menu committed (pass-2 #15) - so the sowing anchors where it
+    /// happened, before the delivery's own map read, and that read survives as the first
+    /// sighting of the new plant. Guarded to the same kind and container (pass-3 nit: the pot
+    /// diff-bind route can see a stale pending). Every other verb is stamped at delivery, as
+    /// before. KNOWN RACE, pre-existing and unverified: a map that still reads the bed EMPTY on
+    /// the delivery sight after a sow would ReadsEmpty-rebase the fresh anchor - named in the
+    /// design's blind spots, awaiting the bed sow-line capture.</summary>
+    private static DateTimeOffset ActInstant(ReceiptVerb verb, bool isPot)
+        => verb == ReceiptVerb.Plant && openPending is { Kind: SyncKind.Plant } p && p.IsPot == isPot
+            ? p.OpenedAt
+            : DateTimeOffset.UtcNow;
 
     // ---- THE PENDING DESK ----------------------------------------------------------------
     // The two-phase receipt (ratified 2026-08-23, amended the same night by rulings 4-6). A
@@ -935,7 +990,9 @@ internal static class CensusPump
     /// 2026-08-26): what the line's ItemPayload resolved to, 0 for unknown and for every
     /// 57-catalog verdict. <see cref="ReceiptLifecycle.Matches"/> owns the rule - a resolvable
     /// contradiction refuses the close and the pending times out honestly.</para></summary>
-    internal static bool TryCloseChain(ChatVerdict verdict, ushort itemSpecies = 0)
+    /// <param name="yield">The obtain line's item and count (Q3, ruled 2026-10-14), banked on
+    /// the pending at close so the history line carries it; null for every other verdict.</param>
+    internal static bool TryCloseChain(ChatVerdict verdict, ushort itemSpecies = 0, SyncYield? yield = null)
     {
         if (openPending is not { } pending)
             return false;
@@ -943,6 +1000,8 @@ internal static class CensusPump
             return false;
 
         openPending = null;
+        if (yield is { } y)
+            pending = pending with { Yields = [y] };
         // Banked for the reverse race: a delivery still on its way to this same act must be
         // able to tell "already in history" from "never opened" (ruling 4's honest degrade).
         lastClose = new ReceiptLifecycle.RecentClose(pending.Kind, pending.IsPot, DateTimeOffset.UtcNow);
@@ -1007,7 +1066,8 @@ internal static class CensusPump
                 patchId: pending.PatchId, potKey: pending.PotKey,
                 data: new SyncData(
                     Species: pending.Species == 0 ? null : pending.Species,
-                    Stage: pending.Stage == 0 ? null : pending.Stage),
+                    Stage: pending.Stage == 0 ? null : pending.Stage,
+                    Yields: pending.Yields),
                 houseId: pending.HouseId))
             Plugin.Garden.SaveReceipts();
     }
@@ -1049,10 +1109,10 @@ internal static class CensusPump
         if (bed is null)
             return $"{bedHeader}: ripe - patch not identified yet (tend a growing bed here once and the whole patch joins)";
 
-        bed.Observe(new Observation(
+        bed.Sight(
             DateTimeOffset.UtcNow,
             species != 0 ? species : bed.Latest?.SpeciesIndex ?? 0,
-            4, ObservationSource.RipeSkip));
+            GardenStage.Ripe, ObservationSource.RipeSkip);
         Plugin.Garden.Save();
         return $"{bedHeader}: {DisplayPlant(plantName)} - ripe, skipped (recorded)";
     }
@@ -1062,8 +1122,10 @@ internal static class CensusPump
         if (Plugin.Configuration.TrailEnabled)
             Plugin.Garden.Trail.Append(receipt);
 
-        var bed = Plugin.Garden.Census.OnReceipt(receipt);
+        var rebases = new List<RebaseEvent>();
+        var bed = Plugin.Garden.Census.OnReceipt(receipt, rebases);
         Plugin.Garden.Save();
+        ReportRebases(rebases);
         return bed is null
             ? $"{label} - done (not recorded: patch not identified yet)"
             : $"{label} - done";

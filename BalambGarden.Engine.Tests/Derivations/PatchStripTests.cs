@@ -20,8 +20,7 @@ public class PatchStripTests
             LastTended = Now.AddHours(-tendedHoursAgo),
         };
         // Krakka Root (0x31): 24h wilt tier - same fixture the rollup tests use.
-        bed.Observe(new Observation(Now.AddHours(-tendedHoursAgo), 0x31, stage,
-            ObservationSource.TendReceipt));
+        Seed.Sight(bed, Now.AddHours(-tendedHoursAgo), 0x31, stage);
         return bed;
     }
 
@@ -83,8 +82,7 @@ public class PatchStripTests
         {
             Estate = Gardener, MapKey = key, PatchOrdinal = 0, BedSlot = 0, IsPot = true,
         };
-        pot.Observe(new Observation(Now.AddHours(-1), 0x31, stage,
-            ObservationSource.TendReceipt));
+        Seed.Sight(pot, Now.AddHours(-1), 0x31, stage);
         return pot;
     }
 

@@ -60,7 +60,7 @@ public class WiltTests
     private static ClaimedBed RipeBed(DateTimeOffset tended, byte stage)
     {
         var bed = Bed(tended);
-        bed.Observe(new Observation(tended, 0x41, stage, ObservationSource.MapSighting));
+        Seed.Sight(bed, tended, 0x41, stage);
         return bed;
     }
 

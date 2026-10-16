@@ -56,7 +56,7 @@ public static class Rollups
                     // flower planting would be the surface refusing a claim it can make.
                     if (!isRipe && latest is not null
                         && tables.GrowHours(latest.SpeciesIndex) is { } growHours
-                        && StageModel.RipeWindow(bed.Ring, growHours) is { } window
+                        && StageModel.RipeWindow(bed, growHours)?.Window is { } window
                         && (!ripeBySpecies.TryGetValue(latest.SpeciesIndex, out var held)
                             || window.Earliest < held.Earliest))
                         ripeBySpecies[latest.SpeciesIndex] = window;
