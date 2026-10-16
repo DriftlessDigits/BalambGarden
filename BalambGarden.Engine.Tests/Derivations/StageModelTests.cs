@@ -5,7 +5,7 @@ using Xunit;
 
 namespace BalambGarden.Engine.Tests.Derivations;
 
-/// <summary>The ripe estimate reads the tenancy record (2026-10-14): a witnessed sowing anchors;
+/// <summary>The ripe estimate reads the planting record (2026-10-14): a witnessed sowing anchors;
 /// otherwise the per-stage brackets intersect. Never null while any stage evidence exists - a
 /// contradiction is an honest estimate with a flag, not a shrug.</summary>
 public class StageModelTests

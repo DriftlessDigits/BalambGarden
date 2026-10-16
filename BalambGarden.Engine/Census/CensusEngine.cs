@@ -15,7 +15,7 @@ public sealed record SightingChange(int Ordinal, int Slot, Sync.SyncKind Kind, u
 /// Permission Architecture, 2026-08-15): a row exists because the game showed us something at
 /// an estate we are rostered for. No Claim() method exists.
 ///
-/// <para>Every path that can reset a row's tenancy takes an optional <c>rebases</c> sink
+/// <para>Every path that can reset a row's planting takes an optional <c>rebases</c> sink
 /// (ruled 2026-10-14: rebase is reasoned and logged). The Engine owns no logger; the pump logs
 /// each event after its save and appends it to the trail.</para></summary>
 public sealed class CensusEngine(LedgerStore ledger)
@@ -29,7 +29,7 @@ public sealed class CensusEngine(LedgerStore ledger)
         => ledger.Bindings.TryGetValue(estate.BindingKey(patchOrdinal, isPot), out var k) ? k : null;
 
     /// <summary>An own act on this install (chain or chat). Harvest = the emptying witness
-    /// (ruled 2026-08-28): the game's own line said the crop left. Plant = a new tenancy at the
+    /// (ruled 2026-08-28): the game's own line said the crop left. Plant = a new planting at the
     /// receipt's instant. Tend / PotWater = the water clock. Fertilize proves the row and
     /// contributes nothing (a feed is not a reading). Own hands are never fenced and never
     /// "older" - see <see cref="ClaimedBed"/>.</summary>
@@ -102,12 +102,12 @@ public sealed class CensusEngine(LedgerStore ledger)
                 && b.MapKey == mapKey && b.BedSlot == reading.Slot);
 
             // Reconcile (2026-08-18 ruling: the game wins on content mismatch). An empty
-            // read against a row with a tenancy means the plant left while nobody watched -
+            // read against a row with a planting means the plant left while nobody watched -
             // the row empties and stays. Rebase is destructive, so it needs the same vouch
             // as creation; an empty slot with no row is still nothing to record.
             if (!reading.Occupied)
             {
-                if (mayRecord && bed is { HasTenancy: true })
+                if (mayRecord && bed is { HasPlanting: true })
                 {
                     Push(rebases, bed.Rebase(RebaseReason.ReadsEmpty, cut: at));
                     count++;
@@ -128,10 +128,10 @@ public sealed class CensusEngine(LedgerStore ledger)
             }
             else if (mayRecord && bed.Contradicts(reading.SpeciesIndex, reading.Stage))
             {
-                // New tenancy. The cut is the OLD plant's newest evidence - our last look at it -
+                // New planting. The cut is the OLD plant's newest evidence - our last look at it -
                 // so a watering newer than that look survives (Q1: keep the watering) unless it
                 // named the old species (the apple->fig scene).
-                Push(rebases, bed.Rebase(RebaseReason.NewTenancySighted,
+                Push(rebases, bed.Rebase(RebaseReason.NewPlantingSighted,
                     cut: bed.NewestEvidenceAt ?? at, newSpecies: reading.SpeciesIndex));
             }
 
@@ -160,7 +160,7 @@ public sealed class CensusEngine(LedgerStore ledger)
     public void Abandon(ClaimedBed bed) => ledger.Beds.Remove(bed);
 
     /// <summary>A pot's map entry vanishing is what a HARVEST looks like (08-15 receipt),
-    /// so a recorded pot with a tenancy whose key is missing from a settled read has been
+    /// so a recorded pot with a planting whose key is missing from a settled read has been
     /// emptied behind our back - it rebases like any other content mismatch (2026-08-18).
     /// The CALLER vouches the read is settled (SawHousingObjects) and roster-covered;
     /// this only compares. Rows already empty are already right. Returns rebased count.</summary>
@@ -170,7 +170,7 @@ public sealed class CensusEngine(LedgerStore ledger)
     {
         var count = 0;
         foreach (var bed in ledger.Beds.Where(b =>
-            b.Estate == estate && b.IsPot && b.HasTenancy
+            b.Estate == estate && b.IsPot && b.HasPlanting
             && !presentKeys.Contains(b.MapKey)))
         {
             Push(rebases, bed.Rebase(RebaseReason.PotAbsent, cut: at));

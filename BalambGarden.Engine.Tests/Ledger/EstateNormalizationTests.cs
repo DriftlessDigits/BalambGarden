@@ -94,7 +94,7 @@ public class EstateNormalizationTests
         Assert.False(store.Bindings.ContainsKey(Outside.BindingKey(2)));
     }
 
-    [Fact] // two records for one bed union their tenancy evidence - nothing is picked over
+    [Fact] // two records for one bed union their planting evidence - nothing is picked over
     public void DuplicateBedsMergeTheirRecords()
     {
         var store = new LedgerStore();

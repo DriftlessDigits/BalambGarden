@@ -8,7 +8,7 @@ namespace BalambGarden.Engine.Tests;
 /// <summary>Piece 4 (ruled 2026-08-29): foreign receipts apply against the mint-at-census
 /// entity cache; unmatched receipts PARK beside the cursor in the ledger file (ruling 9
 /// coherence - a restore rewinds both together) and the stream never dams. Rewritten for the
-/// tenancy record (2026-10-14): THE RULE - an older receipt never overwrites newer evidence -
+/// planting record (2026-10-14): THE RULE - an older receipt never overwrites newer evidence -
 /// and the history-before-cursor contract.</summary>
 public class ForeignApplyTests
 {
@@ -70,7 +70,7 @@ public class ForeignApplyTests
         var ledger = WithBed();
         var outcome = Apply(ledger, Foreign(SyncKind.Harvest, id: "own:eraaaa:1"));
         Assert.Equal(1, outcome.OwnSkipped);
-        Assert.True(ledger.Beds[0].HasTenancy == false);
+        Assert.True(ledger.Beds[0].HasPlanting == false);
     }
 
     [Fact]
@@ -107,9 +107,9 @@ public class ForeignApplyTests
         var outcome = Apply(ledger, Harvest(T0.AddHours(1), 1, [new SyncYield(4789, 3)]));
 
         var bed = ledger.Beds[0];
-        Assert.False(bed.HasTenancy);
-        Assert.Equal(RebaseReason.HarvestWitnessed, bed.TenancyResetReason);
-        Assert.Equal(T0.AddHours(1), bed.TenancyResetAt);
+        Assert.False(bed.HasPlanting);
+        Assert.Equal(RebaseReason.HarvestWitnessed, bed.PlantingResetReason);
+        Assert.Equal(T0.AddHours(1), bed.PlantingResetAt);
         var row = Assert.Single(outcome.HistoryToRecord);
         Assert.Equal(HistoryKind.Harvest, row.Kind);
         Assert.Equal(Other, row.By);
@@ -299,7 +299,7 @@ public class ForeignApplyTests
         Assert.Equal(T0.AddHours(19), bed.StageSeen[2].FirstSeen);
         Assert.Equal(3, bed.Latest!.Stage);
         Assert.Equal(T0, bed.PlantedAt);
-        Assert.Equal(RebaseReason.PlantReceipt, bed.TenancyResetReason);
+        Assert.Equal(RebaseReason.PlantReceipt, bed.PlantingResetReason);
     }
 
     [Fact]
@@ -313,7 +313,7 @@ public class ForeignApplyTests
         Assert.Equal(1, outcome.Contradicted);
         Assert.Single(bed.StageSeen);
         Assert.Equal(Fig, bed.Latest!.SpeciesIndex);
-        Assert.Null(bed.TenancyResetAt);
+        Assert.Null(bed.PlantingResetAt);
     }
 
     [Fact] // newer and contradicting = a replant we have not seen: rebase at our last look, then fold
@@ -325,7 +325,7 @@ public class ForeignApplyTests
         var outcome = Apply(ledger, Stage(Fig, 2, T0.AddHours(22), 1));
 
         var ev = Assert.Single(outcome.Rebases);
-        Assert.Equal(RebaseReason.NewTenancySighted, ev.Reason);
+        Assert.Equal(RebaseReason.NewPlantingSighted, ev.Reason);
         Assert.Equal(T0.AddHours(20), ev.Cut);
         Assert.Equal(new Hand(Other), ev.By);
         Assert.Equal(2, bed.Latest!.Stage);
@@ -367,7 +367,7 @@ public class ForeignApplyTests
 
         Assert.Null(bed.PlantedAt);
         Assert.Equal(Fig, bed.Latest!.SpeciesIndex);
-        Assert.Null(bed.TenancyResetAt);
+        Assert.Null(bed.PlantingResetAt);
         Assert.Equal(HistoryKind.Plant, Assert.Single(outcome.HistoryToRecord).Kind);
     }
 
@@ -398,7 +398,7 @@ public class ForeignApplyTests
         Assert.Single(outcome.HistoryToRecord);
     }
 
-    [Fact] // a sowing older than a sowing already known is a previous tenancy
+    [Fact] // a sowing older than a sowing already known is a previous planting
     public void Older_plant_never_displaces_a_newer_known_sowing()
     {
         var ledger = WithBed();
@@ -421,9 +421,9 @@ public class ForeignApplyTests
             OwnUser, T0.AddHours(4), history, () => true);
 
         var bed = ledger.Beds[0];
-        Assert.False(bed.HasTenancy);
-        Assert.Equal(T0.AddHours(3), bed.TenancyResetAt);
-        Assert.Equal(RebaseReason.HarvestWitnessed, bed.TenancyResetReason);
+        Assert.False(bed.HasPlanting);
+        Assert.Equal(T0.AddHours(3), bed.PlantingResetAt);
+        Assert.Equal(RebaseReason.HarvestWitnessed, bed.PlantingResetReason);
         Assert.Equal(2, history.Entries.Count);       // plant + harvest, both kept
         Assert.Equal(3, outcome.Applied);
     }
@@ -448,7 +448,7 @@ public class ForeignApplyTests
         var now = T0;
         Apply(ledger, Harvest(now.AddSeconds(30), 1));            // their clock runs 30s ahead
         var bed = ledger.Beds[0];
-        Assert.Equal(now.AddSeconds(30), bed.TenancyResetAt);     // stored as sent, never altered
+        Assert.Equal(now.AddSeconds(30), bed.PlantingResetAt);     // stored as sent, never altered
 
         Assert.True(bed.Tend(now, Hand.Own, 0));                  // own live act lands
         Assert.Equal(now, bed.LastTended);
@@ -482,7 +482,7 @@ public class ForeignApplyTests
         Assert.Equal([3], bed.StageSeen.Keys.ToArray());
     }
 
-    [Fact] // a late old-tenancy stage must not fold into a same-species replant that has since climbed
+    [Fact] // a late old-planting stage must not fold into a same-species replant that has since climbed
     public void Older_stage_from_before_a_lower_sighting_is_a_contradiction()
     {
         var ledger = WithBed();
@@ -519,7 +519,7 @@ public class ForeignApplyTests
 
         Assert.Equal(3, bed.Latest!.Stage);
         Assert.Equal(T0.AddHours(10), bed.StageSeen[2].FirstSeen);
-        Assert.Null(bed.TenancyResetAt);
+        Assert.Null(bed.PlantingResetAt);
     }
 
     [Fact] // the same harvest echoed twice (a replayed page) is one history row

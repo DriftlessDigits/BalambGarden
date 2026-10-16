@@ -4,12 +4,14 @@ using System.Text.Json.Serialization;
 namespace BalambGarden.Engine.Ledger;
 
 /// <summary>The persisted census: claimed beds + receipt-bound patch->key bindings.
-/// Fresh file in v0.2; the POC ledger is never read. Version 3 (2026-10-14): rows carry a
-/// tenancy record instead of an observation ring - a v2 file loads through
+/// Fresh file in v0.2; the POC ledger is never read. Version 4 (2026-10-15) renamed the fence
+/// fields on disk (tenancy -> planting; <see cref="LedgerMigration.RenameFenceFields"/>).
+/// Version 3 (2026-10-14): rows carry a
+/// planting record instead of an observation ring - a v2 file loads through
 /// <see cref="LedgerMigration.FoldLegacyRings"/> once and is backed up beside itself first.</summary>
 public sealed class LedgerStore
 {
-    public const int CurrentVersion = 3;
+    public const int CurrentVersion = 4;
 
     public int Version { get; set; } = CurrentVersion;
     public List<ClaimedBed> Beds { get; set; } = [];

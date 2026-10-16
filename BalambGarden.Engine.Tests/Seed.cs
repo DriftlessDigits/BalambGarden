@@ -2,7 +2,7 @@ using BalambGarden.Engine.Ledger;
 
 namespace BalambGarden.Engine.Tests;
 
-/// <summary>Test seeding for the tenancy record (pass-2 #12): no test constructs an
+/// <summary>Test seeding for the planting record (pass-2 #12): no test constructs an
 /// observation ring - it says what happened to the bed. Each helper returns the bed so
 /// fixtures chain.</summary>
 internal static class Seed

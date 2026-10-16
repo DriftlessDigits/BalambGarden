@@ -24,7 +24,7 @@ public class LedgerTests
         => Assert.Equal(LedgerStore.CurrentVersion, new LedgerStore().Version);
 
     [Fact] // RUN, not reasoned (pass-3 F): hands, brackets, fence and reason all survive the file
-    public void TenancyRecordRoundTripsThroughJson()
+    public void PlantingRecordRoundTripsThroughJson()
     {
         var store = new LedgerStore();
         var bed = NewBed();
@@ -39,7 +39,7 @@ public class LedgerTests
         var json = store.ToJson();
         Assert.Contains("\"PlantedBy\": \"hhbbaa\"", json);      // a bare slug, never an object, never a name
         Assert.DoesNotContain("RingStorage", json);
-        Assert.DoesNotContain("HasTenancy", json);                 // derived values never persist
+        Assert.DoesNotContain("HasPlanting", json);                 // derived values never persist
         Assert.DoesNotContain("NewestEvidenceAt", json);
 
         var restored = LedgerStore.FromJson(json);
@@ -57,8 +57,8 @@ public class LedgerTests
         Assert.Equal(2, rb.StageSeen.Count);
         Assert.Equal(T0.AddHours(1), rb.StageSeen[1].FirstSeen);
         Assert.Equal(T0.AddHours(30), rb.StageSeen[2].LastSeen);
-        Assert.Equal(T0, rb.TenancyResetAt);
-        Assert.Equal(RebaseReason.PlantReceipt, rb.TenancyResetReason);
+        Assert.Equal(T0, rb.PlantingResetAt);
+        Assert.Equal(RebaseReason.PlantReceipt, rb.PlantingResetReason);
         Assert.Equal(2, rb.Latest!.Stage);
         Assert.Equal(ObservationSource.MapSighting, rb.Latest.Source);
         Assert.Equal(110, restored.Bindings[$"{Gardener.TerritoryId}:{Gardener.Ward}:{Gardener.Plot}:-1#0"]);

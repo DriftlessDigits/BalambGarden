@@ -14,7 +14,7 @@ public sealed class DebugTrail(string path)
     public void Append(ReceiptEvent e)
         => File.AppendAllText(path, JsonSerializer.Serialize(e, Options) + Environment.NewLine);
 
-    /// <summary>A tenancy reset, as one line: the row's identity and the reset's facts - never
+    /// <summary>A planting reset, as one line: the row's identity and the reset's facts - never
     /// the whole row (ruled 2026-10-14: every rebase leaves a trail entry).</summary>
     public void Append(RebaseEvent e)
         => File.AppendAllText(path, JsonSerializer.Serialize(new RebaseLine(

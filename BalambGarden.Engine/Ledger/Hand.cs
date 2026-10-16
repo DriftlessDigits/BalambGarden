@@ -57,7 +57,7 @@ public sealed class HandJsonConverter : JsonConverter<Hand>
         => writer.WriteStringValue(value.Slug);
 }
 
-/// <summary>First and last instant a bed was SEEN at one stage, for the current tenancy.
+/// <summary>First and last instant a bed was SEEN at one stage, for the current planting.
 /// Bounded (one per stage), idempotent (min/max), never evicted - the ring this replaces held
 /// about one minute of per-read sightings and evicted every anchor (data inventory 2026-10-14).</summary>
 public sealed record StageBracket(DateTimeOffset FirstSeen, DateTimeOffset LastSeen)
@@ -66,19 +66,19 @@ public sealed record StageBracket(DateTimeOffset FirstSeen, DateTimeOffset LastS
         => new(at < FirstSeen ? at : FirstSeen, at > LastSeen ? at : LastSeen);
 }
 
-/// <summary>Why a row's tenancy was reset - every rebase names one (ruled 2026-10-14: rebase is
+/// <summary>Why a row's planting was reset - every rebase names one (ruled 2026-10-14: rebase is
 /// reasoned, logged, time-aware). The reason is persisted on the row with the fence instant.</summary>
 public enum RebaseReason
 {
     /// <summary>A harvest receipt, either hand - the game's own line said the crop left.</summary>
     HarvestWitnessed,
-    /// <summary>A live read found the slot empty while the row still had a tenancy.</summary>
+    /// <summary>A live read found the slot empty while the row still had a planting.</summary>
     ReadsEmpty,
     /// <summary>Live or wire evidence contradicted the species of record (or regressed its stage).</summary>
-    NewTenancySighted,
+    NewPlantingSighted,
     /// <summary>A recorded pot's key vanished from a settled indoor read - what a harvest looks like.</summary>
     PotAbsent,
-    /// <summary>A plant receipt - a sowing at a known instant starts a new tenancy there.</summary>
+    /// <summary>A plant receipt - a sowing at a known instant starts a new planting there.</summary>
     PlantReceipt,
 }
 
