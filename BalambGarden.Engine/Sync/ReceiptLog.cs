@@ -17,7 +17,7 @@ namespace BalambGarden.Engine.Sync;
 /// under forever: that is what lets <see cref="ReceiptLog.Unsent"/> tell this era's outbox from
 /// a retired era's history. The user third never touches the Engine as an identity - it lives
 /// in config and arrives as a parameter at send time; where the Engine must say WHOSE hands did
-/// a thing (the tenancy record, the garden history) it holds the slug as an opaque
+/// a thing (the planting record, the garden history) it holds the slug as an opaque
 /// <see cref="Ledger.Hand"/>, and a name exists nowhere in code or files. A LOCAL alias for a
 /// slug may live in plugin config for display and never serializes (ruled 2026-10-14).</para>
 ///

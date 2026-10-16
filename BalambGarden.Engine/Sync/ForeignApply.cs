@@ -19,7 +19,7 @@ public sealed record ForeignOutcome(
     string PageCursor, bool CursorAdvanced);
 
 /// <summary>Applies household receipts to the local ledger (piece 4, ruled 2026-08-29;
-/// rewritten for the tenancy record 2026-10-14).
+/// rewritten for the planting record 2026-10-14).
 ///
 /// <para>THE LAWS. A live map read still beats a wire fact everywhere the game speaks
 /// (ruling 5). Derivations never branch on source; External is display vocabulary, not a

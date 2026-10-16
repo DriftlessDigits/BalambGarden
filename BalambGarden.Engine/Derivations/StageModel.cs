@@ -2,7 +2,7 @@ using BalambGarden.Engine.Ledger;
 
 namespace BalambGarden.Engine.Derivations;
 
-/// <summary>A ripe-time estimate off the tenancy record. <see cref="Contradiction"/> flags a
+/// <summary>A ripe-time estimate off the planting record. <see cref="Contradiction"/> flags a
 /// record whose stage brackets cannot all be true of one plant (a missed replant, or skew
 /// between installs): the window is then an honest estimate off the newest stage, never null
 /// and never a lie dressed as a bracket. The pump logs a contradiction once per row per visit.</summary>
@@ -22,7 +22,7 @@ public static class StageModel
     };
 
     /// <summary>When this bed ripens (or ripened), from what the record holds about the current
-    /// tenancy. A witnessed sowing (<see cref="ClaimedBed.PlantedAt"/>) is the ONE legitimate
+    /// planting. A witnessed sowing (<see cref="ClaimedBed.PlantedAt"/>) is the ONE legitimate
     /// anchor: exact ripe time, zero-width window. Otherwise each stage bracket constrains the
     /// sowing to [LastSeen(s) - Hi(s)G, FirstSeen(s) - Lo(s)G]; two or more stages seen =
     /// bracketed, one = estimated. Null only when the record holds no stage evidence at all.</summary>

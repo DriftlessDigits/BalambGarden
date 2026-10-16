@@ -3,7 +3,7 @@ using BalambGarden.Engine.Census;
 
 namespace BalambGarden.Engine.Ledger;
 
-/// <summary>One claimed bed or pot: its identity, its current reading, and the TENANCY RECORD -
+/// <summary>One claimed bed or pot: its identity, its current reading, and the PLANTING RECORD -
 /// what is known about the plant growing there now (infrastructure fix, ruled 2026-10-14; design
 /// doc "Balamb Garden - Infrastructure Fix"). Replaces the eight-slot observation ring, which the
 /// census filled one entry per READ and so held about a minute of history and evicted every
@@ -12,7 +12,7 @@ namespace BalambGarden.Engine.Ledger;
 /// <para>THE RULE every write path below obeys (ruled 2026-10-14): an older receipt never
 /// overwrites newer evidence. If it agrees with the current plant it adds its evidence (an old
 /// stage-2 sighting tightens the stage-2 bracket); if it contradicts, it goes to history only.
-/// Neither ever resets the bed. The fence (<see cref="TenancyResetAt"/>, a reset instant that only
+/// Neither ever resets the bed. The fence (<see cref="PlantingResetAt"/>, a reset instant that only
 /// moves forward) is the special case where the newer evidence IS a reset: wire facts at or
 /// before it describe a plant that already left. Live acts and live reads on this install are
 /// never fenced and never "older" - the game wins (2026-08-18), and a fence ahead of wall-clock
@@ -42,7 +42,7 @@ public sealed class ClaimedBed
     /// Null = the record holds no contents (display "empty").</summary>
     public Observation? Latest { get; set; }
 
-    // ---- the tenancy
+    // ---- the planting
     /// <summary>The sowing instant, when a plant receipt witnessed it (either hand). The ONE
     /// legitimate anchor for a ripe time.</summary>
     public DateTimeOffset? PlantedAt { get; set; }
@@ -51,7 +51,7 @@ public sealed class ClaimedBed
     /// is always <see cref="Latest"/> when a reading exists.</summary>
     public ushort PlantedSpecies { get; set; }
 
-    /// <summary>First/last instant each stage (1..4) was seen during this tenancy.</summary>
+    /// <summary>First/last instant each stage (1..4) was seen during this planting.</summary>
     public Dictionary<byte, StageBracket> StageSeen { get; init; } = [];
 
     /// <summary>The water clock, whose hand set it, and what that hand said was growing.</summary>
@@ -60,20 +60,30 @@ public sealed class ClaimedBed
     public ushort LastTendedSpecies { get; set; }
 
     /// <summary>THE FENCE: the instant of the last reset, and why. Only ever moves forward.</summary>
-    public DateTimeOffset? TenancyResetAt { get; set; }
-    public RebaseReason? TenancyResetReason { get; set; }
+    public DateTimeOffset? PlantingResetAt { get; set; }
+    public RebaseReason? PlantingResetReason { get; set; }
 
     /// <summary>v2 read seam only: the old observation ring, folded into the record by
     /// <see cref="LedgerMigration.FoldLegacyRings"/> on first load and nulled so it never writes.</summary>
     [JsonPropertyName("RingStorage")]
     public List<Observation>? LegacyRing { get; set; }
 
+    /// <summary>v3 read seam only: the fence under its pre-v4 names ("tenancy" became
+    /// "planting", 2026-10-15). <see cref="LedgerMigration.RenameFenceFields"/> moves the
+    /// values onto <see cref="PlantingResetAt"/> / <see cref="PlantingResetReason"/> on first
+    /// load and nulls these so they never write. The reason arrives as text because the old
+    /// member name no longer exists in <see cref="RebaseReason"/>.</summary>
+    [JsonPropertyName("TenancyResetAt")]
+    public DateTimeOffset? LegacyFenceAt { get; set; }
+    [JsonPropertyName("TenancyResetReason")]
+    public string? LegacyFenceReason { get; set; }
+
     // ---- derived (never stored twice)
 
     /// <summary>Whether the record claims anything at all about a plant here - the rebase gate.
     /// (Display "empty" stays <c>Latest is null</c>: no contents to show.)</summary>
     [JsonIgnore]
-    public bool HasTenancy =>
+    public bool HasPlanting =>
         Latest is not null || PlantedAt is not null || StageSeen.Count > 0 || LastTended is not null;
 
     /// <summary>Ruling 10 display law: a household hand marks itself, ours says nothing extra -
@@ -103,12 +113,12 @@ public sealed class ClaimedBed
     }
 
     /// <summary>Does a (species, stage) reading contradict the current plant? A different known
-    /// species, or the same species at an EARLIER stage than this tenancy has already reached
+    /// species, or the same species at an EARLIER stage than this planting has already reached
     /// (stages only climb, so a regression is a replant). Species 0 on either side is a shrug,
     /// never a contradiction; stage 0 stays out of the regression test. The ONE copy of this
     /// rule - the live sighting path and the wire path both ask it.</summary>
     public bool Contradicts(ushort species, byte stage)
-        => HasTenancy && SpeciesOfRecord != 0 && species != 0
+        => HasPlanting && SpeciesOfRecord != 0 && species != 0
            && (species != SpeciesOfRecord
                || (stage >= 1 && MaxStageSeen >= 1 && stage < MaxStageSeen));
 
@@ -119,7 +129,7 @@ public sealed class ClaimedBed
     /// install's clock running ahead (pass-3 must-fix #2: stored instants are never altered;
     /// the skew is absorbed here instead).</summary>
     private bool Fenced(DateTimeOffset at, Hand? by)
-        => TenancyResetAt is { } r && at <= r && !IsOwnHand(by);
+        => PlantingResetAt is { } r && at <= r && !IsOwnHand(by);
 
     private bool OlderThanEvidence(DateTimeOffset at)
         => NewestEvidenceAt is { } n && at < n;
@@ -155,7 +165,7 @@ public sealed class ClaimedBed
         }
 
         if (Contradicts(species, stage))
-            rebase = Rebase(RebaseReason.NewTenancySighted, NewestEvidenceAt ?? at, by, newSpecies: species);
+            rebase = Rebase(RebaseReason.NewPlantingSighted, NewestEvidenceAt ?? at, by, newSpecies: species);
 
         FoldStage(at, stage);
         if (Latest is null || at > Latest.At)
@@ -163,7 +173,7 @@ public sealed class ClaimedBed
         return AbsorbOutcome.Applied;
     }
 
-    /// <summary>Whether an older reading is consistent with this tenancy. Monotone in time
+    /// <summary>Whether an older reading is consistent with this planting. Monotone in time
     /// (pass-3 should #3): it must name a compatible species, must not predate a known sowing,
     /// no LOWER stage may have been seen after it, and no HIGHER stage before it. "Stage 2 at
     /// 7pm" against "stage 3 at 8pm" passes; "ripe at 5pm" against "stage 3 at 8pm" fails.</summary>
@@ -208,11 +218,11 @@ public sealed class ClaimedBed
     }
 
     /// <summary>A sowing at a known instant, either hand. Last edit wins (ruled 2026-10-03): a
-    /// plant on an occupied row is a new tenancy there. Fenced, or the same instant again (a
+    /// plant on an occupied row is a new planting there. Fenced, or the same instant again (a
     /// replay): nothing. A sowing OLDER than a sowing already known: history only. Older than the
     /// newest evidence: it is this plant's own sowing only if it names the same known species
     /// (pass-3 should #4: unknown is not agreement) - then it anchors and the newer evidence
-    /// stays; otherwise history only. Newer than everything: new tenancy at <paramref name="at"/>.
+    /// stays; otherwise history only. Newer than everything: new planting at <paramref name="at"/>.
     /// <paramref name="stage"/> is what the sower's map read said (0 = unknown), so an own manual
     /// plant that re-read the map first keeps that reading in <see cref="Latest"/> (pass-3 nit).
     /// Returns the rebase event when the ledger changed; <paramref name="ledgerChanged"/> says so
@@ -253,7 +263,7 @@ public sealed class ClaimedBed
     /// (Q1: keep the watering).</para></summary>
     public RebaseEvent? Rebase(RebaseReason reason, DateTimeOffset cut, Hand? by = null, ushort newSpecies = 0)
     {
-        if (TenancyResetAt is { } fence && cut < fence && !IsOwnHand(by))
+        if (PlantingResetAt is { } fence && cut < fence && !IsOwnHand(by))
             return null;
 
         var removed = false;
@@ -287,7 +297,7 @@ public sealed class ClaimedBed
         if (LastTended is { } t)
         {
             var leaves = t <= cut
-                || (reason == RebaseReason.NewTenancySighted
+                || (reason == RebaseReason.NewPlantingSighted
                     && oldSpecies != 0 && newSpecies != 0 && newSpecies != oldSpecies
                     && LastTendedSpecies == oldSpecies);
             if (leaves)
@@ -297,10 +307,10 @@ public sealed class ClaimedBed
             }
         }
 
-        if (TenancyResetAt is null || cut >= TenancyResetAt)
+        if (PlantingResetAt is null || cut >= PlantingResetAt)
         {
-            TenancyResetAt = cut;
-            TenancyResetReason = reason;
+            PlantingResetAt = cut;
+            PlantingResetReason = reason;
         }
         return new RebaseEvent(this, reason, cut, by, removed);
     }

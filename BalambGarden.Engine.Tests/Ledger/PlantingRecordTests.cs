@@ -5,10 +5,10 @@ using Xunit;
 
 namespace BalambGarden.Engine.Tests.Ledger;
 
-/// <summary>The tenancy record on its own (ruled 2026-10-14): the fence, the reasons, and THE
+/// <summary>The planting record on its own (ruled 2026-10-14): the fence, the reasons, and THE
 /// RULE as the bed itself enforces it. Wire-page scenes live in ForeignApplyTests; these are the
 /// bed-level and live-sighting scenes from pseudocode s8 and the pass-3 fixes (s10).</summary>
-public class TenancyRecordTests
+public class PlantingRecordTests
 {
     private static readonly EstateKey Garden = new(340, 11, 32);
     private static readonly DateTimeOffset Mon = new(2026, 10, 12, 18, 0, 0, TimeSpan.Zero);
@@ -34,10 +34,10 @@ public class TenancyRecordTests
     // ------------------------------------------------------------------ the fence
 
     [Fact]
-    public void A_bare_row_has_no_tenancy_and_no_fence()
+    public void A_bare_row_has_no_planting_and_no_fence()
     {
         var bed = Bed();
-        Assert.False(bed.HasTenancy);
+        Assert.False(bed.HasPlanting);
         Assert.Null(bed.NewestEvidenceAt);
         Assert.Equal(0, bed.MaxStageSeen);
     }
@@ -47,15 +47,15 @@ public class TenancyRecordTests
     {
         var bed = Seed.Sight(Bed(), Mon, Fig, 2);
         Assert.NotNull(bed.Rebase(RebaseReason.ReadsEmpty, Mon.AddHours(1)));
-        Assert.Equal(Mon.AddHours(1), bed.TenancyResetAt);
+        Assert.Equal(Mon.AddHours(1), bed.PlantingResetAt);
 
         Assert.Null(bed.Rebase(RebaseReason.HarvestWitnessed, Mon, by: Her));           // older wire cut: refused
-        Assert.Equal(RebaseReason.ReadsEmpty, bed.TenancyResetReason);
+        Assert.Equal(RebaseReason.ReadsEmpty, bed.PlantingResetReason);
 
         var same = bed.Rebase(RebaseReason.PlantReceipt, Mon.AddHours(1), by: Her);   // equal: allowed, reason refreshed
         Assert.NotNull(same);
         Assert.False(same!.RemovedAnything);
-        Assert.Equal(RebaseReason.PlantReceipt, bed.TenancyResetReason);
+        Assert.Equal(RebaseReason.PlantReceipt, bed.PlantingResetReason);
     }
 
     [Fact] // an own act is never refused by the fence - the game wins, and a future fence is skew
@@ -65,7 +65,7 @@ public class TenancyRecordTests
         bed.Rebase(RebaseReason.HarvestWitnessed, Wed, by: Her);                         // a fence far ahead
         Assert.NotNull(bed.Rebase(RebaseReason.HarvestWitnessed, Mon.AddHours(1), by: Hand.Own));
         Assert.NotNull(bed.Rebase(RebaseReason.ReadsEmpty, Mon.AddHours(2)));           // own read, no hand
-        Assert.Equal(Wed, bed.TenancyResetAt);                                           // and the fence did not move back
+        Assert.Equal(Wed, bed.PlantingResetAt);                                           // and the fence did not move back
     }
 
     [Fact] // a bare-row plant resets nothing - the event says so, so the pump logs it quietly
@@ -86,7 +86,7 @@ public class TenancyRecordTests
     {
         var (engine, bed) = LiveBed(Fig, 1, Mon);
         bed.Plant(Mon.AddHours(5), Apple, 0, Her, out _);               // their sowing, newer than our look
-        Assert.Equal(Mon.AddHours(5), bed.TenancyResetAt);
+        Assert.Equal(Mon.AddHours(5), bed.PlantingResetAt);
 
         var rebases = new List<RebaseEvent>();
         var changes = new List<SightingChange>();
@@ -94,12 +94,12 @@ public class TenancyRecordTests
             mayRecord: true, changes: changes, rebases: rebases);
 
         var ev = Assert.Single(rebases);
-        Assert.Equal(RebaseReason.NewTenancySighted, ev.Reason);
+        Assert.Equal(RebaseReason.NewPlantingSighted, ev.Reason);
         Assert.Equal(Mon.AddHours(5), ev.Cut);                             // cut == fence, allowed
         Assert.Null(bed.PlantedAt);
         Assert.Equal(Onion, bed.Latest!.SpeciesIndex);
         Assert.Empty(changes);                                              // a replant emits no stage change
-        Assert.Equal(RebaseReason.NewTenancySighted, bed.TenancyResetReason);
+        Assert.Equal(RebaseReason.NewPlantingSighted, bed.PlantingResetReason);
     }
 
     // ------------------------------------------------------------------ tends under THE RULE
@@ -172,24 +172,24 @@ public class TenancyRecordTests
         var (engine, bed) = LiveBed(Fig, 3, Mon);
         bed.Tend(Tue10, Her, Fig);
         See(engine, Fig, 1, Wed);
-        Assert.Equal(RebaseReason.NewTenancySighted, bed.TenancyResetReason);
+        Assert.Equal(RebaseReason.NewPlantingSighted, bed.PlantingResetReason);
         Assert.Equal(Tue10, bed.LastTended);
     }
 
-    [Fact] // pass-2 #5: a row holding only a tend still has a tenancy; reading empty clears it
+    [Fact] // pass-2 #5: a row holding only a tend still has a planting; reading empty clears it
     public void Row_holding_only_a_tend_clears_on_an_empty_read()
     {
         var engine = new CensusEngine(new LedgerStore());
         engine.Bind(Garden, 0, 110);
         var bed = engine.OnReceipt(new ReceiptEvent(Garden, 0, 3, ReceiptVerb.Tend, Fig, 1, Mon))!;
-        Assert.True(bed.HasTenancy);
+        Assert.True(bed.HasPlanting);
         Assert.Null(bed.Latest);
 
         var landed = engine.OnMapSighting(Garden, 110, [new BedReading(3, 0, 0, 0, false)], Tue8, mayRecord: true);
 
         Assert.Equal(1, landed);
-        Assert.False(bed.HasTenancy);
-        Assert.Equal(RebaseReason.ReadsEmpty, bed.TenancyResetReason);
+        Assert.False(bed.HasPlanting);
+        Assert.Equal(RebaseReason.ReadsEmpty, bed.PlantingResetReason);
     }
 
     // ------------------------------------------------------------------ sightings and brackets
@@ -207,7 +207,7 @@ public class TenancyRecordTests
         Assert.Equal(Mon, bed.StageSeen[1].FirstSeen);
         Assert.Equal(Mon.AddMinutes(39), bed.StageSeen[1].LastSeen);
         Assert.Equal(Tue8, bed.StageSeen[2].FirstSeen);
-        Assert.Null(bed.TenancyResetAt is { } r && r > Mon.AddHours(-1) ? bed.TenancyResetAt : null);
+        Assert.Null(bed.PlantingResetAt is { } r && r > Mon.AddHours(-1) ? bed.PlantingResetAt : null);
     }
 
     [Fact] // a straddling bracket is trimmed to its post-cut point and flagged as removal
@@ -250,8 +250,8 @@ public class TenancyRecordTests
         Assert.Equal(1, bed.Latest!.Stage);
     }
 
-    [Fact] // the contradiction rule is one copy: a live stage regression on the same species is a new tenancy
-    public void Contradicts_reads_the_tenancy_not_only_the_last_look()
+    [Fact] // the contradiction rule is one copy: a live stage regression on the same species is a new planting
+    public void Contradicts_reads_the_planting_not_only_the_last_look()
     {
         var bed = Seed.Sight(Seed.Sight(Bed(), Mon, Fig, 3), Tue8, Fig, 3);
         Assert.True(bed.Contradicts(Fig, 2));

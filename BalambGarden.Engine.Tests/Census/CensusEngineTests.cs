@@ -253,7 +253,7 @@ public class CensusEngineTests
 
     // ---------------------------------------------------------------- reconcile
     // 2026-08-18 ruling: the game wins on content mismatch. A live read that contradicts
-    // the ledger's idea of what is growing means the row's tenancy changed while nobody
+    // the ledger's idea of what is growing means the row's planting changed while nobody
     // was watching (a housemate harvested or replanted) - the old ring and tend clock
     // describe a plant that is gone, so they rebase rather than argue.
 
@@ -264,7 +264,7 @@ public class CensusEngineTests
         return engine.OnReceipt(Tend(slot: 3, stage))!;
     }
 
-    [Fact] // different species live = new tenancy: ring and tend clock rebase, row survives
+    [Fact] // different species live = new planting: ring and tend clock rebase, row survives
     public void SightingWithDifferentSpeciesRebasesTheRow()
     {
         var engine = new CensusEngine(new LedgerStore());
@@ -276,12 +276,12 @@ public class CensusEngineTests
         Assert.Single(engine.LedgerBeds);
         Assert.Equal(0x30, bed.Latest!.SpeciesIndex);   // old evidence left with the old plant
         Assert.Single(bed.StageSeen);
-        Assert.Equal(RebaseReason.NewTenancySighted, bed.TenancyResetReason);
-        Assert.Equal(T0, bed.TenancyResetAt);           // the cut = our last look at the old plant
+        Assert.Equal(RebaseReason.NewPlantingSighted, bed.PlantingResetReason);
+        Assert.Equal(T0, bed.PlantingResetAt);           // the cut = our last look at the old plant
         Assert.Null(bed.LastTended);                    // our watering receipt watered the OLD plant
     }
 
-    [Fact] // stage went BACKWARD on the same species = replanted same crop: also a new tenancy
+    [Fact] // stage went BACKWARD on the same species = replanted same crop: also a new planting
     public void SightingWithRegressedStageRebasesTheRow()
     {
         var engine = new CensusEngine(new LedgerStore());
@@ -318,8 +318,8 @@ public class CensusEngineTests
             [new BedReading(3, 0, 0, 0, Occupied: false)], T0.AddDays(1), mayRecord: true);
 
         Assert.Single(engine.LedgerBeds);            // the bed is still ours...
-        Assert.False(bed.HasTenancy);                // ...but nothing grows in it
-        Assert.Equal(RebaseReason.ReadsEmpty, bed.TenancyResetReason);
+        Assert.False(bed.HasPlanting);                // ...but nothing grows in it
+        Assert.Equal(RebaseReason.ReadsEmpty, bed.PlantingResetReason);
         Assert.Null(bed.LastTended);
         Assert.Equal(1, landed);                     // the rebase is a change worth saving
     }
@@ -336,7 +336,7 @@ public class CensusEngineTests
             [new BedReading(3, 0, 0, 0, Occupied: false)], T0.AddDays(2), mayRecord: true);
 
         Assert.Equal(0, landed);
-        Assert.False(bed.HasTenancy);
+        Assert.False(bed.HasPlanting);
     }
 
     [Fact] // rebase is destructive, so it gates on mayRecord; unvouched sightings stay
@@ -351,7 +351,7 @@ public class CensusEngineTests
             [new BedReading(3, 0x30, 1, 0, true)], T0.AddDays(1));
 
         Assert.Equal(0x30, bed.Latest!.SpeciesIndex);   // sighted, never rebased
-        Assert.Null(bed.TenancyResetAt);
+        Assert.Null(bed.PlantingResetAt);
         Assert.Equal(T0, bed.LastTended);               // the tend clock survived
     }
 
@@ -369,9 +369,9 @@ public class CensusEngineTests
         Assert.Equal(1, rebased);
         Assert.Equal(2, engine.LedgerBeds.Count);    // both rows survive
         var gone = engine.LedgerBeds.First(b => b.MapKey == 126);
-        Assert.False(gone.HasTenancy);
-        Assert.Equal(RebaseReason.PotAbsent, gone.TenancyResetReason);
-        Assert.True(engine.LedgerBeds.First(b => b.MapKey == 127).HasTenancy);
+        Assert.False(gone.HasPlanting);
+        Assert.Equal(RebaseReason.PotAbsent, gone.PlantingResetReason);
+        Assert.True(engine.LedgerBeds.First(b => b.MapKey == 127).HasPlanting);
     }
 
     [Fact] // an already-empty row is already right - absence is not news twice
@@ -396,7 +396,7 @@ public class CensusEngineTests
             [new BedReading(3, 0, 2, 0, true)], T0.AddDays(1), mayRecord: true);
 
         Assert.Single(bed.StageSeen);                // stage 2 twice = one bracket
-        Assert.Null(bed.TenancyResetAt);
+        Assert.Null(bed.PlantingResetAt);
         Assert.Equal(T0, bed.LastTended);
     }
 }

@@ -170,7 +170,7 @@ public static class LedgerMigration
                 continue;
             }
 
-            // Same physical bed, two records. Union the tenancy evidence rather than pick a
+            // Same physical bed, two records. Union the planting evidence rather than pick a
             // winner, then trim at the merged fence - whatever either record knew about a
             // plant that already left goes with it.
             store.Beds[store.Beds.IndexOf(twin)] = Combine(twin, bed, canonical);
@@ -190,7 +190,7 @@ public static class LedgerMigration
             Latest = bed.Latest,
             PlantedAt = bed.PlantedAt, PlantedBy = bed.PlantedBy, PlantedSpecies = bed.PlantedSpecies,
             LastTended = bed.LastTended, LastTendedBy = bed.LastTendedBy, LastTendedSpecies = bed.LastTendedSpecies,
-            TenancyResetAt = bed.TenancyResetAt, TenancyResetReason = bed.TenancyResetReason,
+            PlantingResetAt = bed.PlantingResetAt, PlantingResetReason = bed.PlantingResetReason,
             LegacyRing = bed.LegacyRing,
         };
         foreach (var (stage, seen) in bed.StageSeen)
@@ -207,7 +207,7 @@ public static class LedgerMigration
     {
         var newerPlant = Newer(keep.PlantedAt, other.PlantedAt) == other.PlantedAt && other.PlantedAt is not null ? other : keep;
         var newerTend = Newer(keep.LastTended, other.LastTended) == other.LastTended && other.LastTended is not null ? other : keep;
-        var newerReset = Newer(keep.TenancyResetAt, other.TenancyResetAt) == other.TenancyResetAt && other.TenancyResetAt is not null ? other : keep;
+        var newerReset = Newer(keep.PlantingResetAt, other.PlantingResetAt) == other.PlantingResetAt && other.PlantingResetAt is not null ? other : keep;
         var newerLatest = keep.Latest is null || (other.Latest is { } ol && ol.At > keep.Latest.At) ? other.Latest : keep.Latest;
 
         var combined = new ClaimedBed
@@ -219,13 +219,13 @@ public static class LedgerMigration
             Latest = newerLatest,
             PlantedAt = newerPlant.PlantedAt, PlantedBy = newerPlant.PlantedBy, PlantedSpecies = newerPlant.PlantedSpecies,
             LastTended = newerTend.LastTended, LastTendedBy = newerTend.LastTendedBy, LastTendedSpecies = newerTend.LastTendedSpecies,
-            TenancyResetAt = newerReset.TenancyResetAt, TenancyResetReason = newerReset.TenancyResetReason,
+            PlantingResetAt = newerReset.PlantingResetAt, PlantingResetReason = newerReset.PlantingResetReason,
         };
         foreach (var (stage, seen) in keep.StageSeen.Concat(other.StageSeen))
             combined.StageSeen[stage] = combined.StageSeen.TryGetValue(stage, out var have)
                 ? have.Fold(seen.FirstSeen).Fold(seen.LastSeen) : seen;
 
-        if (combined.TenancyResetAt is { } fence)
+        if (combined.PlantingResetAt is { } fence)
             TrimAt(combined, fence);
         return combined;
     }
@@ -247,10 +247,10 @@ public static class LedgerMigration
     private static DateTimeOffset? Newer(DateTimeOffset? a, DateTimeOffset? b)
         => a is null ? b : b is null ? a : a > b ? a : b;
 
-    /// <summary>v2 -> v3 (2026-10-14): folds each row's observation ring into the tenancy
+    /// <summary>v2 -> v3 (2026-10-14): folds each row's observation ring into the planting
     /// record and retires the ring. Lossy and honest - a ring held about a minute of per-read
     /// sightings, so what survives is: the last entry as <see cref="ClaimedBed.Latest"/> (when
-    /// the v2 file carried none), per-stage first/last from the entries of the current tenancy
+    /// the v2 file carried none), per-stage first/last from the entries of the current planting
     /// (those after the last HarvestReceipt entry, naming the same species as the last entry),
     /// a PlantReceipt entry among them as the sowing by own hands, and whose hand set the water
     /// clock when the ring still says (a TendReceipt entry at the clock's own instant = own; an
@@ -274,12 +274,12 @@ public static class LedgerMigration
             bed.Latest ??= last;
 
             var lastHarvest = ordered.LastOrDefault(o => o.Source == ObservationSource.HarvestReceipt);
-            var tenancy = ordered
+            var planting = ordered
                 .Where(o => lastHarvest is null || o.At > lastHarvest.At)
                 .Where(o => o.SpeciesIndex == 0 || last.SpeciesIndex == 0 || o.SpeciesIndex == last.SpeciesIndex)
                 .ToList();
 
-            foreach (var o in tenancy)
+            foreach (var o in planting)
             {
                 if (o.Stage is < 1 or > 4)
                     continue;
@@ -287,7 +287,7 @@ public static class LedgerMigration
                     ? seen.Fold(o.At) : new StageBracket(o.At, o.At);
             }
 
-            if (tenancy.LastOrDefault(o => o.Source == ObservationSource.PlantReceipt) is { } plant)
+            if (planting.LastOrDefault(o => o.Source == ObservationSource.PlantReceipt) is { } plant)
             {
                 bed.PlantedAt = plant.At;
                 bed.PlantedBy = Hand.Own;
@@ -307,4 +307,37 @@ public static class LedgerMigration
         store.Version = LedgerStore.CurrentVersion;
         return folded;
     }
+
+    /// <summary>v3 -> v4 (2026-10-15): the fence fields were renamed on disk when "tenancy"
+    /// became "planting". Moves any value still under the old names onto the new ones (the new
+    /// name wins if both are somehow present), maps the one renamed reason member, and nulls the
+    /// legacy seam so it never writes. Idempotent; stamps the version regardless. Returns how
+    /// many rows carried a legacy fence.</summary>
+    public static int RenameFenceFields(LedgerStore store)
+    {
+        var moved = 0;
+        foreach (var bed in store.Beds)
+        {
+            if (bed.LegacyFenceAt is { } at)
+            {
+                moved++;
+                if (bed.PlantingResetAt is null)
+                {
+                    bed.PlantingResetAt = at;
+                    bed.PlantingResetReason = ParseLegacyReason(bed.LegacyFenceReason);
+                }
+            }
+            bed.LegacyFenceAt = null;
+            bed.LegacyFenceReason = null;
+        }
+        store.Version = LedgerStore.CurrentVersion;
+        return moved;
+    }
+
+    private static RebaseReason? ParseLegacyReason(string? text) => text switch
+    {
+        null => null,
+        "NewTenancySighted" => RebaseReason.NewPlantingSighted,
+        _ => Enum.TryParse<RebaseReason>(text, out var r) ? r : null,
+    };
 }

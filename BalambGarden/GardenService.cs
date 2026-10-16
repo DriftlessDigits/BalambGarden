@@ -110,21 +110,28 @@ public sealed class GardenService
         var service = new GardenService(
             ledgerPath, ledger, trailPath, receiptsPath, receipts, historyPath, history);
 
-        // v2 -> v3 (2026-10-14): the per-bed observation ring becomes the tenancy record. The
+        // v2 -> v3 (2026-10-14): the per-bed observation ring becomes the planting record. The
         // v2 file is copied aside ONCE before its first v3 write, because a v0.3.0 rollback
         // reading a v3 file would see empty rows and overwrite them on its next save.
         var migrated = false;
         if (ledger.Version < LedgerStore.CurrentVersion)
         {
-            var backup = ledgerPath + ".pre-v3.bak";
+            var fromVersion = ledger.Version;
+            var backup = ledgerPath + $".pre-v{LedgerStore.CurrentVersion}.bak";
             if (File.Exists(ledgerPath) && !File.Exists(backup))
             {
                 File.Copy(ledgerPath, backup);
-                Plugin.Log.Information($"[Garden] ledger v{ledger.Version} backed up to {backup} before the v3 fold");
+                Plugin.Log.Information($"[Garden] ledger v{fromVersion} backed up to {backup} before the v{LedgerStore.CurrentVersion} migration");
             }
-            var folded = LedgerMigration.FoldLegacyRings(ledger);
+            if (fromVersion < 3)
+            {
+                var folded = LedgerMigration.FoldLegacyRings(ledger);
+                Plugin.Log.Information(
+                    $"[Garden] ledger migration: folded {folded} observation ring(s) into planting records (v3)");
+            }
+            var renamed = LedgerMigration.RenameFenceFields(ledger);
             Plugin.Log.Information(
-                $"[Garden] ledger migration: folded {folded} observation ring(s) into tenancy records (v{LedgerStore.CurrentVersion})");
+                $"[Garden] ledger migration: v{fromVersion} -> v{LedgerStore.CurrentVersion}, {renamed} row(s) carried a fence under the old field names");
             migrated = true;
         }
 

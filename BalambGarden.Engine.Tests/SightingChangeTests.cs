@@ -9,7 +9,7 @@ namespace BalambGarden.Engine.Tests;
 /// <summary>Piece 6: observations sync on CHANGE only (schema ruling 12), and the change is
 /// detectable exactly where the ledger already compares prev-vs-reading - OnMapSighting.
 /// Stage climbs emit Stage; reaching 4 emits Ripe (the payoff signal, its own kind). A new
-/// row, a re-read, and a new tenancy emit nothing: first knowledge is not a change, and a
+/// row, a re-read, and a new planting emit nothing: first knowledge is not a change, and a
 /// replant's story restarts with its plant receipt.</summary>
 public class SightingChangeTests
 {
@@ -73,7 +73,7 @@ public class SightingChangeTests
     }
 
     [Fact]
-    public void A_new_tenancy_emits_nothing()
+    public void A_new_planting_emits_nothing()
     {
         var (census, _) = Fresh();
         Sight(census, Reading(3, species: 50), T0);

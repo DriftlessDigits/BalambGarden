@@ -174,7 +174,7 @@ internal static class CensusPump
             + (landed > 0 ? $" - {landed} parked household receipt(s) applied" : ""));
     }
 
-    /// <summary>Every tenancy reset, after its save (ruled 2026-10-14: rebase is reasoned and
+    /// <summary>Every planting reset, after its save (ruled 2026-10-14: rebase is reasoned and
     /// logged). INF when the reset removed something or witnessed a harvest - a harvest is the
     /// event the history is built around, and the map usually read the bed empty a beat before
     /// the receipt arrived (pass-3 nit) - DEBUG for a bare-row plant, which is not news. Each
@@ -187,7 +187,7 @@ internal static class CensusPump
             var where = bed.IsPot
                 ? $"pot (key {bed.MapKey})"
                 : $"patch {bed.PatchOrdinal + 1} bed {bed.BedSlot + 1}";
-            var line = $"[Census] tenancy reset {where} at {bed.Estate.DisplayLabel()}: {ev.Reason}"
+            var line = $"[Census] planting reset {where} at {bed.Estate.DisplayLabel()}: {ev.Reason}"
                        + $" cut={ev.Cut:u} by={ev.By?.Slug ?? "-"}"
                        + (ev.RemovedAnything ? "" : " (nothing to remove)");
             if (ev.RemovedAnything || ev.Reason == RebaseReason.HarvestWitnessed)
@@ -691,7 +691,7 @@ internal static class CensusPump
         // clock through the same engine path a chain tend uses, and that is the POINT of
         // widening this entry: watering done by hand finally lands instead of leaving a gap
         // the pacing math reads as neglect. A manual HARVEST is the emptying witness; a manual
-        // PLANT a new tenancy at this instant (own hands are never fenced).
+        // PLANT a new planting at this instant (own hands are never fenced).
         var rebases = new List<RebaseEvent>();
         var bed = Plugin.Garden.Census.OnReceipt(receipt, rebases);
         Plugin.Garden.Save();

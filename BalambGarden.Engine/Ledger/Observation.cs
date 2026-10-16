@@ -13,7 +13,7 @@ public static class GardenStage
 // Persisted BY NAME (the ledger's JsonStringEnumConverter), never by ordinal - so RENAMING a
 // member is the hazard, not reordering (corrected 2026-10-14; earlier comments here said
 // ordinals). Every member stays because v2 files still carry rings with these words
-// (TendReceipt, HarvestReceipt, StatusTalk) and the v2->v3 fold reads them. Since the tenancy
+// (TendReceipt, HarvestReceipt, StatusTalk) and the v2->v3 fold reads them. Since the planting
 // record (2026-10-14) only MapSighting, RipeSkip, PlantReceipt and External are ever written.
 public enum ObservationSource { MapSighting, TendReceipt, PlantReceipt, HarvestReceipt, StatusTalk, RipeSkip, External }
 
