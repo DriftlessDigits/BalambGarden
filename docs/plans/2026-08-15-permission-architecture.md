@@ -8,7 +8,7 @@
 
 **Tech Stack:** C# / .NET 9, Dalamud plugin (FFXIVClientStructs), xUnit for `BalambGarden.Engine.Tests`.
 
-**Spec:** vault `Book Of Holding/Planet Express/Deliveries/Balamb Garden/Balamb Garden - Permission Architecture.md` (mirrored rulings in `.superpowers/sdd/2026-08-14-rebuild-plan-b/progress.md`). Ground-truth captures: `captures/2026-08-15-roster-recon.log` (HouseId equality, roster shape), `captures/2026-08-13-gardener-fc-probe.log`.
+**Spec:** `Balamb Garden - Permission Architecture` (maintainer's private notes) (mirrored rulings in `.superpowers/sdd/2026-08-14-rebuild-plan-b/progress.md`). Ground-truth captures: `captures/2026-08-15-roster-recon.log` (HouseId equality, roster shape), `captures/2026-08-13-gardener-fc-probe.log`.
 
 ## Global Constraints
 

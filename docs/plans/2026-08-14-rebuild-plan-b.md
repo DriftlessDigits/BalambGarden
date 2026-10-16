@@ -8,7 +8,7 @@
 
 **Tech Stack:** C# / .NET 9, Dalamud.NET.Sdk 15, ECommons (LegacyTaskManager, AddonMaster, Callback), FFXIVClientStructs (HousingManager, InventoryManager), xUnit for Engine tests.
 
-**Spec:** `C:\Obsidian\Book Of Holding\Planet Express\Deliveries\Balamb Garden\Balamb Garden - Rebuild Spec.md` (approved 2026-08-13). Plan A (context + conventions): `docs/plans/2026-08-13-rebuild-engine.md`.
+**Spec:** `Balamb Garden - Rebuild Spec` (maintainer's private notes) (approved 2026-08-13). Plan A (context + conventions): `docs/plans/2026-08-13-rebuild-engine.md`.
 
 ## Global Constraints
 

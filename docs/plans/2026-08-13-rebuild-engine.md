@@ -8,7 +8,7 @@
 
 **Tech Stack:** C# / .NET 9 (`net9.0`), xUnit, System.Text.Json. No Dalamud or ECommons references anywhere in Engine or its tests.
 
-**Spec:** `C:\Obsidian\Book Of Holding\Planet Express\Deliveries\Balamb Garden\Balamb Garden - Rebuild Spec.md` (approved 2026-08-13). The three JSON domain tables live in `Data/` at the repo root; their shapes are documented in Task 2.
+**Spec:** `Balamb Garden - Rebuild Spec` (maintainer's private notes) (approved 2026-08-13). The three JSON domain tables live in `Data/` at the repo root; their shapes are documented in Task 2.
 
 ## Global Constraints
 

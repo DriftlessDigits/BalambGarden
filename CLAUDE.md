@@ -8,7 +8,7 @@ Dalamud plugin for FFXIV gardening: census, timers, and one-press tend/harvest/r
 - **Agents NEVER build the plugin.** Dalamud hot-loads the output DLL - any build is a live deploy into a running game. Builds happen only on the player's explicit "go", never while they may be in-game or testing.
 - **Tests are safe anytime**: `dotnet test BalambGarden.Engine.Tests/BalambGarden.Engine.Tests.csproj` - the Engine has zero game dependency.
 - Feature branches only; merge to main = save point (this doc's review rides every merge - the merge gate enforces it).
-- Repo is quasi-public. The maintainer persona is **Drift** (GitHub: DriftlessDigits); no real names in code, comments, commits, or docs. No AI co-authorship lines in commits. A machine-local pre-commit name guard backs this up (installed per machine via personality-chip's `install-repo-hooks.sh`; untracked BY DESIGN - a tracked hook would ship the names it blocks).
+- Repo is quasi-public. The maintainer persona is **Drift** (GitHub: DriftlessDigits); no real names in code, comments, commits, or docs. No AI co-authorship lines in commits. A machine-local pre-commit name guard backs this up (installed per machine from the maintainer's own tooling; untracked BY DESIGN - a tracked hook would ship the names it blocks).
 
 ## Solution layout
 
@@ -97,7 +97,7 @@ Each layer knows only the layer below. **Acting IS censusing**: chains emit dial
 
 ## Release
 
-The runbook is `Book Of Holding/Reference/Runbooks/Balamb Release.md` - run it, don't improvise. The short shape: version lives in `BalambGarden/BalambGarden.csproj` (`<Version>`), user-facing changelog in `BalambGarden/BalambGarden.json` (`Changelog`); bump both on the feature branch, merge --no-ff to main, tag `vN.N.N.N`, push tag. **The tag push triggers `.github/workflows/create_release.yml`** (thin caller into DalamudPluginRepo's reusable workflow, same as Scrooge): CI builds Release, creates the GitHub release with `latest.zip`, and pushes the version-stamped manifest to the plugin repo, whose pluginmaster regenerates itself (never hand-edit it). Requires the `PAT` secret on this repo. Dev loads read `images/icon.png` beside the DLL; `IconUrl` is fetched only for repo installs; the game caches the icon image across restarts.
+The runbook is `Balamb Release` in the maintainer's private notes - run it, don't improvise. The short shape: version lives in `BalambGarden/BalambGarden.csproj` (`<Version>`), user-facing changelog in `BalambGarden/BalambGarden.json` (`Changelog`); bump both on the feature branch, merge --no-ff to main, tag `vN.N.N.N`, push tag. **The tag push triggers `.github/workflows/create_release.yml`** (thin caller into DalamudPluginRepo's reusable workflow, same as Scrooge): CI builds Release, creates the GitHub release with `latest.zip`, and pushes the version-stamped manifest to the plugin repo, whose pluginmaster regenerates itself (never hand-edit it). Requires the `PAT` secret on this repo. Dev loads read `images/icon.png` beside the DLL; `IconUrl` is fetched only for repo installs; the game caches the icon image across restarts.
 
 ## Debug-only instrumentation
 
