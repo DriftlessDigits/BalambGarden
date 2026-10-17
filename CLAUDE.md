@@ -5,7 +5,7 @@ Dalamud plugin for FFXIV gardening: census, timers, and one-press tend/harvest/r
 ## Build laws (read first)
 
 - **Always `-p:Platform=x64`.** An unflagged build produces a stale/mismatched DLL that Dalamud loads anyway.
-- **Agents NEVER build the plugin.** Dalamud hot-loads the output DLL - any build is a live deploy into a running game. Builds happen only on the player's explicit "go", never while they may be in-game or testing. Dalamud does not auto-reload a rebuilt dev plugin; the player reloads it from the plugin installer.
+- **Agents NEVER build the plugin.** Dalamud hot-loads the output DLL - any build is a live deploy into a running game. Builds happen only on the player's explicit "go", never while they may be in-game or testing. Whether Dalamud reloads a rebuilt dev plugin is a per-plugin toggle in the plugin installer ("automatic reloading"); with it off the player reloads by hand, with it on the build IS the reload, which is exactly why no build happens without the player's go.
 - **Tests are safe anytime**: `dotnet test BalambGarden.Engine.Tests/BalambGarden.Engine.Tests.csproj` - the Engine has zero game dependency. A compile check of the plugin project goes to a scratch output folder (`-o <scratch>`), never to the dev-load path.
 - Feature branches only; merge to main (no-ff) = save point; this doc's review rides every merge.
 - Repo is quasi-public. The maintainer persona is **Drift** (GitHub: DriftlessDigits); no real names in code, comments, commits, or docs; no private paths, workspace or tooling names. No AI co-authorship lines in commits. A machine-local pre-commit name guard backs this up (installed per machine from the maintainer's own tooling; untracked BY DESIGN - a tracked hook would ship the names it blocks).
