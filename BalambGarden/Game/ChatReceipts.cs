@@ -108,7 +108,11 @@ internal static unsafe class ChatReceipts
             // the chain already knows exactly which bed it acted on, so running the
             // previous-target ladder against a chain's own line could only ever produce a
             // second, weaker answer to a question already settled.
-            if (CensusPump.TryCloseChain(verdict, itemSpecies, yield))
+            // The sow line names its bed (capture 2026-10-18): the close and the manual branch
+            // both hold it against what they think was acted on.
+            var lineBed = verdict == ChatVerdict.PlantBed ? ChatLine.ParseBedSow(text) : null;
+
+            if (CensusPump.TryCloseChain(verdict, itemSpecies, yield, lineBed))
                 return;
 
             // RULING 5 (2026-08-23): the manual branch never runs while a chain is driving. One
@@ -128,6 +132,8 @@ internal static unsafe class ChatReceipts
             var previous = Svc.Targets.PreviousTarget;
             if (verdict == ChatVerdict.HarvestObtain)
                 OnManualHarvest(previous, itemSpecies, yield);
+            else if (verdict == ChatVerdict.PlantBed)
+                OnBedSow(previous, lineBed!.Value);
             else if (ChatLine.IsPotVerdict(verdict))
                 OnPot(verdict, previous);
             else
@@ -308,6 +314,33 @@ internal static unsafe class ChatReceipts
         CensusPump.OnChatReceipt(
             ChatLine.KindOf(verdict), isPot: false, potKey: -1,
             patchOrdinal: bed.PatchOrdinal, bedSlot: bed.BedIndex, patchId: bed.PatchId);
+    }
+
+    /// <summary>The manual bed sow. Two identity witnesses, both required: the line's own words
+    /// name the bed, and the previous-target must be that same bed. They disagree -> nothing
+    /// (fail closed, loud). No species corroboration here, unlike the other bed verbs: the bed
+    /// was empty a moment ago, so there is no crop name to agree with - the map names the seed
+    /// after the line (<see cref="CensusPump.OnSowLine"/>).</summary>
+    private static void OnBedSow(IGameObject? previous, (int PatchOrdinal, int BedSlot) named)
+    {
+        if (BedOf(previous) is not { } bed)
+        {
+            Plugin.Log.Warning(
+                $"[ChatReceipts] sow line naming patch {named.PatchOrdinal + 1} bed {named.BedSlot + 1} "
+                + "with no bed on previous-target - not receipted (fail closed)");
+            return;
+        }
+        if (bed.PatchOrdinal != named.PatchOrdinal || bed.BedIndex != named.BedSlot)
+        {
+            Plugin.Log.Warning(
+                $"[ChatReceipts] sow line names patch {named.PatchOrdinal + 1} bed {named.BedSlot + 1} but "
+                + $"previous-target is patch {bed.PatchOrdinal + 1} bed {bed.BedIndex + 1} - not receipted (fail closed)");
+            return;
+        }
+
+        Plugin.Log.Information(
+            $"[ChatReceipts] bed sow: line and previous-target agree on patch {bed.PatchOrdinal + 1} bed {bed.BedIndex + 1}");
+        CensusPump.OnSowLine(bed.PatchOrdinal, bed.BedIndex, bed.PatchId);
     }
 
     private static void OnPot(ChatVerdict verdict, IGameObject? previous)

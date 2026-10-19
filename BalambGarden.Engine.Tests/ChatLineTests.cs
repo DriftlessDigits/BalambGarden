@@ -54,6 +54,7 @@ public class ChatLineTests
     [InlineData(ChatVerdict.PlantPot)]
     [InlineData(ChatVerdict.TendBed)]
     [InlineData(ChatVerdict.WaterPot)]
+    [InlineData(ChatVerdict.PlantBed)]
     public void Every_success_channel_verdict_names_its_container(ChatVerdict v)
         => Assert.True(ChatLine.NamesContainer(v));
 
@@ -149,6 +150,7 @@ public class ChatLineTests
     [InlineData(ChatVerdict.PlantPot, SyncKind.Plant)]
     [InlineData(ChatVerdict.TendBed, SyncKind.Tend)]
     [InlineData(ChatVerdict.WaterPot, SyncKind.PotWater)]
+    [InlineData(ChatVerdict.PlantBed, SyncKind.Plant)]
     public void Every_verdict_names_its_kind(ChatVerdict verdict, SyncKind kind)
         => Assert.Equal(kind, ChatLine.KindOf(verdict));
 
@@ -162,6 +164,7 @@ public class ChatLineTests
     [Theory]
     [InlineData(ChatVerdict.FertilizeBed)]
     [InlineData(ChatVerdict.TendBed)]
+    [InlineData(ChatVerdict.PlantBed)]
     public void Bed_sentences_name_a_bed(ChatVerdict verdict)
         => Assert.False(ChatLine.IsPotVerdict(verdict));
 
@@ -170,6 +173,40 @@ public class ChatLineTests
     {
         Assert.Throws<ArgumentOutOfRangeException>(() => ChatLine.KindOf(ChatVerdict.None));
         Assert.Throws<ArgumentOutOfRangeException>(() => ChatLine.IsPotVerdict(ChatVerdict.None));
+    }
+
+    // ---- The bed sow line (capture 2026-10-18: three hand sows, FC Estate patch 1) ----------
+
+    [Theory]
+    [InlineData("You plant seeds in the 1st bed, 1st patch.", 0, 0)]
+    [InlineData("You plant seeds in the 2nd bed, 1st patch.", 0, 1)]
+    [InlineData("You plant seeds in the 3rd bed, 1st patch.", 0, 2)]
+    [InlineData("You plant seeds in the 8th bed, 3rd patch.", 2, 7)]
+    public void The_captured_sow_lines_classify_and_name_their_bed(string text, int patch, int bed)
+    {
+        Assert.Equal(ChatVerdict.PlantBed, ChatLine.Classify(SystemMessage, true, text));
+        Assert.Equal((patch, bed), ChatLine.ParseBedSow(text));
+    }
+
+    [Theory]
+    [InlineData("You plant seeds in the 1nd bed, 1st patch.")]   // wrong suffix
+    [InlineData("You plant seeds in the 9th bed, 1st patch.")]   // no ninth bed
+    [InlineData("You plant seeds in the 0th bed, 1st patch.")]
+    [InlineData("You plant seeds in the 1st bed, 1st patch")]    // no full stop
+    [InlineData("He said You plant seeds in the 1st bed, 1st patch.")]
+    [InlineData("You plant seeds in the 1st bed, 1st patch. Nice.")]
+    public void Anything_off_the_sow_shape_is_nothing(string text)
+    {
+        Assert.Null(ChatLine.ParseBedSow(text));
+        Assert.Equal(ChatVerdict.None, ChatLine.Classify(SystemMessage, true, text));
+    }
+
+    [Fact]
+    public void The_sow_words_from_anyone_else_or_on_another_channel_are_nothing()
+    {
+        const string line = "You plant seeds in the 1st bed, 1st patch.";
+        Assert.Equal(ChatVerdict.None, ChatLine.Classify(SystemMessage, false, line));
+        Assert.Equal(ChatVerdict.None, ChatLine.Classify(LootNotice, true, line));
     }
 }
 

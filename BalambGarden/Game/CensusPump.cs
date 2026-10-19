@@ -52,6 +52,7 @@ internal static class CensusPump
         // window judged on a two-second tempo would round a timeout up by a third, and a
         // pending is owed its history line whether or not there is covered ground underfoot.
         SweepPending();
+        PollParkedSows();
 
 #if DEBUG
         // Deliberately ABOVE the 2-second gate below: the plant-flow dialogs open and
@@ -632,29 +633,40 @@ internal static class CensusPump
     /// payload, count from the text (Q3, ruled 2026-10-14) - null for every other kind.</param>
     internal static void OnChatReceipt(
         SyncKind kind, bool isPot, int potKey, int patchOrdinal, int bedSlot, ushort patchId,
-        ushort knownSpecies = 0, IReadOnlyList<SyncYield>? yields = null)
+        ushort knownSpecies = 0, IReadOnlyList<SyncYield>? yields = null,
+        ParkedSow? parked = null)
     {
-        var estate = EstateSensor.Current();
+        // A parked sow carries its line's own ground: the estate and house it was sown on,
+        // checked covered at the line. Everything else is decided now, where we stand.
+        var estate = parked?.Estate ?? EstateSensor.Current();
         if (estate is null)
         {
             Plugin.Log.Information($"[Census] chat {kind} with no estate identity - not recorded");
             return;
         }
 
-        if (!CoveredHere)
+        if (parked is null && !CoveredHere)
         {
             Plugin.Log.Information($"[Census] chat {kind} here: {NotCovered}");
             return;
         }
 
-        SightNow();   // acting is censusing: fresh map before the receipt lands
+        // Acting is censusing: fresh map before the receipt lands - but only a map we are
+        // standing on can answer for this estate.
+        var mapHere = EstateSensor.Current() == estate;
+        if (mapHere)
+            SightNow();
 
         // Best effort off the map read, never a guess: 0 stays 0 locally and becomes a null
         // species on the wire, which honestly says "the sender did not know" rather than
         // asserting a crop that might not be there.
         ushort species = 0;
         byte stage = 0;
-        if (isPot)
+        if (!mapHere)
+        {
+            // Walked off before the map answered: the line is still a fact, species unknown.
+        }
+        else if (isPot)
         {
             if (LastIndoor.TryGetValue(potKey, out var pot))
             {
@@ -673,7 +685,9 @@ internal static class CensusPump
         if (species == 0)
             species = knownSpecies;
 
-        var now = DateTimeOffset.UtcNow;
+        // The act's instant is the LINE's, not this landing's: a parked sow lands a beat later,
+        // and its planted-at must still be the sowing.
+        var now = parked?.LineAt ?? DateTimeOffset.UtcNow;
 
         // A pot is its own one-bed patch (ordinal = map key, slot 0), the same shape
         // OnPotReceipt uses - the census keeps one identity convention whoever minted it.
@@ -703,7 +717,7 @@ internal static class CensusPump
             kind, SyncSource.Chat, now, estate, isPot,
             patchOrdinal: patchOrdinal, bedSlot: bedSlot, patchId: patchId, potKey: potKey,
             data: new SyncData(Species: species == 0 ? null : species, Yields: yields),
-            houseId: EstateSensor.CurrentHouseId());
+            houseId: parked?.HouseId ?? EstateSensor.CurrentHouseId());
         Plugin.Garden.SaveReceipts();
 
         var where = isPot
@@ -713,6 +727,103 @@ internal static class CensusPump
             $"[Census] {kind} receipted from chat: {where} at {estate.DisplayLabel()}"
             + $" - {(species == 0 ? "species unknown" : Plugin.Tables.SpeciesName(species))}"
             + (bed is null ? " (not claimed: patch not identified yet)" : ""));
+    }
+
+    /// <summary>A hand sow heard in chat, waiting for the map to name what was sown. The sow line
+    /// names its bed but not its seed (capture 2026-10-18), and the species is the map's to say
+    /// - the confirm prompt is a question asked before the act, the map is the game's fact
+    /// after it (ruled 2026-10-18). Same capture: the map named the seedling within 2.8s of the
+    /// line, every time. The act's ground (estate, house, instant) is banked AT the line so a
+    /// sow is never lost to walking away while the map catches up.</summary>
+    internal sealed record ParkedSow(
+        EstateKey Estate, ulong HouseId, DateTimeOffset LineAt,
+        int PatchOrdinal, int BedSlot, ushort PatchId);
+
+    private static readonly List<ParkedSow> parkedSows = [];
+    private static DateTime nextSowPollUtc = DateTime.MinValue;
+
+    /// <summary>How long a sow waits for the map before landing without a species. Generous
+    /// against the measured under-3s: a slow map costs only a late receipt, a short wait would
+    /// cost the species on the wire.</summary>
+    private static readonly TimeSpan SowSpeciesWait = TimeSpan.FromSeconds(10);
+
+    /// <summary>The manual bed sow (catalogued 2026-10-18). Identity is already decided - the
+    /// line's own words and the previous-target agreed on the bed. Lands at once when the map
+    /// already names the seed; otherwise parks and <see cref="PollParkedSows"/> retries.</summary>
+    internal static void OnSowLine(int patchOrdinal, int bedSlot, ushort patchId)
+    {
+        var estate = EstateSensor.Current();
+        if (estate is null)
+        {
+            Plugin.Log.Information("[Census] chat Plant with no estate identity - not recorded");
+            return;
+        }
+        if (!CoveredHere)
+        {
+            Plugin.Log.Information($"[Census] chat Plant here: {NotCovered}");
+            return;
+        }
+
+        var sow = new ParkedSow(estate, EstateSensor.CurrentHouseId(), DateTimeOffset.UtcNow,
+            patchOrdinal, bedSlot, patchId);
+        RefreshDisplayOnly();
+        if (SownSpecies(sow) != 0)
+        {
+            LandSow(sow, waitedFor: null);
+            return;
+        }
+        parkedSows.Add(sow);
+        Plugin.Log.Debug(
+            $"[Census] sow at patch {patchOrdinal + 1} bed {bedSlot + 1} parked - map has not named the seed yet");
+    }
+
+    /// <summary>Retries parked sows against a fresh display-only read (no census writes until a
+    /// sow lands). Runs above the census gate on its own quarter-second tempo: the wait being
+    /// measured is seconds, and a 2s tick would round it up for nothing. Leaving the estate
+    /// lands the sow at once - the map there can no longer answer.</summary>
+    private static void PollParkedSows()
+    {
+        if (parkedSows.Count == 0 || DateTime.UtcNow < nextSowPollUtc)
+            return;
+        nextSowPollUtc = DateTime.UtcNow.AddMilliseconds(250);
+
+        var here = EstateSensor.Current();
+        var outside = here is not null && !EstateSensor.IsInside();
+        if (outside)
+            RefreshDisplayOnly();
+
+        var now = DateTimeOffset.UtcNow;
+        foreach (var sow in parkedSows.ToList())
+        {
+            var answered = outside && here == sow.Estate && SownSpecies(sow) != 0;
+            var expired = now - sow.LineAt >= SowSpeciesWait || here != sow.Estate;
+            if (!answered && !expired)
+                continue;
+            parkedSows.Remove(sow);
+            LandSow(sow, waitedFor: now - sow.LineAt);
+        }
+    }
+
+    private static ushort SownSpecies(ParkedSow sow)
+        => Plugin.Garden.Census.BoundKey(sow.Estate, sow.PatchOrdinal) is { } key
+           && LastOutdoor.TryGetValue(key, out var beds) && sow.BedSlot < beds.Count
+            ? beds[sow.BedSlot].SpeciesIndex
+            : (ushort)0;
+
+    private static void LandSow(ParkedSow sow, TimeSpan? waitedFor)
+    {
+        var where = $"patch {sow.PatchOrdinal + 1} bed {sow.BedSlot + 1}";
+        var known = EstateSensor.Current() == sow.Estate && !EstateSensor.IsInside() && SownSpecies(sow) != 0;
+        if (!known)
+            Plugin.Log.Warning(
+                $"[Census] sow at {where}: the map never named the seed "
+                + $"({(waitedFor is { } w ? $"after {w.TotalSeconds:0.0}s" : "at once")}) - planted-at "
+                + "recorded, species left to the next sighting");
+        else if (waitedFor is { } waited)
+            Plugin.Log.Information(
+                $"[Census] sow at {where}: map named the seed {waited.TotalSeconds:0.00}s after the line");
+        OnChatReceipt(SyncKind.Plant, isPot: false, potKey: -1,
+            patchOrdinal: sow.PatchOrdinal, bedSlot: sow.BedSlot, patchId: sow.PatchId, parked: sow);
     }
 
     /// <summary>The two vocabularies, joined in one place. The census verb and the wire kind
@@ -992,11 +1103,13 @@ internal static class CensusPump
     /// contradiction refuses the close and the pending times out honestly.</para></summary>
     /// <param name="yield">The obtain line's item and count (Q3, ruled 2026-10-14), banked on
     /// the pending at close so the history line carries it; null for every other verdict.</param>
-    internal static bool TryCloseChain(ChatVerdict verdict, ushort itemSpecies = 0, SyncYield? yield = null)
+    internal static bool TryCloseChain(
+        ChatVerdict verdict, ushort itemSpecies = 0, SyncYield? yield = null,
+        (int PatchOrdinal, int BedSlot)? lineBed = null)
     {
         if (openPending is not { } pending)
             return false;
-        if (!ReceiptLifecycle.Matches(pending, verdict, DateTimeOffset.UtcNow, itemSpecies))
+        if (!ReceiptLifecycle.Matches(pending, verdict, DateTimeOffset.UtcNow, itemSpecies, lineBed))
             return false;
 
         openPending = null;

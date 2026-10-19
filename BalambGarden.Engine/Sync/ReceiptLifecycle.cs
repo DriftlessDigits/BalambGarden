@@ -86,13 +86,19 @@ public static class ReceiptLifecycle
     /// <para>A negative elapsed is not "very recent": the clock moved under us, and that is not
     /// evidence - the same reading <see cref="FertilizeCorroboration"/> gives it.</para></summary>
     public static bool Matches(
-        PendingReceipt pending, ChatVerdict verdict, DateTimeOffset now, ushort itemSpecies = 0)
+        PendingReceipt pending, ChatVerdict verdict, DateTimeOffset now, ushort itemSpecies = 0,
+        (int PatchOrdinal, int BedSlot)? lineBed = null)
     {
         if (verdict == ChatVerdict.None)
             return false;
         if (ChatLine.KindOf(verdict) != pending.Kind)
             return false;
         if (ChatLine.NamesContainer(verdict) && ChatLine.IsPotVerdict(verdict) != pending.IsPot)
+            return false;
+        // A line that names its bed (the bed sow line, 2026-10-18) can only close the act on
+        // THAT bed: a late line from the previous sow must not confirm the next one.
+        if (lineBed is { } named && !pending.IsPot
+            && (named.PatchOrdinal != pending.PatchOrdinal || named.BedSlot != pending.BedSlot))
             return false;
         if (itemSpecies != 0 && pending.Species != 0 && itemSpecies != pending.Species)
             return false;
