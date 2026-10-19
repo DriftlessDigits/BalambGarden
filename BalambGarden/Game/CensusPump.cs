@@ -53,6 +53,7 @@ internal static class CensusPump
         // pending is owed its history line whether or not there is covered ground underfoot.
         SweepPending();
         PollParkedSows();
+        PollGather();
 
 #if DEBUG
         // Deliberately ABOVE the 2-second gate below: the plant-flow dialogs open and
@@ -713,12 +714,22 @@ internal static class CensusPump
 
         // The receipt log (the outbox) and, for a plant or harvest, the garden history - one
         // seam (GardenService.AppendOwn). SaveReceipts refreshes config's memory of the counter.
-        Plugin.Garden.AppendOwn(
-            kind, SyncSource.Chat, now, estate, isPot,
-            patchOrdinal: patchOrdinal, bedSlot: bedSlot, patchId: patchId, potKey: potKey,
-            data: new SyncData(Species: species == 0 ? null : species, Yields: yields),
-            houseId: parked?.HouseId ?? EstateSensor.CurrentHouseId());
-        Plugin.Garden.SaveReceipts();
+        // A BED harvest's append waits out its seed window (ruled 2026-10-18): the census above
+        // already emptied the bed; only the row waits, so the seed lands ON it.
+        var data = new SyncData(Species: species == 0 ? null : species, Yields: yields);
+        var houseId = parked?.HouseId ?? EstateSensor.CurrentHouseId();
+        void Append(SyncData d)
+        {
+            Plugin.Garden.AppendOwn(
+                kind, SyncSource.Chat, now, estate, isPot,
+                patchOrdinal: patchOrdinal, bedSlot: bedSlot, patchId: patchId, potKey: potKey,
+                data: d, houseId: houseId);
+            Plugin.Garden.SaveReceipts();
+        }
+        if (kind == SyncKind.Harvest && !isPot)
+            GatherHarvest(data, Append, $"patch {patchOrdinal + 1} bed {bedSlot + 1}");
+        else
+            Append(data);
 
         var where = isPot
             ? $"pot (key {potKey})"
@@ -1118,7 +1129,11 @@ internal static class CensusPump
         // Banked for the reverse race: a delivery still on its way to this same act must be
         // able to tell "already in history" from "never opened" (ruling 4's honest degrade).
         lastClose = new ReceiptLifecycle.RecentClose(pending.Kind, pending.IsPot, DateTimeOffset.UtcNow);
-        AppendHistory(pending, SyncSource.Chain);
+        if (pending.Kind == SyncKind.Harvest && !pending.IsPot)
+            GatherHarvest(DataOf(pending), d => AppendHistory(pending, SyncSource.Chain, d),
+                $"patch {pending.PatchOrdinal + 1} bed {pending.BedSlot + 1}");
+        else
+            AppendHistory(pending, SyncSource.Chain);
         Plugin.Log.Information($"[Census] {pending.Kind} receipt confirmed by chat");
         return true;
     }
@@ -1171,18 +1186,77 @@ internal static class CensusPump
     /// be the thing that breaks the plugin - an append can refuse (no era minted yet, ruled at
     /// <see cref="ReceiptLog.Append"/>), and a lost history line is a smaller harm than a dead
     /// tick.</para></summary>
-    private static void AppendHistory(PendingReceipt pending, SyncSource source)
+    private static void AppendHistory(PendingReceipt pending, SyncSource source, SyncData? data = null)
     {
         if (SafeAppend(
                 pending.Kind, source, pending.OpenedAt, pending.Estate, pending.IsPot,
                 patchOrdinal: pending.PatchOrdinal, bedSlot: pending.BedSlot,
                 patchId: pending.PatchId, potKey: pending.PotKey,
-                data: new SyncData(
-                    Species: pending.Species == 0 ? null : pending.Species,
-                    Stage: pending.Stage == 0 ? null : pending.Stage,
-                    Yields: pending.Yields),
+                data: data ?? DataOf(pending),
                 houseId: pending.HouseId))
             Plugin.Garden.SaveReceipts();
+    }
+
+    private static SyncData DataOf(PendingReceipt pending) => new(
+        Species: pending.Species == 0 ? null : pending.Species,
+        Stage: pending.Stage == 0 ? null : pending.Stage,
+        Yields: pending.Yields);
+
+    /// <summary>The bed harvest listening for its cross seed (ruled 2026-10-18,
+    /// <see cref="HarvestGather"/>). One at a time: a new harvest closes the previous window
+    /// first - its seed line, if any, already landed in its own crop line's millisecond - so two
+    /// quick harvests can never trade seeds.</summary>
+    private static (HarvestGather Gather, SyncData Data, Action<SyncData> Land, string Where)? gathering;
+
+    private static void GatherHarvest(SyncData data, Action<SyncData> land, string where)
+    {
+        CloseGather(heard: true);
+        gathering = (new HarvestGather(DateTimeOffset.UtcNow), data, land, where);
+    }
+
+    /// <summary>A seed-bag obtain line. True when a listening harvest took it.</summary>
+    internal static bool OfferSeed(uint seedItem, int qty)
+    {
+        if (gathering is not { } g || !g.Gather.Offer(seedItem, qty, DateTimeOffset.UtcNow))
+            return false;
+        Plugin.Log.Information($"[Census] cross seed on the {g.Where} harvest: {qty} x item {seedItem}");
+        return true;
+    }
+
+    private static void PollGather()
+    {
+        if (gathering is { } g && g.Gather.Due(DateTimeOffset.UtcNow))
+            CloseGather(heard: true);
+    }
+
+    /// <summary>Lands the listening harvest's row. <paramref name="heard"/> false only when the
+    /// window is cut short (unload): an empty cut window is NOT HEARD, never a miss.</summary>
+    private static void CloseGather(bool heard)
+    {
+        if (gathering is not { } g)
+            return;
+        gathering = null;
+        var (qty, item) = g.Gather.Result(heard);
+        Plugin.Log.Information(qty switch
+        {
+            null => $"[Census] {g.Where} harvest: seed not heard (listening cut short)",
+            0 => $"[Census] {g.Where} harvest: no cross seed (window closed empty)",
+            _ => $"[Census] {g.Where} harvest: cross seed {qty} x item {item}",
+        });
+        g.Land(g.Data with { SeedQty = qty, SeedItem = item });
+    }
+
+    /// <summary>Plugin unload: nothing an act already earned may be lost to a reload. The
+    /// listening harvest lands (heard only if its window had closed or a seed came), and every
+    /// parked sow lands with whatever the map says now.</summary>
+    internal static void Shutdown()
+    {
+        CloseGather(heard: gathering is { } g && g.Gather.Due(DateTimeOffset.UtcNow));
+        foreach (var sow in parkedSows.ToList())
+        {
+            parkedSows.Remove(sow);
+            LandSow(sow, waitedFor: DateTimeOffset.UtcNow - sow.LineAt);
+        }
     }
 
     /// <summary>FALLBACK ONLY (ruled 2026-08-23): the primary patch id is the acted object's

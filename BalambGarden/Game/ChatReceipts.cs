@@ -103,15 +103,36 @@ internal static unsafe class ChatReceipts
             // count. Banked whichever branch closes the act; absent when the line gave neither.
             var yield = verdict == ChatVerdict.HarvestObtain ? YieldOf(message, text) : null;
 
+            // The cross seed (ruled 2026-10-18): a seed-bag obtain line rides the same channel as
+            // the crop line, a moment behind it, and belongs ON the harvest that is listening.
+            // Asked before the pending desk so it can never close or become a harvest of its own.
+            // Named edge: Garlic Cloves is both a crop's harvest and a seed item, so a garlic CROP
+            // line inside another harvest's two-second window would be taken as that harvest's
+            // seed - a manual harvest needs an interaction first, which makes the window
+            // unreachable by hand.
+            if (verdict == ChatVerdict.HarvestObtain && SeedLineOf(message, text) is { } seed)
+            {
+                if (CensusPump.OfferSeed(seed.Item, seed.Qty))
+                    return;
+                // Nothing listening. A seed item that is ALSO a crop (garlic) may be a harvest of
+                // its own and goes on down the harvest path; a plain seed bag stops here, loud.
+                if (itemSpecies == 0)
+                {
+                    Plugin.Log.Warning(
+                        $"[ChatReceipts] seed line with no harvest listening (late, or a non-garden seed): '{text}'");
+                    return;
+                }
+            }
+
+            // The sow line names its bed (capture 2026-10-18): the close and the manual branch
+            // both hold it against what they think was acted on.
+            var lineBed = verdict == ChatVerdict.PlantBed ? ChatLine.ParseBedSow(text) : null;
+
             // The pending desk FIRST: a line that closes one of our own acts is that act's
             // confirmation and nothing else. Asking before the identity decode is deliberate -
             // the chain already knows exactly which bed it acted on, so running the
             // previous-target ladder against a chain's own line could only ever produce a
             // second, weaker answer to a question already settled.
-            // The sow line names its bed (capture 2026-10-18): the close and the manual branch
-            // both hold it against what they think was acted on.
-            var lineBed = verdict == ChatVerdict.PlantBed ? ChatLine.ParseBedSow(text) : null;
-
             if (CensusPump.TryCloseChain(verdict, itemSpecies, yield, lineBed))
                 return;
 
@@ -267,6 +288,11 @@ internal static unsafe class ChatReceipts
             return null;
         return new SyncYield(payload.ItemId, ObtainLine.Quantity(text) ?? 1);
     }
+
+    /// <summary>The obtain line as a seed bag: the payload's item is a seed in the crop table.
+    /// Null for anything else (crops, loot, venture yields).</summary>
+    private static SyncYield? SeedLineOf(IHandleableChatMessage message, string text)
+        => YieldOf(message, text) is { } y && Plugin.Tables.CropBySeedId(y.Item) is not null ? y : null;
 
     /// <summary>The species the obtained item resolves to, 0 when it resolves to none. The
     /// id rides the line's ItemPayload (capture 2026-08-26); the name comes off the game's own
