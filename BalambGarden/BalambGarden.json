@@ -13,5 +13,5 @@
   "InternalName": "BalambGarden",
   "IconUrl": "https://raw.githubusercontent.com/DriftlessDigits/DalamudPluginRepo/main/plugins/BalambGarden/images/icon.png",
   "ImageUrls": [],
-  "Changelog": "Household sync is here: type your shared garden phrase in the settings (both installs, same phrase) and the plugin quietly shares watering and harvest news between you. If someone else in the house watered a bed, its hover says so - 'watered 2:05pm - external' - so nobody double-waters and nothing gets missed. No accounts, no setup beyond the phrase; leave it empty and the plugin never touches the network. Also: the time-remaining estimate in the run window now settles instead of sawtoothing."
+  "Changelog": "When a bed is sown, by hand or by the plugin, its ripe time is now exact instead of a guess, and a bed you just harvested and replanted shows a tight window right away. Hand harvests and hand sowings count now, not just the ones the plugin does for you. Behind the scenes the plugin also keeps a record of every planting and harvest from both of you: how much came in, and which cross seeds dropped or didn't (a screen to browse it comes later). Your first load after updating converts the garden file to a new format and keeps a backup beside it."
 }
