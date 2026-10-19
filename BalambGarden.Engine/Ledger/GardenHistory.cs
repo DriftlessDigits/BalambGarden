@@ -14,7 +14,9 @@ public enum HistoryKind { Plant, Harvest }
 /// serializes). <see cref="At"/> is the act's own instant, not arrival. <see cref="Id"/> is the
 /// wire id ("user:era:counter") for both hands - own rows use the install's real slug so a relay
 /// echo of the same receipt can never land twice. <see cref="Yields"/> is the reserved wire
-/// field, finally filled (Q3, ruled 2026-10-14).</summary>
+/// field, finally filled (Q3, ruled 2026-10-14). <see cref="SeedQty"/>/<see cref="SeedItem"/> are a
+/// harvest's cross seed in three states (ruled 2026-10-18, <see cref="HarvestGather"/>): crossed
+/// (qty, item), missed (0, null), not heard (null, null).</summary>
 public sealed record HistoryEntry(
     string Id,
     DateTimeOffset At,
@@ -26,7 +28,9 @@ public sealed record HistoryEntry(
     int BedSlot,
     string By,
     SyncSource Source,
-    IReadOnlyList<SyncYield>? Yields)
+    IReadOnlyList<SyncYield>? Yields,
+    int? SeedQty = null,
+    uint? SeedItem = null)
 {
     [JsonIgnore] public bool IsOwn => By == Hand.OwnSlug;
 
@@ -57,7 +61,9 @@ public sealed record HistoryEntry(
             BedSlot: r.IsPot ? 0 : r.BedSlot,
             By: Hand.OwnSlug,
             Source: r.Source,
-            Yields: r.Data.Yields);
+            Yields: r.Data.Yields,
+            SeedQty: r.Data.SeedQty,
+            SeedItem: r.Data.SeedItem);
     }
 
     /// <summary>A household act, from the wire receipt and the row it landed on. Null for any
@@ -77,7 +83,9 @@ public sealed record HistoryEntry(
             BedSlot: bed.BedSlot,
             By: hand.Slug,
             Source: r.Source,
-            Yields: r.Data.Yields);
+            Yields: r.Data.Yields,
+            SeedQty: r.Data.SeedQty,
+            SeedItem: r.Data.SeedItem);
     }
 }
 

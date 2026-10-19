@@ -1,4 +1,5 @@
 using BalambGarden.Engine.Census;
+using BalambGarden.Engine.Derivations;
 using BalambGarden.Engine.Ledger;
 using BalambGarden.Engine.Sync;
 using Xunit;
@@ -531,5 +532,30 @@ public class ForeignApplyTests
         ForeignApply.AbsorbPage(ledger, page, OwnUser, T0, history, () => { history.MarkSaved(); return true; });
         ForeignApply.AbsorbPage(ledger, page, OwnUser, T0, history, () => { history.MarkSaved(); return true; });
         Assert.Single(history.Entries);
+    }
+
+    // ------------------------------------------------------------------ end to end (2026-10-18)
+
+    [Fact] // a hand sow on one install anchors the ripe time on the other: the wire carries the line's instant
+    public void A_household_sow_anchors_the_ripe_time_here()
+    {
+        var ledger = WithBed();
+        Apply(ledger, Harvest(T0, 1), Plant(Apple, T0.AddMinutes(5), 2));
+        var bed = ledger.Beds[0];
+        Assert.Equal(T0.AddMinutes(5), bed.PlantedAt);
+        var w = StageModel.RipeWindow(bed, 120)!.Window;
+        Assert.Equal(Provenance.Anchored, w.Provenance);
+        Assert.Equal(T0.AddMinutes(5).AddHours(120), w.Earliest);
+    }
+
+    [Fact] // no sow receipt (an older install's hand sow): the household harvest is the floor, the sighting the ceiling
+    public void A_household_harvest_floors_the_next_planting_here()
+    {
+        var ledger = WithBed();
+        Apply(ledger, Harvest(T0, 1), Stage(Apple, 1, T0.AddMinutes(8), 2));
+        var w = StageModel.RipeWindow(ledger.Beds[0], 120)!.Window;
+        Assert.Equal(Provenance.Bracketed, w.Provenance);
+        Assert.Equal(T0.AddHours(120), w.Earliest);
+        Assert.Equal(T0.AddMinutes(8).AddHours(120), w.Latest);
     }
 }

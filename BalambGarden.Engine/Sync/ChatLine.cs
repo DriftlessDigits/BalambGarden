@@ -6,10 +6,10 @@ namespace BalambGarden.Engine.Sync;
 ///
 /// <para>The three verdicts after the fertilize pair were added for the receipt lifecycle
 /// (ratified 2026-08-23) off the same day's field capture; HarvestObtain off the 2026-08-26
-/// harvest capture. APPENDED, never reordered: the fertilize pair keeps its numbers, the way
+/// harvest capture; PlantBed off the 2026-10-18 bed sow capture. APPENDED, never reordered: the fertilize pair keeps its numbers, the way
 /// <see cref="Census.ReceiptVerb"/> does, so a value that ever reaches a persisted surface
 /// means the same thing forever.</para></summary>
-public enum ChatVerdict { None, FertilizeBed, FertilizePot, PlantPot, TendBed, WaterPot, HarvestObtain }
+public enum ChatVerdict { None, FertilizeBed, FertilizePot, PlantPot, TendBed, WaterPot, HarvestObtain, PlantBed }
 
 /// <summary>The chat classifier: one pure function over (channel, who acted, words), no
 /// Dalamud types, no game state, desk-testable. Built on the fertilize recon capture of
@@ -55,9 +55,8 @@ public static class ChatLine
     /// sentence, which is why pot-ness is decided here and never guessed downstream.</summary>
     public const string PotFertilizeText = "Pomace added to flowerpot.";
 
-    /// <summary>The pot sow line, verbatim (capture 2026-08-23). The bed sow line is NOT KNOWN
-    /// yet - a bed plant therefore opens a pending that times out as chain-unconfirmed until
-    /// the unmatched-line logger hands us its words.</summary>
+    /// <summary>The pot sow line, verbatim (capture 2026-08-23). The bed sow line is a different
+    /// animal - see <see cref="ParseBedSow"/>.</summary>
     public const string PotPlantText = "Seeds planted in flowerpot.";
 
     /// <summary>The bed tend line, verbatim (capture 2026-08-23). The tape's only tend
@@ -70,6 +69,38 @@ public static class ChatLine
     /// - the game offers no separate verb - so this maps to
     /// <see cref="SyncKind.PotWater"/>, which is the kind the schema ratified for it.</summary>
     public const string PotWaterText = "The crops appear to be healthy.";
+
+    /// <summary>The bed sow line's shape (capture 2026-10-18, three hand sows: "You plant seeds
+    /// in the 1st bed, 1st patch." / "2nd bed" / "3rd bed", SystemMessage/57 from the local
+    /// player, plain text). The one garden success line that names its own container: bed and
+    /// patch as 1-based English ordinals, so it cannot be an exact-text entry - and it names no
+    /// seed, so species is the map's to say. Anchored at both ends and suffix-checked, so a
+    /// sentence quoting it inside a longer one, or a mangled ordinal, is nothing.</summary>
+    private static readonly System.Text.RegularExpressions.Regex BedSowShape = new(
+        @"^You plant seeds in the (\d+)(st|nd|rd|th) bed, (\d+)(st|nd|rd|th) patch\.$",
+        System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+
+    /// <summary>The bed a sow line names, 0-based like the gimmick decode (patch ordinal, bed
+    /// slot), or null when the text is not the sow shape. A bed outside 1-8 or an ordinal with
+    /// the wrong suffix ("1nd") is refused rather than trusted.</summary>
+    public static (int PatchOrdinal, int BedSlot)? ParseBedSow(string text)
+    {
+        var m = BedSowShape.Match(text);
+        if (!m.Success
+            || !int.TryParse(m.Groups[1].Value, out var bed)
+            || !int.TryParse(m.Groups[3].Value, out var patch))
+            return null;
+        if (bed is < 1 or > 8 || patch < 1
+            || m.Groups[2].Value != OrdinalSuffix(bed) || m.Groups[4].Value != OrdinalSuffix(patch))
+            return null;
+        return (patch - 1, bed - 1);
+    }
+
+    private static string OrdinalSuffix(int n) => (n % 100) switch
+    {
+        11 or 12 or 13 => "th",
+        _ => (n % 10) switch { 1 => "st", 2 => "nd", 3 => "rd", _ => "th" },
+    };
 
     /// <summary>Rules on one chat line.</summary>
     /// <param name="logKind">The chat channel, numeric.</param>
@@ -89,6 +120,7 @@ public static class ChatLine
             PotPlantText => ChatVerdict.PlantPot,
             BedTendText => ChatVerdict.TendBed,
             PotWaterText => ChatVerdict.WaterPot,
+            _ when ParseBedSow(text) is not null => ChatVerdict.PlantBed,
             _ => ChatVerdict.None,
         };
     }
@@ -120,7 +152,7 @@ public static class ChatLine
     public static SyncKind KindOf(ChatVerdict v) => v switch
     {
         ChatVerdict.FertilizeBed or ChatVerdict.FertilizePot => SyncKind.Fertilize,
-        ChatVerdict.PlantPot => SyncKind.Plant,
+        ChatVerdict.PlantPot or ChatVerdict.PlantBed => SyncKind.Plant,
         ChatVerdict.TendBed => SyncKind.Tend,
         ChatVerdict.WaterPot => SyncKind.PotWater,
         ChatVerdict.HarvestObtain => SyncKind.Harvest,
@@ -136,7 +168,7 @@ public static class ChatLine
     {
         ChatVerdict.HarvestObtain => false,
         ChatVerdict.FertilizeBed or ChatVerdict.FertilizePot or ChatVerdict.PlantPot
-            or ChatVerdict.TendBed or ChatVerdict.WaterPot => true,
+            or ChatVerdict.TendBed or ChatVerdict.WaterPot or ChatVerdict.PlantBed => true,
         _ => throw new ArgumentOutOfRangeException(nameof(v), v, "No sentence behind this verdict"),
     };
 
@@ -150,7 +182,7 @@ public static class ChatLine
     public static bool IsPotVerdict(ChatVerdict v) => v switch
     {
         ChatVerdict.FertilizePot or ChatVerdict.PlantPot or ChatVerdict.WaterPot => true,
-        ChatVerdict.FertilizeBed or ChatVerdict.TendBed => false,
+        ChatVerdict.FertilizeBed or ChatVerdict.TendBed or ChatVerdict.PlantBed => false,
         _ => throw new ArgumentOutOfRangeException(nameof(v), v, "No container for this verdict"),
     };
 

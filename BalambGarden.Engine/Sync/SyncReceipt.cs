@@ -47,7 +47,12 @@ public sealed record SyncData(
     [property: JsonPropertyName("soil")] uint? Soil = null,
     [property: JsonPropertyName("stage")] byte? Stage = null,
     [property: JsonPropertyName("wilt")] byte? Wilt = null,
-    [property: JsonPropertyName("yields")] IReadOnlyList<SyncYield>? Yields = null)
+    [property: JsonPropertyName("yields")] IReadOnlyList<SyncYield>? Yields = null,
+    // Harvest only (ruled 2026-10-18): the cross seed. qty 0 + no item = heard, missed; both
+    // absent = not heard. Additive: the relay stores data verbatim and older installs ignore
+    // fields they do not know. See HarvestGather.
+    [property: JsonPropertyName("seedQty")] int? SeedQty = null,
+    [property: JsonPropertyName("seedItem")] uint? SeedItem = null)
 {
     public static readonly SyncData Empty = new();
 }

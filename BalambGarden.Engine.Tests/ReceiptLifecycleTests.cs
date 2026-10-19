@@ -26,6 +26,16 @@ public class ReceiptLifecycleTests
         Assert.True(ReceiptLifecycle.Matches(Pot(), ChatVerdict.WaterPot, Opened.AddSeconds(4)));
     }
 
+    [Fact] // capture 2026-10-18: the sow line names its bed, so it closes only that bed's act
+    public void A_sow_line_closes_the_plant_on_the_bed_it_names()
+    {
+        var plant = Bed(SyncKind.Plant);
+        Assert.True(ReceiptLifecycle.Matches(plant, ChatVerdict.PlantBed, Opened.AddSeconds(1), lineBed: (0, 3)));
+        Assert.False(ReceiptLifecycle.Matches(plant, ChatVerdict.PlantBed, Opened.AddSeconds(1), lineBed: (0, 2)));
+        Assert.False(ReceiptLifecycle.Matches(plant, ChatVerdict.PlantBed, Opened.AddSeconds(1), lineBed: (1, 3)));
+        Assert.False(ReceiptLifecycle.Matches(Pot(SyncKind.Plant), ChatVerdict.PlantBed, Opened.AddSeconds(1), lineBed: (0, 0)));
+    }
+
     [Fact]
     public void The_open_instant_itself_closes()
         => Assert.True(ReceiptLifecycle.Matches(Bed(), ChatVerdict.TendBed, Opened));
@@ -146,6 +156,7 @@ public class ReceiptLifecycleTests
                  {
                      ChatVerdict.FertilizeBed, ChatVerdict.FertilizePot,
                      ChatVerdict.PlantPot, ChatVerdict.TendBed, ChatVerdict.WaterPot,
+                     ChatVerdict.PlantBed,
                  })
             Assert.False(ReceiptLifecycle.Matches(harvest, verdict, Opened.AddSeconds(1)));
 

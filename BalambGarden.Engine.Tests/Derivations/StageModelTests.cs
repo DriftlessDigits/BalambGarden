@@ -116,4 +116,51 @@ public class StageModelTests
         Assert.Equal(T0.AddHours(180), e.Window.Earliest);
         Assert.Equal(T0.AddHours(220), e.Window.Latest);
     }
+
+    [Fact] // field receipt 2026-10-18: emptied at X, seen growing at Y - the fence closes the bracket
+    public void FenceFloorsAFreshReplant()
+    {
+        var bed = Bed();
+        bed.Rebase(RebaseReason.HarvestWitnessed, T0);
+        Seed.Sight(bed, T0.AddMinutes(8), Species, 1);
+        var w = StageModel.RipeWindow(bed, Grow)!.Window;
+        Assert.Equal(Provenance.Bracketed, w.Provenance);
+        Assert.Equal(T0.AddHours(Grow), w.Earliest);
+        Assert.Equal(T0.AddMinutes(8).AddHours(Grow), w.Latest);
+    }
+
+    [Fact] // a fence older than the stage bound adds nothing: same window, same word
+    public void OldFenceChangesNothing()
+    {
+        var bed = Bed();
+        bed.Rebase(RebaseReason.HarvestWitnessed, T0.AddHours(-500));
+        Seed.Sight(bed, T0.AddHours(50), Species, 2);
+        var w = StageModel.RipeWindow(bed, Grow)!.Window;
+        Assert.Equal(Provenance.Estimated, w.Provenance);
+        Assert.Equal(T0.AddHours(-30 + Grow), w.Earliest);
+    }
+
+    [Fact] // a fence past the latest possible sowing would invert the bracket - ignored, no contradiction
+    public void FenceThatWouldInvertIsIgnored()
+    {
+        var bed = Bed();
+        bed.Rebase(RebaseReason.NewPlantingSighted, T0.AddHours(45));
+        Seed.Sight(bed, T0.AddHours(50), Species, 2); // stage 2 at 50h: sowing no later than +10h
+        var e = StageModel.RipeWindow(bed, Grow)!;
+        Assert.False(e.Contradiction);
+        Assert.Equal(Provenance.Estimated, e.Window.Provenance);
+        Assert.Equal(T0.AddHours(-30 + Grow), e.Window.Earliest);
+    }
+
+    [Fact] // ripe with no stage 3: the fence can close the one-band estimate too
+    public void FenceFloorsTheRipeBand()
+    {
+        var bed = Bed();
+        bed.Rebase(RebaseReason.HarvestWitnessed, T0.AddHours(-30));
+        Seed.Sight(bed, T0.AddHours(100), Species, 4);
+        var w = StageModel.RipeWindow(bed, Grow)!.Window;
+        Assert.Equal(Provenance.Bracketed, w.Provenance);
+        Assert.Equal(T0.AddHours(90), w.Earliest);
+        Assert.Equal(T0.AddHours(100), w.Latest);
+    }
 }

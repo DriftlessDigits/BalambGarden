@@ -1,0 +1,85 @@
+2026-10-18 19:40:04.404 -05:00 [INF] [BalambGarden] [ChatRecon] watching all chat (verbatim + target-at-line-time)
+2026-10-18 19:40:11.098 -05:00 [INF] [BalambGarden] [ChatRecon] kind=SystemMessage/57 src=None tgt=None text='Screenshot saved.'
+2026-10-18 19:40:11.099 -05:00 [INF] [BalambGarden] [ChatRecon]   zone=340 target=none soft=none prev='Regal Letter Box'(HousingEventObject base=131113)
+2026-10-18 19:40:41.215 -05:00 [INF] [BalambGarden] [ChatRecon] kind=SystemMessage/57 src=None tgt=None text='Krakka Root
+2026-10-18 19:40:41.215 -05:00 [INF] [BalambGarden] [ChatRecon]   payloads: UIForegroundPayload|UIGlowPayload|TextPayload|UIGlowPayload|UIForegroundPayload|TextPayload
+2026-10-18 19:40:41.215 -05:00 [INF] [BalambGarden] [ChatRecon]   zone=340 target=''(bed patch=0 bed=0 id=0x390D) soft=none prev='Regal Letter Box'(HousingEventObject base=131113)
+2026-10-18 19:40:53.440 -05:00 [INF] [BalambGarden] [Obtain] (LootNotice) 'You obtain 9 krakka roots.'
+2026-10-18 19:40:53.440 -05:00 [INF] [BalambGarden] [ChatReceipts] manual harvest corroboration: obtained item agrees with the container's crop
+2026-10-18 19:40:53.443 -05:00 [INF] [BalambGarden] [Census] planting reset patch 1 bed 1 at Ward 12 Plot 58: ReadsEmpty cut=2026-10-19 00:40:53Z by=-
+2026-10-18 19:40:53.455 -05:00 [INF] [BalambGarden] [Census] planting reset patch 1 bed 1 at Ward 12 Plot 58: HarvestWitnessed cut=2026-10-19 00:40:53Z by=own (nothing to remove)
+2026-10-18 19:40:53.470 -05:00 [INF] [BalambGarden] [Census] Harvest receipted from chat: patch 1 bed 1 at Ward 12 Plot 58 - Krakka Root
+2026-10-18 19:40:53.470 -05:00 [INF] [BalambGarden] [ChatRecon] kind=LootNotice/62 src=LocalPlayer tgt=None text='You obtain 9 krakka roots.'
+2026-10-18 19:40:53.470 -05:00 [INF] [BalambGarden] [ChatRecon]   payloads: TextPayload|UIForegroundPayload|UIGlowPayload|ItemPayload|UIForegroundPayload|UIGlowPayload|TextPayload|UIGlowPayload|UIForegroundPayload|TextPayload|RawPayload|UIGlowPayload|UIForegroundPayload|TextPayload
+2026-10-18 19:40:53.470 -05:00 [INF] [BalambGarden] [ChatRecon]   zone=340 target=none soft=none prev=''(bed patch=0 bed=0 id=0x390D)
+2026-10-18 19:40:53.470 -05:00 [INF] [BalambGarden] [Obtain] (LootNotice) 'You obtain a bag of curiel root seeds.'
+2026-10-18 19:40:53.470 -05:00 [WRN] [BalambGarden] [ChatReceipts] manual harvest refused (fail closed): obtained item resolves to no crop species - not receipted (generic obtain line)
+2026-10-18 19:40:53.470 -05:00 [INF] [BalambGarden] [ChatRecon] kind=LootNotice/62 src=LocalPlayer tgt=None text='You obtain a bag of curiel root seeds.'
+2026-10-18 19:40:53.470 -05:00 [INF] [BalambGarden] [ChatRecon]   payloads: TextPayload|UIForegroundPayload|UIGlowPayload|ItemPayload|UIForegroundPayload|UIGlowPayload|TextPayload|UIGlowPayload|UIForegroundPayload|TextPayload|RawPayload|UIGlowPayload|UIForegroundPayload|TextPayload
+2026-10-18 19:40:53.470 -05:00 [INF] [BalambGarden] [ChatRecon]   zone=340 target=none soft=none prev=''(bed patch=0 bed=0 id=0x390D)
+2026-10-18 19:41:50.365 -05:00 [INF] [BalambGarden] [Sync] sent 1 receipt(s) through seq 2730 (1 new to the relay)
+2026-10-18 19:42:31.048 -05:00 [INF] [BalambGarden] [ChatRecon] kind=SystemMessage/57 src=None tgt=None text='Screenshot saved.'
+2026-10-18 19:42:31.048 -05:00 [INF] [BalambGarden] [ChatRecon]   zone=340 target=none soft=none prev=''(bed patch=0 bed=0 id=0x390D)
+2026-10-18 19:44:16.920 -05:00 [INF] [BalambGarden] [ChatRecon] kind=SystemMessage/57 src=None tgt=None text='There is nothing in this bed.'
+2026-10-18 19:44:16.920 -05:00 [INF] [BalambGarden] [ChatRecon]   zone=340 target=''(bed patch=0 bed=0 id=0x390D) soft=none prev=''(bed patch=0 bed=0 id=0x390D)
+2026-10-18 19:44:32.893 -05:00 [INF] [BalambGarden] [ChatRecon]   payloads: UIForegroundPayload|TextPayload|UIForegroundPayload|TextPayload|IconPayload|UIForegroundPayload|TextPayload|UIForegroundPayload|TextPayload
+2026-10-18 19:44:32.893 -05:00 [INF] [BalambGarden] [ChatRecon]   zone=340 target=''(bed patch=0 bed=0 id=0x390D) soft=none prev=''(bed patch=0 bed=0 id=0x390D)
+2026-10-18 19:44:40.677 -05:00 [INF] [BalambGarden] [ChatRecon] kind=SystemMessage/57 src=None tgt=None text='Screenshot saved.'
+2026-10-18 19:44:40.677 -05:00 [INF] [BalambGarden] [ChatRecon]   zone=340 target=''(bed patch=0 bed=0 id=0x390D) soft=none prev=''(bed patch=0 bed=0 id=0x390D)
+2026-10-18 19:45:00.800 -05:00 [INF] [BalambGarden] [ChatRecon] kind=SystemMessage/57 src=LocalPlayer tgt=None text='You plant seeds in the 1st bed, 1st patch.'
+2026-10-18 19:45:00.800 -05:00 [INF] [BalambGarden] [ChatRecon]   zone=340 target=none soft=none prev=''(bed patch=0 bed=0 id=0x390D)
+2026-10-18 19:49:55.421 -05:00 [INF] [BalambGarden] [ChatRecon] kind=SystemMessage/57 src=None tgt=None text='Mirror Apple
+2026-10-18 19:49:55.421 -05:00 [INF] [BalambGarden] [ChatRecon]   payloads: UIForegroundPayload|UIGlowPayload|TextPayload|UIGlowPayload|UIForegroundPayload|TextPayload
+2026-10-18 19:49:55.421 -05:00 [INF] [BalambGarden] [ChatRecon]   zone=340 target=''(bed patch=0 bed=1 id=0x390D) soft=none prev=''(bed patch=0 bed=0 id=0x390D)
+2026-10-18 19:50:13.598 -05:00 [INF] [BalambGarden] [Obtain] (LootNotice) 'You obtain 12 mirror apples.'
+2026-10-18 19:50:13.598 -05:00 [INF] [BalambGarden] [ChatReceipts] manual harvest corroboration: obtained item agrees with the container's crop
+2026-10-18 19:50:13.599 -05:00 [INF] [BalambGarden] [Census] planting reset patch 1 bed 2 at Ward 12 Plot 58: ReadsEmpty cut=2026-10-19 00:50:13Z by=-
+2026-10-18 19:50:13.604 -05:00 [INF] [BalambGarden] [Census] planting reset patch 1 bed 2 at Ward 12 Plot 58: HarvestWitnessed cut=2026-10-19 00:50:13Z by=own (nothing to remove)
+2026-10-18 19:50:13.616 -05:00 [INF] [BalambGarden] [Census] Harvest receipted from chat: patch 1 bed 2 at Ward 12 Plot 58 - Mirror Apple
+2026-10-18 19:50:13.616 -05:00 [INF] [BalambGarden] [ChatRecon] kind=LootNotice/62 src=LocalPlayer tgt=None text='You obtain 12 mirror apples.'
+2026-10-18 19:50:13.616 -05:00 [INF] [BalambGarden] [ChatRecon]   payloads: TextPayload|UIForegroundPayload|UIGlowPayload|ItemPayload|UIForegroundPayload|UIGlowPayload|TextPayload|UIGlowPayload|UIForegroundPayload|TextPayload|RawPayload|UIGlowPayload|UIForegroundPayload|TextPayload
+2026-10-18 19:50:13.616 -05:00 [INF] [BalambGarden] [ChatRecon]   zone=340 target=none soft=none prev=''(bed patch=0 bed=1 id=0x390D)
+2026-10-18 19:50:13.617 -05:00 [INF] [BalambGarden] [Obtain] (LootNotice) 'You obtain a bag of curiel root seeds.'
+2026-10-18 19:50:13.617 -05:00 [WRN] [BalambGarden] [ChatReceipts] manual harvest refused (fail closed): obtained item resolves to no crop species - not receipted (generic obtain line)
+2026-10-18 19:50:13.617 -05:00 [INF] [BalambGarden] [ChatRecon] kind=LootNotice/62 src=LocalPlayer tgt=None text='You obtain a bag of curiel root seeds.'
+2026-10-18 19:50:13.617 -05:00 [INF] [BalambGarden] [ChatRecon]   payloads: TextPayload|UIForegroundPayload|UIGlowPayload|ItemPayload|UIForegroundPayload|UIGlowPayload|TextPayload|UIGlowPayload|UIForegroundPayload|TextPayload|RawPayload|UIGlowPayload|UIForegroundPayload|TextPayload
+2026-10-18 19:50:13.617 -05:00 [INF] [BalambGarden] [ChatRecon]   zone=340 target=none soft=none prev=''(bed patch=0 bed=1 id=0x390D)
+2026-10-18 19:50:34.808 -05:00 [INF] [BalambGarden] [ChatRecon]   payloads: UIForegroundPayload|TextPayload|UIForegroundPayload|TextPayload|IconPayload|UIForegroundPayload|TextPayload|UIForegroundPayload|TextPayload
+2026-10-18 19:50:34.808 -05:00 [INF] [BalambGarden] [ChatRecon]   zone=340 target=none soft=none prev=''(bed patch=0 bed=1 id=0x390D)
+2026-10-18 19:50:38.034 -05:00 [INF] [BalambGarden] [ChatRecon] kind=SystemMessage/57 src=None tgt=None text='There is nothing in this bed.'
+2026-10-18 19:50:38.034 -05:00 [INF] [BalambGarden] [ChatRecon]   zone=340 target=''(bed patch=0 bed=1 id=0x390D) soft=none prev=''(bed patch=0 bed=1 id=0x390D)
+2026-10-18 19:50:50.545 -05:00 [INF] [BalambGarden] [Sync] sent 1 receipt(s) through seq 2731 (1 new to the relay)
+2026-10-18 19:50:51.372 -05:00 [INF] [BalambGarden] [ChatRecon] kind=SystemMessage/57 src=LocalPlayer tgt=None text='You plant seeds in the 2nd bed, 1st patch.'
+2026-10-18 19:50:51.372 -05:00 [INF] [BalambGarden] [ChatRecon]   zone=340 target=none soft=none prev=''(bed patch=0 bed=1 id=0x390D)
+2026-10-18 19:52:44.432 -05:00 [INF] [BalambGarden] [ChatRecon]   zone=344 target=none soft=none prev=none
+2026-10-18 19:52:44.597 -05:00 [INF] [BalambGarden] [ChatRecon]   zone=344 target=none soft=none prev=none
+2026-10-18 19:52:50.898 -05:00 [INF] [BalambGarden] [ChatRecon]   zone=340 target=none soft=none prev=none
+2026-10-18 19:52:51.181 -05:00 [INF] [BalambGarden] [ChatRecon]   zone=340 target=none soft=none prev=none
+2026-10-18 19:52:53.520 -05:00 [INF] [BalambGarden] [ChatRecon] kind=SystemMessage/57 src=None tgt=None text='The Lavender Beds, Ward 12'
+2026-10-18 19:52:53.520 -05:00 [INF] [BalambGarden] [ChatRecon]   zone=340 target=none soft=none prev=none
+2026-10-18 19:53:16.438 -05:00 [INF] [BalambGarden] [ChatRecon] kind=SystemMessage/57 src=None tgt=None text='Screenshot saved.'
+2026-10-18 19:53:16.438 -05:00 [INF] [BalambGarden] [ChatRecon]   zone=340 target=none soft=none prev=none
+2026-10-18 19:56:52.802 -05:00 [INF] [BalambGarden] [ChatRecon] kind=SystemMessage/57 src=None tgt=None text='Krakka Root
+2026-10-18 19:56:52.802 -05:00 [INF] [BalambGarden] [ChatRecon]   payloads: UIForegroundPayload|UIGlowPayload|TextPayload|UIGlowPayload|UIForegroundPayload|TextPayload
+2026-10-18 19:56:52.802 -05:00 [INF] [BalambGarden] [ChatRecon]   zone=340 target=''(bed patch=0 bed=2 id=0x390D) soft=none prev=none
+2026-10-18 19:56:55.499 -05:00 [INF] [BalambGarden] [Obtain] (LootNotice) 'You obtain 9 krakka roots.'
+2026-10-18 19:56:55.499 -05:00 [INF] [BalambGarden] [ChatReceipts] manual harvest corroboration: obtained item agrees with the container's crop
+2026-10-18 19:56:55.500 -05:00 [INF] [BalambGarden] [Census] planting reset patch 1 bed 3 at Ward 12 Plot 58: ReadsEmpty cut=2026-10-19 00:56:55Z by=-
+2026-10-18 19:56:55.505 -05:00 [INF] [BalambGarden] [Census] planting reset patch 1 bed 3 at Ward 12 Plot 58: HarvestWitnessed cut=2026-10-19 00:56:55Z by=own (nothing to remove)
+2026-10-18 19:56:55.517 -05:00 [INF] [BalambGarden] [Census] Harvest receipted from chat: patch 1 bed 3 at Ward 12 Plot 58 - Krakka Root
+2026-10-18 19:56:55.517 -05:00 [INF] [BalambGarden] [ChatRecon] kind=LootNotice/62 src=LocalPlayer tgt=None text='You obtain 9 krakka roots.'
+2026-10-18 19:56:55.517 -05:00 [INF] [BalambGarden] [ChatRecon]   payloads: TextPayload|UIForegroundPayload|UIGlowPayload|ItemPayload|UIForegroundPayload|UIGlowPayload|TextPayload|UIGlowPayload|UIForegroundPayload|TextPayload|RawPayload|UIGlowPayload|UIForegroundPayload|TextPayload
+2026-10-18 19:56:55.517 -05:00 [INF] [BalambGarden] [ChatRecon]   zone=340 target=none soft=none prev=''(bed patch=0 bed=2 id=0x390D)
+2026-10-18 19:57:47.853 -05:00 [INF] [BalambGarden] [ChatRecon] kind=SystemMessage/57 src=None tgt=None text='There is nothing in this bed.'
+2026-10-18 19:57:47.853 -05:00 [INF] [BalambGarden] [ChatRecon]   zone=340 target=''(bed patch=0 bed=2 id=0x390D) soft=none prev=''(bed patch=0 bed=2 id=0x390D)
+2026-10-18 19:57:50.685 -05:00 [INF] [BalambGarden] [Sync] sent 1 receipt(s) through seq 2732 (1 new to the relay)
+2026-10-18 19:57:56.961 -05:00 [INF] [BalambGarden] [ChatRecon] kind=SystemMessage/57 src=LocalPlayer tgt=None text='You plant seeds in the 3rd bed, 1st patch.'
+2026-10-18 19:57:56.961 -05:00 [INF] [BalambGarden] [ChatRecon]   zone=340 target=none soft=none prev=''(bed patch=0 bed=2 id=0x390D)
+2026-10-18 19:59:37.494 -05:00 [INF] [BalambGarden] [ChatRecon]   payloads: UIForegroundPayload|TextPayload|UIForegroundPayload|TextPayload|IconPayload|UIForegroundPayload|TextPayload|UIForegroundPayload|TextPayload
+2026-10-18 19:59:37.494 -05:00 [INF] [BalambGarden] [ChatRecon]   zone=340 target=none soft=none prev=''(bed patch=0 bed=2 id=0x390D)
+2026-10-18 19:59:37.494 -05:00 [INF] [BalambGarden] [ChatRecon]   payloads: UIForegroundPayload|TextPayload|UIForegroundPayload|TextPayload|IconPayload|UIForegroundPayload|TextPayload|UIForegroundPayload|TextPayload
+2026-10-18 19:59:37.494 -05:00 [INF] [BalambGarden] [ChatRecon]   zone=340 target=none soft=none prev=''(bed patch=0 bed=2 id=0x390D)
+2026-10-18 20:02:38.655 -05:00 [INF] [BalambGarden] [ChatRecon]   payloads: UIForegroundPayload|TextPayload|UIForegroundPayload|TextPayload|IconPayload|UIForegroundPayload|TextPayload|UIForegroundPayload|TextPayload
+2026-10-18 20:02:38.655 -05:00 [INF] [BalambGarden] [ChatRecon]   zone=340 target=none soft=none prev=''(bed patch=0 bed=2 id=0x390D)
+2026-10-18 20:02:38.655 -05:00 [INF] [BalambGarden] [ChatRecon]   payloads: UIForegroundPayload|TextPayload|UIForegroundPayload|TextPayload|IconPayload|UIForegroundPayload|TextPayload|UIForegroundPayload|TextPayload
+2026-10-18 20:02:38.655 -05:00 [INF] [BalambGarden] [ChatRecon]   zone=340 target=none soft=none prev=''(bed patch=0 bed=2 id=0x390D)
