@@ -38,6 +38,18 @@ public sealed record SyncYield(
     [property: JsonPropertyName("item")] uint Item,
     [property: JsonPropertyName("qty")] int Qty);
 
+/// <summary>One bed of the patch at sow (schema: `plant.patch[]`, v0.4.1): what the map read
+/// for that bed at the instant of a sow, copied RAW. <paramref name="Slot"/> is the map's own
+/// bed order, 0-7 (the sow line's 1-based bed number minus one); the other three are exactly
+/// what the map gave - not interpreted, because whether species 0 always means empty (flowers)
+/// and whether a seedling counts as a neighbor are still open questions the raw copy keeps
+/// answerable. No adjacency lives here: neighbors are derived at read time from the layout.</summary>
+public sealed record SyncPatchBed(
+    [property: JsonPropertyName("slot")] int Slot,
+    [property: JsonPropertyName("occupied")] bool Occupied,
+    [property: JsonPropertyName("species")] ushort Species,
+    [property: JsonPropertyName("stage")] byte Stage);
+
 /// <summary>Per-kind payload, flat with nulls omitted on the wire. The relay never reads
 /// past the envelope, so one flat shape serves every kind; which fields a kind fills is
 /// the schema doc's table, and a field the sender did not know stays absent rather than
@@ -52,7 +64,12 @@ public sealed record SyncData(
     // absent = not heard. Additive: the relay stores data verbatim and older installs ignore
     // fields they do not know. See HarvestGather.
     [property: JsonPropertyName("seedQty")] int? SeedQty = null,
-    [property: JsonPropertyName("seedItem")] uint? SeedItem = null)
+    [property: JsonPropertyName("seedItem")] uint? SeedItem = null,
+    // Bed plant only (v0.4.1, Sow Capture design): the patch at sow, all eight beds as the map
+    // read them at the sow. Absent = no map read covered the patch (walked off, map silent) -
+    // never guessed. Pots never carry one. `soil` above is filled on plant receipts of both
+    // hands from v0.4.1 on (item id; absent = not heard). Additive like the seed fields.
+    [property: JsonPropertyName("patch")] IReadOnlyList<SyncPatchBed>? Patch = null)
 {
     public static readonly SyncData Empty = new();
 }
