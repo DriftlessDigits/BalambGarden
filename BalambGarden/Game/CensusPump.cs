@@ -52,7 +52,7 @@ internal static class CensusPump
         // window judged on a two-second tempo would round a timeout up by a third, and a
         // pending is owed its history line whether or not there is covered ground underfoot.
         SweepPending();
-        PollParkedSows();
+        PollSowWaits();
         PollGather();
 
 #if DEBUG
@@ -470,9 +470,15 @@ internal static class CensusPump
                 && parsed.BedSlot < beds.Count
                 ? beds[parsed.BedSlot].Stage : (byte)0);
 
+        var actAt = ActInstant(verb, isPot: false);
         var receipt = new ReceiptEvent(
-            estate, parsed.PatchOrdinal, parsed.BedSlot, verb, species, stage,
-            ActInstant(verb, isPot: false));
+            estate, parsed.PatchOrdinal, parsed.BedSlot, verb, species, stage, actAt);
+
+        // The fresh read above landed a beat before the game put the seed in: until a read shows
+        // it, the bed's empty read is the game catching up, not a replant behind our back.
+        if (verb == ReceiptVerb.Plant
+            && Plugin.Garden.Census.BoundKey(estate, parsed.PatchOrdinal) is { } sownKey)
+            sowSettle.Watch(sownKey, parsed.BedSlot, actAt);
 
         // Still no binding: hold this receipt so a later one in the run can bring it
         // home. The current receipt is never held when the bind just landed - Deliver
@@ -791,7 +797,7 @@ internal static class CensusPump
 
     /// <summary>The manual bed sow (catalogued 2026-10-18). Identity is already decided - the
     /// line's own words and the previous-target agreed on the bed. Lands at once when the map
-    /// already names the seed; otherwise parks and <see cref="PollParkedSows"/> retries.</summary>
+    /// already names the seed; otherwise parks and <see cref="PollSowWaits"/> retries.</summary>
     internal static void OnSowLine(int patchOrdinal, int bedSlot, ushort patchId)
     {
         var estate = EstateSensor.Current();
@@ -820,13 +826,21 @@ internal static class CensusPump
             $"[Census] sow at patch {patchOrdinal + 1} bed {bedSlot + 1} parked - map has not named the seed yet");
     }
 
-    /// <summary>Retries parked sows against a fresh display-only read (no census writes until a
-    /// sow lands). Runs above the census gate on its own quarter-second tempo: the wait being
-    /// measured is seconds, and a 2s tick would round it up for nothing. Leaving the estate
-    /// lands the sow at once - the map there can no longer answer.</summary>
-    private static void PollParkedSows()
+    /// <summary>Chain sows the map has not shown yet (display only; see <see cref="SowSettle"/>).</summary>
+    private static readonly SowSettle sowSettle = new();
+
+    /// <summary>True while this bed's own chain sow has not shown on the map yet - the dashboard
+    /// holds its "reads empty" question until it does.</summary>
+    internal static bool AwaitingSow(int mapKey, int bedSlot) => sowSettle.Waiting(mapKey, bedSlot);
+
+    /// <summary>Both sow waits, against one fresh display-only read (no census writes until a parked
+    /// sow lands): parked hand sows retry, and chain sows settle. Runs above the census gate on its
+    /// own quarter-second tempo: the wait being measured is seconds, and a 2s tick would round it
+    /// up for nothing. Leaving the estate lands a parked sow at once - the map there can no longer
+    /// answer.</summary>
+    private static void PollSowWaits()
     {
-        if (parkedSows.Count == 0 || DateTime.UtcNow < nextSowPollUtc)
+        if ((parkedSows.Count == 0 && !sowSettle.Any) || DateTime.UtcNow < nextSowPollUtc)
             return;
         nextSowPollUtc = DateTime.UtcNow.AddMilliseconds(250);
 
@@ -836,6 +850,16 @@ internal static class CensusPump
             RefreshDisplayOnly();
 
         var now = DateTimeOffset.UtcNow;
+        foreach (var s in sowSettle.Settle(LastOutdoor, now))
+        {
+            if (s.Shown)
+                Plugin.Log.Debug(
+                    $"[Census] chain sow at map key {s.MapKey} bed {s.Slot + 1}: the map showed it {s.After.TotalSeconds:0.00}s after the Yes");
+            else
+                Plugin.Log.Information(
+                    $"[Census] chain sow at map key {s.MapKey} bed {s.Slot + 1}: the map had not shown it after {s.After.TotalSeconds:0.0}s - its row may read empty again");
+        }
+
         foreach (var sow in parkedSows.ToList())
         {
             var answered = outside && here == sow.Estate && SownSpecies(sow) != 0;

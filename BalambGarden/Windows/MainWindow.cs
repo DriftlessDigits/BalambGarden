@@ -1613,6 +1613,10 @@ public class MainWindow : Window, IDisposable
                 // empty" receipt (08-26: harvest zeroes in place), stronger evidence than
                 // the key being absent, and both mean the same thing here.
                 && !(CensusPump.LastIndoor.TryGetValue(bed.MapKey, out var live) && live.Occupied);
+        // Our own chain sow the map has not shown yet (2026-11-07): the read is a beat behind the
+        // seed, not a replant behind our back.
+        if (CensusPump.AwaitingSow(bed.MapKey, bed.BedSlot))
+            return false;
         if (!CensusPump.LastOutdoor.TryGetValue(bed.MapKey, out var readings))
             return false;
         return readings.FirstOrDefault(r => r.Slot == bed.BedSlot) is { Occupied: false };
