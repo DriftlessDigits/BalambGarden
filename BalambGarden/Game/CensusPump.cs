@@ -494,7 +494,8 @@ internal static class CensusPump
             verb, isPot: false, estate,
             patchOrdinal: parsed.PatchOrdinal, bedSlot: parsed.BedSlot,
             patchId: ActPatchId(actBed, parsed.PatchOrdinal), potKey: -1,
-            species: species, stage: stage);
+            species: species, stage: stage,
+            patch: verb == ReceiptVerb.Plant ? PatchAtSow.From(PatchRead(estate, parsed.PatchOrdinal)) : null);
 
         return outcome;
     }
@@ -553,8 +554,11 @@ internal static class CensusPump
     /// instrument spoke. Species uniqueness is the fallback for receipts that carry no key
     /// at all; it still works for a lone plant of its kind and cannot work for twins.
     /// </summary>
+    /// <param name="soil">A pot sow's soil from the sow question (v0.4.1). It matters on the
+    /// diff-bind route, where this delivery opens the pending late and the act could not.</param>
     internal static string OnPotReceipt(
-        ReceiptVerb verb, string plantName, int? potKey = null, string keySource = "map diff")
+        ReceiptVerb verb, string plantName, int? potKey = null, string keySource = "map diff",
+        uint? soil = null)
     {
         var estate = EstateSensor.Current();
         if (estate is null)
@@ -606,7 +610,7 @@ internal static class CensusPump
         MarkDelivered(
             verb, isPot: true, estate,
             patchOrdinal: 0, bedSlot: 0, patchId: 0, potKey: key,
-            species: species, stage: stage);
+            species: species, stage: stage, soil: verb == ReceiptVerb.Plant ? soil : null);
 
         return outcome;
     }
@@ -663,6 +667,7 @@ internal static class CensusPump
         // asserting a crop that might not be there.
         ushort species = 0;
         byte stage = 0;
+        IReadOnlyList<BedReading>? patchRead = null;
         if (!mapHere)
         {
             // Walked off before the map answered: the line is still a fact, species unknown.
@@ -681,6 +686,7 @@ internal static class CensusPump
         {
             species = beds[bedSlot].SpeciesIndex;
             stage = beds[bedSlot].Stage;
+            patchRead = beds;
         }
 
         if (species == 0)
@@ -716,7 +722,18 @@ internal static class CensusPump
         // seam (GardenService.AppendOwn). SaveReceipts refreshes config's memory of the counter.
         // A BED harvest's append waits out its seed window (ruled 2026-10-18): the census above
         // already emptied the bed; only the row waits, so the seed lands ON it.
-        var data = new SyncData(Species: species == 0 ? null : species, Yields: yields);
+        // A sow's capture (v0.4.1): its soil from the sow question - a bed sow took it at its
+        // line and carries it on the parked sow, a pot sow takes it now, at its own line - and,
+        // for a bed, the patch at sow from the read this landing just took (absent when we
+        // walked off: the sow is still a fact, its patch simply was not heard).
+        uint? soil = null;
+        IReadOnlyList<SyncPatchBed>? patch = null;
+        if (kind == SyncKind.Plant)
+        {
+            soil = parked is not null ? parked.Soil : isPot ? TakeSowSoil(now, "pot") : null;
+            patch = isPot ? null : PatchAtSow.From(patchRead);
+        }
+        var data = new SyncData(Species: species == 0 ? null : species, Soil: soil, Yields: yields, Patch: patch);
         var houseId = parked?.HouseId ?? EstateSensor.CurrentHouseId();
         void Append(SyncData d)
         {
@@ -745,10 +762,24 @@ internal static class CensusPump
     /// - the confirm prompt is a question asked before the act, the map is the game's fact
     /// after it (ruled 2026-10-18). Same capture: the map named the seedling within 2.8s of the
     /// line, every time. The act's ground (estate, house, instant) is banked AT the line so a
-    /// sow is never lost to walking away while the map catches up.</summary>
+    /// sow is never lost to walking away while the map catches up.
+    ///
+    /// <para><paramref name="Soil"/> is the sow question's soil, taken at the LINE (v0.4.1): the
+    /// note it comes from is a few seconds long, and the landing can be up to ten seconds later.</para></summary>
     internal sealed record ParkedSow(
         EstateKey Estate, ulong HouseId, DateTimeOffset LineAt,
-        int PatchOrdinal, int BedSlot, ushort PatchId);
+        int PatchOrdinal, int BedSlot, ushort PatchId, uint? Soil = null);
+
+    /// <summary>The soil the sow question named, for a sow with no chain behind it. A hand sow
+    /// that finds none is worth a warning: every sow asks the question, so a miss means the
+    /// listener did not hear it (or could not name the soil), and the field-fire should see that.</summary>
+    private static uint? TakeSowSoil(DateTimeOffset lineAt, string what)
+    {
+        var soil = SowQuestion.TakeSoil(lineAt);
+        if (soil is null)
+            Plugin.Log.Warning($"[Census] {what} sow: the sow question's soil was not heard - soil left unknown");
+        return soil;
+    }
 
     private static readonly List<ParkedSow> parkedSows = [];
     private static DateTime nextSowPollUtc = DateTime.MinValue;
@@ -775,8 +806,9 @@ internal static class CensusPump
             return;
         }
 
-        var sow = new ParkedSow(estate, EstateSensor.CurrentHouseId(), DateTimeOffset.UtcNow,
-            patchOrdinal, bedSlot, patchId);
+        var lineAt = DateTimeOffset.UtcNow;
+        var sow = new ParkedSow(estate, EstateSensor.CurrentHouseId(), lineAt,
+            patchOrdinal, bedSlot, patchId, Soil: TakeSowSoil(lineAt, "bed"));
         RefreshDisplayOnly();
         if (SownSpecies(sow) != 0)
         {
@@ -926,8 +958,10 @@ internal static class CensusPump
     /// <para>NO ESTATE, NO PENDING. Both gates the delivery paths refuse on are checked here
     /// too: opening a pending on ground the census does not keep would promise a history line
     /// that every write path below would then refuse to make.</para></summary>
+    /// <param name="soil">A sow's soil, as the game's own sow question named it and the chain
+    /// checked (v0.4.1); null for every other verb and for a soil that could not be named.</param>
     internal static void OpenAtAct(
-        ReceiptVerb verb, string bedHeader, string plantName, BedGimmick actBed)
+        ReceiptVerb verb, string bedHeader, string plantName, BedGimmick actBed, uint? soil = null)
     {
         if (ActGround(verb) is not { } estate)
             return;
@@ -941,17 +975,25 @@ internal static class CensusPump
 
         // The map read we already have, never a fresh one: a sight inside a dialogue step would
         // cost the run its tempo, and the delivery is a beat away with a real one.
-        var stage = Plugin.Garden.Census.BoundKey(estate, parsed.PatchOrdinal) is { } key
-            && LastOutdoor.TryGetValue(key, out var beds)
-            && parsed.BedSlot < beds.Count
-                ? beds[parsed.BedSlot].Stage : (byte)0;
+        var read = PatchRead(estate, parsed.PatchOrdinal);
+        var stage = read is not null && parsed.BedSlot < read.Count ? read[parsed.BedSlot].Stage : (byte)0;
 
+        // A sow banks its patch at sow from that same last read - the fallback only: the
+        // delivery's fresh read replaces it (MarkDelivered) whenever a delivery comes.
         OpenPending(
             verb, estate, isPot: false,
             patchOrdinal: parsed.PatchOrdinal, bedSlot: parsed.BedSlot,
             patchId: ActPatchId(actBed, parsed.PatchOrdinal), potKey: -1,
-            species: Plugin.Tables.SpeciesIndexByName(plantName) ?? 0, stage: stage);
+            species: Plugin.Tables.SpeciesIndexByName(plantName) ?? 0, stage: stage,
+            soil: verb == ReceiptVerb.Plant ? soil : null,
+            patch: verb == ReceiptVerb.Plant ? PatchAtSow.From(read) : null);
     }
+
+    /// <summary>The display copy's eight beds for one patch, or null when the patch has no key
+    /// yet or the last read did not cover it.</summary>
+    private static IReadOnlyList<BedReading>? PatchRead(EstateKey estate, int patchOrdinal)
+        => Plugin.Garden.Census.BoundKey(estate, patchOrdinal) is { } key
+           && LastOutdoor.TryGetValue(key, out var beds) ? beds : null;
 
     /// <summary>The patch id for a bed receipt: the acted object's own gimmick bytes - the
     /// identity the chain held in hand at the interact, the same decode the manual chat path
@@ -975,7 +1017,7 @@ internal static class CensusPump
     /// <summary>The pot form of <see cref="OpenAtAct(ReceiptVerb, string, string)"/>, for the
     /// acts whose pot is already named by the furniture read. The diff-bind route has no key at
     /// its commit moment and deliberately does NOT call this - see the note at that site.</summary>
-    internal static void OpenAtAct(ReceiptVerb verb, int potKey, string plantName)
+    internal static void OpenAtAct(ReceiptVerb verb, int potKey, string plantName, uint? soil = null)
     {
         if (ActGround(verb) is not { } estate)
             return;
@@ -991,7 +1033,8 @@ internal static class CensusPump
         OpenPending(
             verb, estate, isPot: true,
             patchOrdinal: 0, bedSlot: 0, patchId: 0, potKey: potKey,
-            species: species, stage: sighted?.Stage ?? (byte)0);
+            species: species, stage: sighted?.Stage ?? (byte)0,
+            soil: verb == ReceiptVerb.Plant ? soil : null);
     }
 
     /// <summary>The two gates every act-time open shares: the estate underfoot, and whether the
@@ -1029,7 +1072,7 @@ internal static class CensusPump
     private static void OpenPending(
         ReceiptVerb verb, EstateKey estate, bool isPot,
         int patchOrdinal, int bedSlot, ushort patchId, int potKey, ushort species, byte stage,
-        bool delivered = false)
+        bool delivered = false, uint? soil = null, IReadOnlyList<SyncPatchBed>? patch = null)
     {
         if (openPending is { } stale)
         {
@@ -1045,7 +1088,7 @@ internal static class CensusPump
         openPending = new PendingReceipt(
             KindFor(verb), isPot, DateTimeOffset.UtcNow, estate,
             patchOrdinal, bedSlot, patchId, potKey, species, stage, delivered,
-            HouseId: EstateSensor.CurrentHouseId());
+            HouseId: EstateSensor.CurrentHouseId(), Soil: soil, Patch: patch);
     }
 
     /// <summary>The chain's own receipt reporting in: this act really did complete, and here is
@@ -1063,9 +1106,14 @@ internal static class CensusPump
     /// path (the pot diff-bind, or an act whose pending the sweep already retired), and the
     /// pending opens HERE, already delivered: it will wait for a line that has most likely
     /// already been dropped, and time out honestly as chain-unconfirmed.</para></summary>
+    /// <param name="patch">A bed sow's patch at sow from the delivery's fresh read - the better
+    /// witness, so it replaces the act's; null keeps whatever the act banked.</param>
+    /// <param name="soil">A sow's soil when the delivery knows it; the act's soil wins (it is the
+    /// one the chain checked at the commit), this one fills a late open.</param>
     private static void MarkDelivered(
         ReceiptVerb verb, bool isPot, EstateKey estate,
-        int patchOrdinal, int bedSlot, ushort patchId, int potKey, ushort species, byte stage)
+        int patchOrdinal, int bedSlot, ushort patchId, int potKey, ushort species, byte stage,
+        IReadOnlyList<SyncPatchBed>? patch = null, uint? soil = null)
     {
         var kind = KindFor(verb);
 
@@ -1081,15 +1129,19 @@ internal static class CensusPump
                 PotKey = potKey,
                 Species = species,
                 Stage = stage,
+                Patch = patch ?? pending.Patch,
+                Soil = pending.Soil ?? soil,
             };
             return;
         }
 
         if (ReceiptLifecycle.DeliveryAlreadyClosed(kind, isPot, lastClose, DateTimeOffset.UtcNow))
         {
+            // Closed, not necessarily written: a bed harvest's row waits out its seed window
+            // after the close (ruled 2026-10-18), so "already in history" would overclaim.
             Plugin.Log.Debug(
                 $"[Census] {kind} delivery arrived after its own confirming line closed the act - "
-                + "already in history, no second pending opened");
+                + "its row is already landing from that close, no second pending opened");
             return;
         }
 
@@ -1098,7 +1150,7 @@ internal static class CensusPump
             + "knowable at the act)");
         OpenPending(
             verb, estate, isPot, patchOrdinal, bedSlot, patchId, potKey, species, stage,
-            delivered: true);
+            delivered: true, soil: soil, patch: patch);
     }
 
     /// <summary>Offers a classified chat line to the open act. True means the line was that
@@ -1130,7 +1182,7 @@ internal static class CensusPump
         // able to tell "already in history" from "never opened" (ruling 4's honest degrade).
         lastClose = new ReceiptLifecycle.RecentClose(pending.Kind, pending.IsPot, DateTimeOffset.UtcNow);
         if (pending.Kind == SyncKind.Harvest && !pending.IsPot)
-            GatherHarvest(DataOf(pending), d => AppendHistory(pending, SyncSource.Chain, d),
+            GatherHarvest(ReceiptLifecycle.DataOf(pending), d => AppendHistory(pending, SyncSource.Chain, d),
                 $"patch {pending.PatchOrdinal + 1} bed {pending.BedSlot + 1}");
         else
             AppendHistory(pending, SyncSource.Chain);
@@ -1192,15 +1244,10 @@ internal static class CensusPump
                 pending.Kind, source, pending.OpenedAt, pending.Estate, pending.IsPot,
                 patchOrdinal: pending.PatchOrdinal, bedSlot: pending.BedSlot,
                 patchId: pending.PatchId, potKey: pending.PotKey,
-                data: data ?? DataOf(pending),
+                data: data ?? ReceiptLifecycle.DataOf(pending),
                 houseId: pending.HouseId))
             Plugin.Garden.SaveReceipts();
     }
-
-    private static SyncData DataOf(PendingReceipt pending) => new(
-        Species: pending.Species == 0 ? null : pending.Species,
-        Stage: pending.Stage == 0 ? null : pending.Stage,
-        Yields: pending.Yields);
 
     /// <summary>The bed harvest listening for its cross seed (ruled 2026-10-18,
     /// <see cref="HarvestGather"/>). One at a time: a new harvest closes the previous window

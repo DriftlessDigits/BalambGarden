@@ -16,10 +16,14 @@ internal readonly record struct BedObject(
     internal bool InReach => Targetable && Distance <= ObjectSensor.EventObjRange;
 }
 
+/// <summary><see cref="InReach"/> asks the same two questions a bed's reach asks: close enough,
+/// AND something here the game will let us target. Distance alone (before 2026-11-07) offered a
+/// sweep over beds the game would not target, and the first interact then waited on a dialogue
+/// that never opened (the 2026-11-03 Tend All stall).</summary>
 internal sealed record PatchGroup(
     ushort PatchId, int Ordinal, Vector3 Center, List<BedObject> Beds, float Distance)
 {
-    internal bool InReach => Distance <= ObjectSensor.EventObjRange;
+    internal bool InReach => Distance <= ObjectSensor.EventObjRange && Beds.Any(b => b.Targetable);
 }
 
 /// <summary><paramref name="MapKey"/> is this pot's entry in the gardening DataMap, read

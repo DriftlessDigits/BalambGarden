@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using BalambGarden.Engine.Census;
 using Dalamud.Game.Chat;
 using ECommons.DalamudServices;
@@ -20,10 +22,18 @@ internal static class ObtainWatch
 {
     private static DateTime lastObtainUtc = DateTime.MinValue;
 
-    /// <summary>The last obtained item's text, for the run log only. It is NOT a species
-    /// name ("bouquet of red sunflowers" is not "Red Sunflowers") and is never matched
-    /// against one.</summary>
-    internal static string LastItem { get; private set; } = "";
+    /// <summary>The last few obtained items' text with their instants, for the run log only.
+    /// NOT species names ("bouquet of red sunflowers" is not "Red Sunflowers") and never matched
+    /// against one. A list, not one slot: a crossing harvest prints the crop line and then the
+    /// seed bag in the same millisecond (capture 2026-10-18), and a single "last item" named the
+    /// seed bag as the harvest ("done (obtained bag of sun lemon seeds)").</summary>
+    private static readonly List<(DateTime At, string Item)> recent = [];
+    private const int Kept = 8;
+
+    /// <summary>Everything obtained since a chain armed, in arrival order, joined for the run
+    /// log: "12 mirror apples + bag of sun lemon seeds". Empty when nothing has landed.</summary>
+    internal static string ItemsSince(DateTime armedAt)
+        => string.Join(" + ", recent.Where(r => r.At > armedAt).Select(r => r.Item));
 
     internal static void Start() => Svc.Chat.ChatMessage += OnChatMessage;
 
@@ -44,7 +54,9 @@ internal static class ObtainWatch
                 return;
 
             lastObtainUtc = DateTime.UtcNow;
-            LastItem = item;
+            recent.Add((lastObtainUtc, item));
+            if (recent.Count > Kept)
+                recent.RemoveAt(0);
             // The chat type is logged, never filtered on: the recon has one live obtain
             // line and no reading of which channel it came down. A chain only consults
             // this inside a step it opened seconds earlier, so a stray line elsewhere in

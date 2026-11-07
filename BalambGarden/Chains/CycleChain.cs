@@ -418,7 +418,7 @@ internal sealed unsafe class CycleChain : ChainBase
             return false;
 
         RecordOutcome(CensusPump.OnBedReceipt(ReceiptVerb.Harvest, _header, _plant, _currentBed)
-            + $" (obtained {ObtainWatch.LastItem})");
+            + $" (obtained {ObtainWatch.ItemsSince(_armedAt)})");
         return true;
     }
 
@@ -517,7 +517,10 @@ internal sealed unsafe class CycleChain : ChainBase
         var plantName = crop?.Name ?? check.Parts!.Seed;
         // RULING 4: the Yes above is the commit, and this is the first line after it - the
         // refusal branch never reaches here, so no pending is opened for a sow we declined.
-        CensusPump.OpenAtAct(ReceiptVerb.Plant, _header, plantName, _currentBed);
+        // The soil rides it (v0.4.1): the plan's soil, which the check above just matched
+        // against the game's own question - or, with no plan soil, whatever the question named.
+        var soil = soilId != 0 ? soilId : PlantFlow.SoilItemId(check.Parts!.Soil);
+        CensusPump.OpenAtAct(ReceiptVerb.Plant, _header, plantName, _currentBed, soil);
         RecordOutcome(CensusPump.OnBedReceipt(
             ReceiptVerb.Plant, _header, plantName, _currentBed, stageOverride: 1));
         return true;

@@ -141,6 +141,10 @@ public sealed class Plugin : IDalamudPlugin
         // does. Not debug-gated: the receipt it writes is the product.
         Game.ChatReceipts.Start();
 
+        // The sow question names a sow's soil and nothing else does (v0.4.1). A passive reader
+        // of the yes/no prompt, never an answerer; shipping, like the chat listener above.
+        Game.SowQuestion.Start();
+
         // A zone line pulls the next relay poll close (piece 3's zone-in cadence) - the
         // moment you arrive somewhere is the moment a foreign receipt would matter.
         Svc.ClientState.TerritoryChanged += OnZoneLine;
@@ -175,6 +179,7 @@ public sealed class Plugin : IDalamudPlugin
 #endif
         Game.ObtainWatch.Stop();
         Game.ChatReceipts.Stop();
+        Game.SowQuestion.Stop();
         Game.CensusPump.Shutdown();
 #if DEBUG
         // A watcher left registered would outlive the plugin its callback belongs to.

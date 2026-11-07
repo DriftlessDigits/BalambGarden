@@ -234,11 +234,19 @@ public class MainWindow : Window, IDisposable
 
     /// <summary>A press with no undo: the button relabels itself and wants a second click
     /// (UI ruling 11 - relabel, never a modal). Returns true only on that second click.</summary>
+    /// <summary>The two-click confirm. ImGui reports a press on mouse RELEASE while the
+    /// click-elsewhere disarm (end of Draw) fires on mouse DOWN, so the confirm click's own down
+    /// frame used to disarm the button and relabel it - and a relabeled button is a new ImGui id,
+    /// so the release landed on nothing (Forget and "Run cycle - sure?" both, 2026-11-03). Two
+    /// guards: the mouse going down ON the armed button counts as touching it, and the id is the
+    /// key, not the label, so the relabel never changes which button the release lands on.</summary>
     private bool ArmedButton(string key, string label, string sureLabel, bool small = false)
     {
         var armed = armedButton == key;
-        var text = armed ? sureLabel : label;
+        var text = $"{(armed ? sureLabel : label)}##armed:{key}";
         var pressed = small ? ImGui.SmallButton(text) : ImGui.Button(text);
+        if (armed && ImGui.IsItemHovered())
+            armedTouchedThisFrame = true;
         if (!pressed)
             return false;
 
@@ -1022,7 +1030,9 @@ public class MainWindow : Window, IDisposable
     /// the live map: confirmed ripe/empty beds are left out (the game refuses those tends;
     /// the pot Water All precedent, ruled onto beds 2026-08-28), and a bed the map has not
     /// answered for is INCLUDED - skipping on ignorance could leave a thirsty crop dry, so
-    /// the game's own menu keeps the last word exactly as before the filter existed.</summary>
+    /// the game's own menu keeps the last word exactly as before the filter existed. A bed the
+    /// game will not let us target is left out too (2026-11-07): interacting with it opens no
+    /// dialogue, and the sweep would stall on it instead of moving on.</summary>
     private static List<BedObject> SweepBeds(EstateKey estate, PatchGroup patch)
     {
         IReadOnlyList<BedReading>? readings =
@@ -1031,6 +1041,8 @@ public class MainWindow : Window, IDisposable
 
         return patch.Beds.Where(b =>
         {
+            if (!b.Targetable)
+                return false;
             var r = readings?.FirstOrDefault(x => x.Slot == b.Gimmick.BedIndex);
             return TendSweep.Include(r is not null, r?.Occupied ?? false, r?.Stage ?? 0);
         }).ToList();
