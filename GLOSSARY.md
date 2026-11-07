@@ -444,8 +444,16 @@ What a harvest produced: item and quantity, parsed from the loot line at close, 
 _Avoid_: harvest count, loot, output, drops
 
 **Soil**:
-The consumable every sowing needs. Thanalan raises crossbreed chance, Shroud raises yield, La Noscean is dead since the HQ removal, potting soil is filler. Exactly one soil kind in the bags is the soil; otherwise the picker asks.
+The consumable every sowing needs. Thanalan raises crossbreed chance, Shroud raises yield, La Noscean is dead since the HQ removal, potting soil is filler. Exactly one soil kind in the bags is the soil; otherwise the picker asks. Every sow records its soil by item id, both hands, beds and pots; absent means not heard. The topsoil table holds only the nine outdoor soils, so a soil name resolves through the game's item list when the table does not know it.
 _Avoid_: topsoil (the game's item prefix), dirt, fertilizer (a different consumable)
+
+**Sow question**:
+The game's yes/no prompt before every sowing: "Prepare the bed with a bag of grade 3 thanalan topsoil and a bag of krakka root seeds?" The only place the game names a sowing's soil. A chain checks it against its plan before answering Yes; for a sowing with no chain, a passive listener reads it and never answers it.
+_Avoid_: confirm prompt (fine in prose), dialog, popup
+
+**Soil note**:
+The sow question's soil, held for the sow line that follows. It holds while the question is open and for a few seconds after it closes; a sow line takes it and clears it; a new question replaces it. A No prints no sow line, so the note runs out unused. Two quick sowings never trade soils.
+_Avoid_: soil cache, pending soil, remembered soil (nothing about soil is remembered past one sowing)
 
 **Crossbreed pair**:
 Two different species that, adjacent at sowing time, can produce a third seed. Decided at planting, walked right, down, up, left from the new bed, first valid partner wins; never in pots. The frozen table holds three thousand eight hundred and eighty-six pairs.
