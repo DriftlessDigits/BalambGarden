@@ -275,10 +275,10 @@ internal static unsafe class ChatReceipts
 
     /// <summary>The obtain line as a yield row: the ItemPayload's id (capture 2026-08-26) and
     /// the count in the text ("You obtain 9 krakka roots." - an article counts as 1). Null when
-    /// the line carried no payload: a count without an item is not a yield. OPEN CAPTURE
-    /// QUESTION: whether a harvest ever prints more than one obtain line (crop + seed) - if it
-    /// does, the second line is a lost yield row, never a phantom harvest, because the
-    /// just-emptied container reads species 0 and the corroboration refuses it.</summary>
+    /// the line carried no payload: a count without an item is not a yield. A crossing harvest
+    /// prints TWO obtain lines (capture 2026-10-18): the crop, then the seed bag in the same
+    /// millisecond. The seed line never reaches here as a yield - it is asked first whether it is
+    /// a seed (<c>SeedLineOf</c>) and offered to the listening harvest as its cross seed.</summary>
     private static SyncYield? YieldOf(IHandleableChatMessage message, string text)
     {
         var payload = message.Message.Payloads

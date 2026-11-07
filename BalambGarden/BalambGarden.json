@@ -13,5 +13,5 @@
   "InternalName": "BalambGarden",
   "IconUrl": "https://raw.githubusercontent.com/DriftlessDigits/DalamudPluginRepo/main/plugins/BalambGarden/images/icon.png",
   "ImageUrls": [],
-  "Changelog": "When a bed is sown, by hand or by the plugin, its ripe time is now exact instead of a guess, and a bed you just harvested and replanted shows a tight window right away. Hand harvests and hand sowings count now, not just the ones the plugin does for you. Behind the scenes the plugin also keeps a record of every planting and harvest from both of you: how much came in, and which cross seeds dropped or didn't (a screen to browse it comes later). Your first load after updating converts the garden file to a new format and keeps a backup beside it."
+  "Changelog": "Every sowing now records what the other beds in that patch were growing at that moment, and which soil went in, so crosses that took or missed can be explained later (pots record their soil). It reads the game's own sow question to learn the soil and never clicks anything. Fixed: Forget record and Run cycle now work on the second click; Water All no longer leaves the last pot showing wilting; Tend All no longer stalls on a bed it can't target. A bed the cycle just replanted no longer briefly asks \"replanted without me?\". The run log names everything a harvest gave, crop and seed."
 }

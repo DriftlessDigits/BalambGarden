@@ -98,6 +98,48 @@ internal static unsafe partial class PlantFlow
         }
     }
 
+    /// <summary>Every item the game names "... soil", by its lowercased name. Built once, off the
+    /// Item sheet: the topsoil table has only the nine outdoor soils, and "Potting Soil" - what a
+    /// flowerpot takes - is nowhere in our data on purpose (see the dashboard's bag reader). Null
+    /// marks a name two items share, which resolves to nothing rather than to a guess.</summary>
+    private static Dictionary<string, uint?>? soilsByName;
+
+    /// <summary>The item id of the soil a sow question names ("grade 3 thanalan topsoil",
+    /// "potting soil"), or null when no single item carries that name. The question quotes the
+    /// item sheet's own name, so a case-blind exact match is the whole rule.</summary>
+    internal static uint? SoilItemId(string name)
+    {
+        var wanted = name.Trim().ToLowerInvariant();
+        if (wanted.Length == 0)
+            return null;
+
+        foreach (var soil in Plugin.Tables.Soils)
+            if (string.Equals(soil.Name, wanted, StringComparison.OrdinalIgnoreCase))
+                return soil.ItemId;
+
+        try
+        {
+            if (soilsByName is null)
+            {
+                var built = new Dictionary<string, uint?>();
+                foreach (var row in Svc.Data.GetExcelSheet<Lumina.Excel.Sheets.Item>())
+                {
+                    var itemName = row.Name.ExtractText().Trim().ToLowerInvariant();
+                    if (!itemName.EndsWith("soil", StringComparison.Ordinal))
+                        continue;
+                    built[itemName] = built.ContainsKey(itemName) ? null : row.RowId;
+                }
+                soilsByName = built;
+            }
+            return soilsByName.TryGetValue(wanted, out var id) ? id : null;
+        }
+        catch (Exception ex)
+        {
+            Plugin.Log.Warning($"[Fill] soil '{name}' lookup failed: {ex.Message}");
+            return null;
+        }
+    }
+
     /// <summary>Drift's manual flow, verbatim: open the item's own context menu. Both
     /// UseItem shapes were refuted live (08-16: located args = three silent no-ops;
     /// Scrooge's default shape = same - UseItem routes through "is this item usable?",

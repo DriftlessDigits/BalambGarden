@@ -70,7 +70,7 @@ A second, independent game-authored witness demanded before a weakly identified 
 _Avoid_: validation, confirmation, cross-check (fine for the kind-vs-object test, not for the pattern)
 
 **Line catalog**:
-The exact game texts that close each verb, each one entered only from a captured tape. Two cells are still uncaptured: the bed sow line and the hand bed-harvest path.
+The exact game texts that close each verb, each one entered only from a captured tape. Both cells once missing - the bed sow line and the hand bed-harvest path - were captured and field-fired 2026-10-18.
 _Avoid_: string table, regex list, parser rules
 
 **Capture**:
@@ -100,7 +100,7 @@ An outdoor garden plot holding eight beds (the Deluxe shape the household runs; 
 _Avoid_: garden, plot, bed group, patch key (the key is the binding target, not the patch)
 
 **Bed**:
-One outdoor grow slot in a patch, slot 0 to 7. The game's "Nth Bed" is one-based; the slot is N minus one.
+One outdoor grow slot in a patch, slot 0 to 7. The game's "Nth Bed" is one-based; the slot is N minus one. The eight beds ring the patch clockwise from the top-left corner: 1 2 3 across the top, 4 and 5 down the right, 6 and 7 back along the bottom, 8 on the left (checked in the field 2026-11-07), so every bed touches exactly two others, n-1 and n+1, and bed 1 touches 2 and 8.
 _Avoid_: tile, cell (that is the patch strip's word), bed index (the raw game field)
 
 **Pot**:
@@ -132,7 +132,7 @@ One reading of the housing data the game publishes for a zone: species and stage
 _Avoid_: DataMap dump (the instrument), poll, snapshot
 
 **Settled read**:
-A map read taken after the data has caught up with the zone line. The map populates a beat late; a read that races it stands stale for the whole visit, so arrival and the front-door flip both retry until the map answers.
+A map read taken after the data has caught up with the zone line. The map populates a beat late; a read that races it stands stale for the whole visit, so arrival and the front-door flip both retry until the map answers, and a chain sow waits for the read that shows its seed before its empty bed counts as news.
 _Avoid_: fresh read, confirmed read, stable read
 
 **The game wins**:
@@ -431,6 +431,10 @@ _Avoid_: feed (fine in prose; the hover says "last fed"), fish meal, pomace (the
 Planting a seed in soil in an empty container; soil is consumed every time. The sowing instant is the only anchor a ripe window can have.
 _Avoid_: plant (the wire kind and the receipt verb are "plant"; in prose, sow is the act and plant is the thing), replant (a sow after a harvest in the same run)
 
+**Patch at sow**:
+What all eight beds of a patch held at the instant one of them was sown, copied exactly as the map read them: each bed by the game's own number, with what the map said of it (occupied or not, species, stage), never interpreted. Raw positions only; which beds count as neighbors is worked out when the record is read, never stored. Carried on every bed sow; pots have none.
+_Avoid_: snapshot (that word is the raw instrument dumps'), neighbors (the derived reading, not the record), patch state
+
 **Harvest**:
 Taking a ripe plant, which empties its container. The game's loot line is the witness; the receipt is the emptying witness that resets the record at once.
 _Avoid_: collect, pick, reap
@@ -440,8 +444,16 @@ What a harvest produced: item and quantity, parsed from the loot line at close, 
 _Avoid_: harvest count, loot, output, drops
 
 **Soil**:
-The consumable every sowing needs. Thanalan raises crossbreed chance, Shroud raises yield, La Noscean is dead since the HQ removal, potting soil is filler. Exactly one soil kind in the bags is the soil; otherwise the picker asks.
+The consumable every sowing needs. Thanalan raises crossbreed chance, Shroud raises yield, La Noscean is dead since the HQ removal, potting soil is filler. Exactly one soil kind in the bags is the soil; otherwise the picker asks. Every sow records its soil by item id, both hands, beds and pots; absent means not heard. The topsoil table holds only the nine outdoor soils, so a soil name resolves through the game's item list when the table does not know it.
 _Avoid_: topsoil (the game's item prefix), dirt, fertilizer (a different consumable)
+
+**Sow question**:
+The game's yes/no prompt before every sowing: "Prepare the bed with a bag of grade 3 thanalan topsoil and a bag of krakka root seeds?" The only place the game names a sowing's soil. A chain checks it against its plan before answering Yes; for a sowing with no chain, a passive listener reads it and never answers it.
+_Avoid_: confirm prompt (fine in prose), dialog, popup
+
+**Soil note**:
+The sow question's soil, held for the sow line that follows. It holds while the question is open (ten minutes at most, in case the close is never heard) and for a few seconds after it closes; a sow line takes it and clears it; a new question replaces it. A No prints no sow line, so the note runs out unused. Two quick sowings never trade soils.
+_Avoid_: soil cache, pending soil, remembered soil (nothing about soil is remembered past one sowing)
 
 **Crossbreed pair**:
 Two different species that, adjacent at sowing time, can produce a third seed. Decided at planting, walked right, down, up, left from the new bed, first valid partner wins; never in pots. The frozen table holds three thousand eight hundred and eighty-six pairs.

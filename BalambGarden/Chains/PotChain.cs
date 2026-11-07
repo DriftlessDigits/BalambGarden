@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using BalambGarden.Engine.Census;
+using BalambGarden.Engine.Derivations;
 using BalambGarden.Engine.Sensing;
 using BalambGarden.Game;
 using Dalamud.Game.ClientState.Objects.Types;
@@ -63,6 +64,8 @@ internal sealed unsafe class PotChain : ChainBase
 
     private string _plant = "";
     private string _obtained = "";
+    // The sow question's soil (v0.4.1), banked at the Yes for the diff-bind route's late open.
+    private uint? _soil;
     // Which pot this run is driving, captured when the run opens it: the sensor already
     // resolved the object to its map key, so the identity is in hand before the first
     // click. Null means the furniture read could not name it - the run still tends the pot,
@@ -94,6 +97,7 @@ internal sealed unsafe class PotChain : ChainBase
         Open(pot);
         TaskManager.Enqueue(TendOrQuit, "tend");
         TaskManager.Enqueue(FinishDialogue, "finish");
+        EnqueueWaterSettle([pot]);
         Close("pot tended");
     }
 
@@ -114,6 +118,7 @@ internal sealed unsafe class PotChain : ChainBase
             TaskManager.Enqueue(TendOrQuit, "tend");
             TaskManager.Enqueue(FinishDialogue, "finish");
         }
+        EnqueueWaterSettle(pots);
 
         var total = pots.Count;
         TaskManager.Enqueue(() =>
@@ -225,6 +230,20 @@ internal sealed unsafe class PotChain : ChainBase
     /// row until something else sights. Poll the DISPLAY read until every replanted key
     /// is back in the map, then let go - the receipts landed long ago.</summary>
     private void EnqueueDisplaySettle(IReadOnlyList<int?> keys)
+        // A replanted pot has settled when its entry reads OCCUPIED - a zeroed entry still
+        // present from before the plant is the old world, not the new one.
+        => EnqueueDisplaySettle(keys, static r => r.Occupied, "empty");
+
+    /// <summary>The watering twin (2026-11-03 field report: Water All left the LAST pot showing
+    /// wilting - its water is only picked up by the read the next pot's step triggers, and the
+    /// last pot has no next step). A watered pot has settled when the display no longer claims
+    /// it is wilting - by the ONE wilt rule the dashboard reads (<see cref="PotWiltRule"/>: b4 = 1
+    /// below ripe), so the settle can never wait on a flag the dashboard would not show.</summary>
+    private void EnqueueWaterSettle(IEnumerable<PotObject> pots)
+        => EnqueueDisplaySettle(pots.Select(p => p.MapKey).ToList(),
+            static r => r.Occupied && !PotWiltRule.Claims(r.Wilt, r.Stage), "wilting");
+
+    private void EnqueueDisplaySettle(IReadOnlyList<int?> keys, Func<PotReading, bool> settled, string stillShows)
     {
         var wanted = keys.Where(k => k is not null).Select(k => k!.Value).ToList();
         if (wanted.Count == 0)
@@ -241,17 +260,15 @@ internal sealed unsafe class PotChain : ChainBase
             _nextDisplayPoll = DateTime.UtcNow.AddMilliseconds(SettlePollMS);
 
             CensusPump.RefreshDisplayOnly();
-            // A replanted pot has settled when its entry reads OCCUPIED - a zeroed entry
-            // still present from before the plant is the old world, not the new one.
             var missing = wanted.Where(k =>
-                !(CensusPump.LastIndoor.TryGetValue(k, out var r) && r.Occupied)).ToList();
+                !(CensusPump.LastIndoor.TryGetValue(k, out var r) && settled(r))).ToList();
             if (missing.Count == 0)
                 return true;
 
             if (DateTime.UtcNow <= _displaySettleUntil)
                 return false;
 
-            Note($"map still shows pot(s) {string.Join(", ", missing)} empty - "
+            Note($"map still shows pot(s) {string.Join(", ", missing)} {stillShows} - "
                 + "the display catches up on the next read");
             return true;
         }, SettleStepLimitMS, "settle");
@@ -300,6 +317,7 @@ internal sealed unsafe class PotChain : ChainBase
 
         _plant = "";
         _obtained = "";
+        _soil = null;
         _pendingReceipt = null;
         _fill = null;
         _filledBy = "";
@@ -401,7 +419,7 @@ internal sealed unsafe class PotChain : ChainBase
         if (!ObtainWatch.FiredSince(_armedAt))
             return false;
 
-        _obtained = ObtainWatch.LastItem;
+        _obtained = ObtainWatch.ItemsSince(_armedAt);
         return true;
     }
 
@@ -502,8 +520,11 @@ internal sealed unsafe class PotChain : ChainBase
         // this is the exact gap the 17:28 double receipt fell through. Same asymmetry as the
         // tend: with a furniture key the pending opens now, without one it cannot, because the
         // diff has not run yet and the pot has no name to open under.
+        // The soil rides it (v0.4.1): the question's own soil, looked up by its item name - a
+        // pot plan may hold soil 0 ("whatever you put in"), the question never does.
+        _soil = PlantFlow.SoilItemId(check.Parts!.Soil);
         if (_potKey is { } identified)
-            CensusPump.OpenAtAct(ReceiptVerb.Plant, identified, _plant);
+            CensusPump.OpenAtAct(ReceiptVerb.Plant, identified, _plant, _soil);
         Acted();
         return true;
     }
@@ -578,14 +599,14 @@ internal sealed unsafe class PotChain : ChainBase
             }
 
             RecordOutcome(
-                CensusPump.OnPotReceipt(verb, _plant, key, FurnitureSource) + Obtained());
+                CensusPump.OnPotReceipt(verb, _plant, key, FurnitureSource, _soil) + Obtained());
             return true;
         }
 
         if (changed.Count == 1)
         {
             RecordOutcome(
-                CensusPump.OnPotReceipt(verb, _plant, changed[0], "map diff") + Obtained());
+                CensusPump.OnPotReceipt(verb, _plant, changed[0], "map diff", _soil) + Obtained());
             return true;
         }
 

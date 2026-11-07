@@ -16,7 +16,9 @@ public enum HistoryKind { Plant, Harvest }
 /// echo of the same receipt can never land twice. <see cref="Yields"/> is the reserved wire
 /// field, finally filled (Q3, ruled 2026-10-14). <see cref="SeedQty"/>/<see cref="SeedItem"/> are a
 /// harvest's cross seed in three states (ruled 2026-10-18, <see cref="HarvestGather"/>): crossed
-/// (qty, item), missed (0, null), not heard (null, null).</summary>
+/// (qty, item), missed (0, null), not heard (null, null). <see cref="Soil"/> (item id) and
+/// <see cref="Patch"/> (the patch at sow, beds only) are a plant's sow capture (v0.4.1, Sow Capture
+/// design); absent = not heard, and every row written before v0.4.1 loads that way.</summary>
 public sealed record HistoryEntry(
     string Id,
     DateTimeOffset At,
@@ -30,7 +32,9 @@ public sealed record HistoryEntry(
     SyncSource Source,
     IReadOnlyList<SyncYield>? Yields,
     int? SeedQty = null,
-    uint? SeedItem = null)
+    uint? SeedItem = null,
+    uint? Soil = null,
+    IReadOnlyList<SyncPatchBed>? Patch = null)
 {
     [JsonIgnore] public bool IsOwn => By == Hand.OwnSlug;
 
@@ -63,7 +67,9 @@ public sealed record HistoryEntry(
             Source: r.Source,
             Yields: r.Data.Yields,
             SeedQty: r.Data.SeedQty,
-            SeedItem: r.Data.SeedItem);
+            SeedItem: r.Data.SeedItem,
+            Soil: r.Data.Soil,
+            Patch: r.Data.Patch);
     }
 
     /// <summary>A household act, from the wire receipt and the row it landed on. Null for any
@@ -85,7 +91,9 @@ public sealed record HistoryEntry(
             Source: r.Source,
             Yields: r.Data.Yields,
             SeedQty: r.Data.SeedQty,
-            SeedItem: r.Data.SeedItem);
+            SeedItem: r.Data.SeedItem,
+            Soil: r.Data.Soil,
+            Patch: r.Data.Patch);
     }
 }
 

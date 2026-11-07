@@ -22,7 +22,13 @@ namespace BalambGarden.Engine.Sync;
 ///
 /// <para><paramref name="Yields"/> is banked at CLOSE, not open (ruled 2026-10-14, Q3): the obtain
 /// line is the only witness to what and how many arrived, so a harvest pending carries its
-/// yield from the moment the line closes it to the moment its history line is written.</para></summary>
+/// yield from the moment the line closes it to the moment its history line is written.</para>
+///
+/// <para><paramref name="Soil"/> and <paramref name="Patch"/> are a sow's capture (v0.4.1, Sow
+/// Capture design). The soil banks at the ACT - the chain has just checked the game's own sow
+/// question, and that question is the only place the soil is named. The patch at sow banks at the
+/// act from the last map read, and the delivery's fresh read replaces it when one comes. Both stay
+/// absent (not heard) when unknown, and both ride a chain-unconfirmed close like any other field.</para></summary>
 public sealed record PendingReceipt(
     SyncKind Kind,
     bool IsPot,
@@ -36,7 +42,9 @@ public sealed record PendingReceipt(
     byte Stage,
     bool Delivered = false,
     ulong HouseId = 0,
-    IReadOnlyList<SyncYield>? Yields = null);
+    IReadOnlyList<SyncYield>? Yields = null,
+    uint? Soil = null,
+    IReadOnlyList<SyncPatchBed>? Patch = null);
 
 /// <summary>The join between an act and its confirmation: one pure rule set, no Dalamud types,
 /// no game state, desk-testable (the receipt lifecycle, ratified 2026-08-23).
@@ -139,6 +147,25 @@ public static class ReceiptLifecycle
     /// writes, loudly labelled chain-unconfirmed rather than passed off as a confirmation.</para></summary>
     public static TimeoutOutcome OnTimeout(PendingReceipt pending)
         => pending.Delivered ? TimeoutOutcome.WriteChainUnconfirmed : TimeoutOutcome.Cancel;
+
+    /// <summary>A sow's delivery reporting in (v0.4.1). The delivery's fresh read is the better
+    /// witness for the patch, so its patch replaces the act's; the act's soil stands, because it is
+    /// the one the chain checked against the sow question at the commit, and the delivery's soil
+    /// only fills a pending that opened without one. A null from the delivery keeps what the act
+    /// banked - absent is "not heard", never a reason to forget something heard.</summary>
+    public static PendingReceipt WithSowDelivery(
+        PendingReceipt pending, IReadOnlyList<SyncPatchBed>? patch, uint? soil)
+        => pending with { Patch = patch ?? pending.Patch, Soil = pending.Soil ?? soil };
+
+    /// <summary>The wire payload a pending becomes, whichever way it closes - confirmed by its
+    /// line or written chain-unconfirmed. Zero species and zero stage are the honest unknowns and
+    /// travel as absent, never as a claimed value; soil and patch travel exactly as banked.</summary>
+    public static SyncData DataOf(PendingReceipt pending) => new(
+        Species: pending.Species == 0 ? null : pending.Species,
+        Soil: pending.Soil,
+        Stage: pending.Stage == 0 ? null : pending.Stage,
+        Yields: pending.Yields,
+        Patch: pending.Patch);
 
     /// <summary>The desk's memory of the last pending a chat line actually closed. One slot,
     /// session-only: it answers a question about the last few seconds and nothing longer.</summary>
