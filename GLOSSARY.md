@@ -100,7 +100,7 @@ An outdoor garden plot holding eight beds (the Deluxe shape the household runs; 
 _Avoid_: garden, plot, bed group, patch key (the key is the binding target, not the patch)
 
 **Bed**:
-One outdoor grow slot in a patch, slot 0 to 7. The game's "Nth Bed" is one-based; the slot is N minus one.
+One outdoor grow slot in a patch, slot 0 to 7. The game's "Nth Bed" is one-based; the slot is N minus one. The eight beds ring the patch clockwise from the top-left corner: 1 2 3 across the top, 4 and 5 down the right, 6 and 7 back along the bottom, 8 on the left (checked in the field 2026-11-07), so every bed touches exactly two others, n-1 and n+1, and bed 1 touches 2 and 8.
 _Avoid_: tile, cell (that is the patch strip's word), bed index (the raw game field)
 
 **Pot**:
