@@ -1,5 +1,6 @@
 using BalambGarden.Engine.Census;
 using BalambGarden.Engine.Ledger;
+using BalambGarden.Engine.Sensing;
 using BalambGarden.Engine.Sync;
 using Xunit;
 
@@ -160,5 +161,90 @@ public class SowCaptureTests
         Assert.NotNull(page);
         var r = Assert.Single(page!.Receipts);
         Assert.Equal((ushort)Krakka, r.Data.Species);
+    }
+
+    // ------------------------------------------------------------------ seam 2: map read in, patch at sow out
+
+    [Fact] // eight readings in, eight raw entries out, by the map's own slot order
+    public void The_patch_at_sow_is_the_eight_beds_as_read()
+    {
+        // Out of order on purpose: the record is by slot, whatever order the read listed.
+        var read = new List<BedReading>
+        {
+            new(7, 0, 0, 0, false), new(0, Krakka, 2, 0x11, true), new(1, MirrorApple, 2, 0, true),
+            new(2, Krakka, 0, 0, true), new(3, MirrorApple, 2, 0, true), new(4, Krakka, 2, 0, true),
+            new(5, MirrorApple, 2, 0, true), new(6, Krakka, 2, 0, true),
+        };
+
+        Assert.Equal(Patch, PatchAtSow.From(read));
+    }
+
+    [Fact] // no map read covered the patch: absent, never an empty or guessed patch
+    public void No_read_is_no_patch()
+    {
+        Assert.Null(PatchAtSow.From(null));
+        Assert.Null(PatchAtSow.From([]));
+    }
+
+    [Fact] // a flower can read species 0 while occupied, a seedling stage 0 - both copied as the map gave them
+    public void Flowers_and_seedlings_are_copied_raw()
+    {
+        var read = new List<BedReading> { new(0, 0, 3, 0, true), new(1, Krakka, 0, 0, true) };
+
+        Assert.Equal(
+            [new SyncPatchBed(0, true, 0, 3), new SyncPatchBed(1, true, Krakka, 0)],
+            PatchAtSow.From(read));
+    }
+
+    // ------------------------------------------------------------------ seam 4: open receipt in, wire data out
+
+    private static PendingReceipt ChainSow(bool delivered, uint? soil, IReadOnlyList<SyncPatchBed>? patch) => new(
+        SyncKind.Plant, IsPot: false, OpenedAt: T0, Estate: Garden, PatchOrdinal: 0, BedSlot: 2,
+        PatchId: 1234, PotKey: -1, Species: Krakka, Stage: 0, Delivered: delivered,
+        Soil: soil, Patch: patch);
+
+    [Fact] // the soil the chain checked against the sow question, and the delivery's patch, reach the wire
+    public void A_chain_sow_carries_its_checked_soil_and_patch_onto_the_wire()
+    {
+        var data = ReceiptLifecycle.DataOf(ChainSow(delivered: true, Grade3Thanalan, Patch));
+
+        Assert.Equal((ushort)Krakka, data.Species);
+        Assert.Equal(Grade3Thanalan, data.Soil);
+        Assert.Equal(Patch, data.Patch);
+        Assert.Null(data.Stage);          // stage 0 stays the honest unknown on the wire, as before
+    }
+
+    [Fact] // a chain-unconfirmed close is an honest degrade, not a lossy one: what was known still travels
+    public void A_chain_unconfirmed_sow_still_carries_soil_and_patch()
+    {
+        var pending = ChainSow(delivered: true, Grade3Thanalan, Patch);
+        Assert.Equal(ReceiptLifecycle.TimeoutOutcome.WriteChainUnconfirmed, ReceiptLifecycle.OnTimeout(pending));
+
+        var data = ReceiptLifecycle.DataOf(pending);
+        Assert.Equal(Grade3Thanalan, data.Soil);
+        Assert.Equal(Patch, data.Patch);
+    }
+
+    [Fact] // a pot sow: soil, never a patch; an unknown soil stays absent
+    public void A_pot_sow_carries_soil_and_no_patch()
+    {
+        var pot = new PendingReceipt(SyncKind.Plant, IsPot: true, OpenedAt: T0, Estate: Garden, PatchOrdinal: 0,
+            BedSlot: 0, PatchId: 0, PotKey: 129, Species: Krakka, Stage: 0, Soil: 5810);
+        var data = ReceiptLifecycle.DataOf(pot);
+        Assert.Equal(5810u, data.Soil);
+        Assert.Null(data.Patch);
+
+        Assert.Null(ReceiptLifecycle.DataOf(ChainSow(delivered: true, soil: null, patch: null)).Soil);
+    }
+
+    [Fact] // the harvest's yield still rides at close, as before the move
+    public void A_harvest_pending_keeps_its_yield()
+    {
+        var harvest = new PendingReceipt(SyncKind.Harvest, IsPot: false, OpenedAt: T0, Estate: Garden,
+            PatchOrdinal: 0, BedSlot: 2, PatchId: 1234, PotKey: -1, Species: Krakka, Stage: 4,
+            Yields: [new SyncYield(4789, 9)]);
+        var data = ReceiptLifecycle.DataOf(harvest);
+        Assert.Equal([new SyncYield(4789, 9)], data.Yields);
+        Assert.Equal((byte)4, data.Stage);
     }
 }
