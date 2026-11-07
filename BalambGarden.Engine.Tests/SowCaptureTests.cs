@@ -237,6 +237,22 @@ public class SowCaptureTests
         Assert.Null(ReceiptLifecycle.DataOf(ChainSow(delivered: true, soil: null, patch: null)).Soil);
     }
 
+    [Fact] // the act banks the soil and the last read; the delivery's fresh read replaces the patch, never the soil
+    public void The_delivery_replaces_the_patch_and_keeps_the_acts_soil()
+    {
+        IReadOnlyList<SyncPatchBed> actRead = [new(2, false, 0, 0)];
+        var act = ChainSow(delivered: false, Grade3Thanalan, actRead);
+
+        var delivered = ReceiptLifecycle.WithSowDelivery(act with { Delivered = true }, Patch, soil: 7764);
+        var data = ReceiptLifecycle.DataOf(delivered);
+        Assert.Equal(Patch, data.Patch);
+        Assert.Equal(Grade3Thanalan, data.Soil);
+
+        // a delivery with no read keeps the act's patch; a late open with no act soil takes the delivery's
+        Assert.Equal(actRead, ReceiptLifecycle.WithSowDelivery(act, patch: null, soil: null).Patch);
+        Assert.Equal(7764u, ReceiptLifecycle.WithSowDelivery(ChainSow(true, soil: null, patch: null), null, 7764).Soil);
+    }
+
     [Fact] // the harvest's yield still rides at close, as before the move
     public void A_harvest_pending_keeps_its_yield()
     {

@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using BalambGarden.Engine.Census;
-using BalambGarden.Engine.Ledger;
+using BalambGarden.Engine.Derivations;
 using BalambGarden.Engine.Sensing;
 using BalambGarden.Game;
 using Dalamud.Game.ClientState.Objects.Types;
@@ -236,12 +236,12 @@ internal sealed unsafe class PotChain : ChainBase
 
     /// <summary>The watering twin (2026-11-03 field report: Water All left the LAST pot showing
     /// wilting - its water is only picked up by the read the next pot's step triggers, and the
-    /// last pot has no next step). A watered pot has settled when its wilt flag reads clear; a
-    /// ripe pot's flag says nothing about water (b4 reads 1 on ripe pots regardless), so ripe
-    /// counts as settled rather than holding the poll to its budget.</summary>
+    /// last pot has no next step). A watered pot has settled when the display no longer claims
+    /// it is wilting - by the ONE wilt rule the dashboard reads (<see cref="PotWiltRule"/>: b4 = 1
+    /// below ripe), so the settle can never wait on a flag the dashboard would not show.</summary>
     private void EnqueueWaterSettle(IEnumerable<PotObject> pots)
         => EnqueueDisplaySettle(pots.Select(p => p.MapKey).ToList(),
-            static r => r.Occupied && (r.Wilt == 0 || r.Stage >= GardenStage.Ripe), "wilting");
+            static r => r.Occupied && !PotWiltRule.Claims(r.Wilt, r.Stage), "wilting");
 
     private void EnqueueDisplaySettle(IReadOnlyList<int?> keys, Func<PotReading, bool> settled, string stillShows)
     {

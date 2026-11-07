@@ -70,7 +70,7 @@ A second, independent game-authored witness demanded before a weakly identified 
 _Avoid_: validation, confirmation, cross-check (fine for the kind-vs-object test, not for the pattern)
 
 **Line catalog**:
-The exact game texts that close each verb, each one entered only from a captured tape. Two cells are still uncaptured: the bed sow line and the hand bed-harvest path.
+The exact game texts that close each verb, each one entered only from a captured tape. Both cells once missing - the bed sow line and the hand bed-harvest path - were captured and field-fired 2026-10-18.
 _Avoid_: string table, regex list, parser rules
 
 **Capture**:
@@ -452,7 +452,7 @@ The game's yes/no prompt before every sowing: "Prepare the bed with a bag of gra
 _Avoid_: confirm prompt (fine in prose), dialog, popup
 
 **Soil note**:
-The sow question's soil, held for the sow line that follows. It holds while the question is open and for a few seconds after it closes; a sow line takes it and clears it; a new question replaces it. A No prints no sow line, so the note runs out unused. Two quick sowings never trade soils.
+The sow question's soil, held for the sow line that follows. It holds while the question is open (ten minutes at most, in case the close is never heard) and for a few seconds after it closes; a sow line takes it and clears it; a new question replaces it. A No prints no sow line, so the note runs out unused. Two quick sowings never trade soils.
 _Avoid_: soil cache, pending soil, remembered soil (nothing about soil is remembered past one sowing)
 
 **Crossbreed pair**:

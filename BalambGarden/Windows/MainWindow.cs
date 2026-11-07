@@ -233,13 +233,14 @@ public class MainWindow : Window, IDisposable
     }
 
     /// <summary>A press with no undo: the button relabels itself and wants a second click
-    /// (UI ruling 11 - relabel, never a modal). Returns true only on that second click.</summary>
-    /// <summary>The two-click confirm. ImGui reports a press on mouse RELEASE while the
+    /// (UI ruling 11 - relabel, never a modal). Returns true only on that second click.
+    ///
+    /// <para>ImGui reports a press on mouse RELEASE while the
     /// click-elsewhere disarm (end of Draw) fires on mouse DOWN, so the confirm click's own down
     /// frame used to disarm the button and relabel it - and a relabeled button is a new ImGui id,
     /// so the release landed on nothing (Forget and "Run cycle - sure?" both, 2026-11-03). Two
     /// guards: the mouse going down ON the armed button counts as touching it, and the id is the
-    /// key, not the label, so the relabel never changes which button the release lands on.</summary>
+    /// key, not the label, so the relabel never changes which button the release lands on.</para></summary>
     private bool ArmedButton(string key, string label, string sureLabel, bool small = false)
     {
         var armed = armedButton == key;

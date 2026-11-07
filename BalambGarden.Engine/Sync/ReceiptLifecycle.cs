@@ -148,6 +148,15 @@ public static class ReceiptLifecycle
     public static TimeoutOutcome OnTimeout(PendingReceipt pending)
         => pending.Delivered ? TimeoutOutcome.WriteChainUnconfirmed : TimeoutOutcome.Cancel;
 
+    /// <summary>A sow's delivery reporting in (v0.4.1). The delivery's fresh read is the better
+    /// witness for the patch, so its patch replaces the act's; the act's soil stands, because it is
+    /// the one the chain checked against the sow question at the commit, and the delivery's soil
+    /// only fills a pending that opened without one. A null from the delivery keeps what the act
+    /// banked - absent is "not heard", never a reason to forget something heard.</summary>
+    public static PendingReceipt WithSowDelivery(
+        PendingReceipt pending, IReadOnlyList<SyncPatchBed>? patch, uint? soil)
+        => pending with { Patch = patch ?? pending.Patch, Soil = pending.Soil ?? soil };
+
     /// <summary>The wire payload a pending becomes, whichever way it closes - confirmed by its
     /// line or written chain-unconfirmed. Zero species and zero stage are the honest unknowns and
     /// travel as absent, never as a claimed value; soil and patch travel exactly as banked.</summary>

@@ -1119,7 +1119,7 @@ internal static class CensusPump
 
         if (openPending is { } pending && pending.Kind == kind && pending.IsPot == isPot)
         {
-            openPending = pending with
+            openPending = ReceiptLifecycle.WithSowDelivery(pending with
             {
                 Delivered = true,
                 Estate = estate,
@@ -1129,9 +1129,7 @@ internal static class CensusPump
                 PotKey = potKey,
                 Species = species,
                 Stage = stage,
-                Patch = patch ?? pending.Patch,
-                Soil = pending.Soil ?? soil,
-            };
+            }, patch, soil);
             return;
         }
 

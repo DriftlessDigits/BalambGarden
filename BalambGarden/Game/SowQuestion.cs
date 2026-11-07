@@ -43,6 +43,9 @@ internal static unsafe class SowQuestion
 
     internal static void Start()
     {
+        // The soil-name list walks the whole Item sheet once; at load, not inside the game's
+        // own prompt setup the first time a hand sow asks.
+        PlantFlow.SoilItemId("potting soil");
         Svc.AddonLifecycle.RegisterListener(AddonEvent.PostSetup, Addon, SetupListener);
         Svc.AddonLifecycle.RegisterListener(AddonEvent.PreFinalize, Addon, FinalizeListener);
     }
@@ -55,7 +58,18 @@ internal static unsafe class SowQuestion
 
     /// <summary>The soil for a sow line at <paramref name="lineAt"/>, or null when no question
     /// covers it. Taking clears the note.</summary>
-    internal static uint? TakeSoil(DateTimeOffset lineAt) => note.Take(lineAt);
+    internal static uint? TakeSoil(DateTimeOffset lineAt)
+    {
+        var soil = note.Take(lineAt);
+        // The field-fire's instrument for the note's window: the only capture measured the line
+        // from the question APPEARING (2.39s, Yes included); this measures it from the close.
+        if (soil is not null && lastClosedAt is { } closed)
+            Plugin.Log.Information(
+                $"[SowQuestion] soil {soil} taken by the sow line {(lineAt - closed).TotalSeconds:0.00}s after the question closed");
+        return soil;
+    }
+
+    private static DateTimeOffset? lastClosedAt;
 
     private static void OnSetup(AddonEvent type, AddonArgs args)
     {
@@ -73,6 +87,7 @@ internal static unsafe class SowQuestion
                 return;
 
             sowQuestionOpen = true;
+            lastClosedAt = null;
             var soil = PlantFlow.SoilItemId(parts.Soil);
             note.Offer(soil, DateTimeOffset.UtcNow);
             if (soil is null)
@@ -82,7 +97,7 @@ internal static unsafe class SowQuestion
         }
         catch (Exception ex)
         {
-            // The game is building its own dialog here; a throw would land inside its UI setup.
+            // The game is building its own prompt here; a throw would land inside its UI setup.
             Plugin.Log.Warning($"[SowQuestion] sow question read failed: {ex.Message}");
         }
     }
@@ -92,6 +107,7 @@ internal static unsafe class SowQuestion
         if (!sowQuestionOpen)
             return;
         sowQuestionOpen = false;
-        note.Closed(DateTimeOffset.UtcNow);
+        lastClosedAt = DateTimeOffset.UtcNow;
+        note.Closed(lastClosedAt.Value);
     }
 }
