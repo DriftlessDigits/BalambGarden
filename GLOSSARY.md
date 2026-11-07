@@ -431,6 +431,10 @@ _Avoid_: feed (fine in prose; the hover says "last fed"), fish meal, pomace (the
 Planting a seed in soil in an empty container; soil is consumed every time. The sowing instant is the only anchor a ripe window can have.
 _Avoid_: plant (the wire kind and the receipt verb are "plant"; in prose, sow is the act and plant is the thing), replant (a sow after a harvest in the same run)
 
+**Patch at sow**:
+What all eight beds of a patch held at the instant one of them was sown, copied exactly as the map read them: each bed by the game's own number, with what the map said of it (occupied or not, species, stage), never interpreted. Raw positions only; which beds count as neighbors is worked out when the record is read, never stored. Carried on every bed sow; pots have none.
+_Avoid_: snapshot (that word is the raw instrument dumps'), neighbors (the derived reading, not the record), patch state
+
 **Harvest**:
 Taking a ripe plant, which empties its container. The game's loot line is the witness; the receipt is the emptying witness that resets the record at once.
 _Avoid_: collect, pick, reap
