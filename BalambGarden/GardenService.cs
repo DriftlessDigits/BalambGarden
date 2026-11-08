@@ -183,6 +183,60 @@ public sealed class GardenService
         RememberEra();
     }
 
+#if DEBUG
+    // The saved access roster exists only for tooling outside the game (Bench answers the tab
+    // set from it), so it is a debug-build file: a Release install never reads or writes it
+    // (ruled 2026-11-08). The file outlives the build, so the last dev session's copy stays.
+
+    /// <summary>What <c>access-roster.json</c> holds, as last loaded or written; null when there
+    /// is no readable file yet. Loaded on the first save, not at service load.</summary>
+    private SavedAccessRoster? savedRoster;
+    private bool savedRosterLoaded;
+
+    private string AccessRosterPath
+        => Path.Combine(Path.GetDirectoryName(historyPath)!, "access-roster.json");
+
+    /// <summary>Saves an access-roster read to <c>access-roster.json</c> when it differs from the
+    /// saved one (ruled 2026-11-07: only on a change, stamped with the read's time), so readers
+    /// outside the game (Bench) can answer the tab set. Never read back in game.</summary>
+    public void SaveAccessRoster(AccessRoster read, DateTimeOffset readAt)
+    {
+        var accessRosterPath = AccessRosterPath;
+        if (!savedRosterLoaded)
+        {
+            savedRosterLoaded = true;
+            // A copy of the game's own answer, rebuilt from the next access-roster read, so an
+            // unreadable one is not parked: it is treated as absent and overwritten.
+            if (File.Exists(accessRosterPath))
+            {
+                try
+                {
+                    savedRoster = SavedAccessRoster.FromJson(File.ReadAllText(accessRosterPath));
+                }
+                catch (Exception ex)
+                {
+                    Plugin.Log.Warning($"[Roster] saved access roster unreadable ({ex.Message}) - the next read rewrites it");
+                }
+            }
+        }
+
+        if (!SavedAccessRoster.NeedsSaving(savedRoster, read))
+            return;
+        var next = SavedAccessRoster.Of(read, readAt);
+        try
+        {
+            File.WriteAllText(accessRosterPath, next.ToJson());
+            savedRoster = next;
+            Plugin.Log.Information($"[Roster] access roster saved: {read.Estates.Count} estate(s), read {readAt:O}");
+        }
+        catch (Exception ex)
+        {
+            // The saved copy stays as it was, so the next pump tick tries again.
+            Plugin.Log.Error($"[Roster] access roster save failed: {ex.Message}");
+        }
+    }
+#endif
+
     /// <summary>Writes the history. Returns whether it is on disk - the relay cursor advances
     /// only on true (ForeignApply.AbsorbPage), so a failed write means the same page is fetched
     /// again and re-recorded by id. Never swallows silently: the caller needs the answer.</summary>
