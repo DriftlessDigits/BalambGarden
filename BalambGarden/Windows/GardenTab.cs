@@ -11,13 +11,10 @@ using Dalamud.Interface.Utility.Raii;
 namespace BalambGarden.Windows;
 
 /// <summary>
-/// The Garden tab (dashboard rethink, slice 3): one card per planted estate, most urgent first,
-/// each leading with its water deadline. Everything on it comes from <see cref="GardenBoard"/>;
-/// this file only draws - the order, the deadlines, the counts, the groups and every container's
-/// look are the board's.
-///
-/// <para>The verbs still live on the estate tabs behind this one (slice 5 moves them onto the
-/// here card), so a card has nothing to press yet.</para>
+/// The Garden tab: one card per planted estate, most urgent first, each leading with its water
+/// deadline. Everything on it comes from <see cref="GardenBoard"/>; this file only draws - the
+/// order, the deadlines, the counts, the groups, the card's thirst and every container's look are
+/// the board's. A card carries no verbs: they live on the estate tabs.
 /// </summary>
 internal static class GardenTab
 {
@@ -27,6 +24,7 @@ internal static class GardenTab
 
     private const float CardPad = 8f;
     private const float CellGap = 3f;
+    private const float PictureGap = 14f;
     private const float HeadlineScale = 1.35f;
 
     public static void Draw(EstateKey? here, DateTimeOffset now)
@@ -35,9 +33,10 @@ internal static class GardenTab
         if (!tab.Success)
             return;
 
+        var standing = here is { } at ? new Standing(at, EstateSensor.IsInside(), CensusPump.LastIndoor) : null;
         var cards = GardenBoard.Cards(
             Plugin.Garden.Ledger.Estates, Plugin.Garden.Census.LedgerBeds, RosterSensor.Current(),
-            Plugin.Tables, now, here, CensusPump.LastIndoor);
+            Plugin.Tables, now, standing);
 
         ImGui.Spacing();
         if (cards.Count == 0)
@@ -72,8 +71,7 @@ internal static class GardenTab
             DrawChips(card);
             DrawRipe(card, now);
             ImGui.Dummy(new Vector2(0, 2));
-            foreach (var patch in card.Patches)
-                DrawPicture(patch, now);
+            DrawPictures(card, now);
         }
         ImGui.Unindent(CardPad);
         ImGui.Dummy(new Vector2(0, CardPad / 2));
@@ -83,22 +81,20 @@ internal static class GardenTab
             ImGui.ColorConvertFloat4ToU32(new Vector4(0.35f, 0.35f, 0.35f, 1f)), 4f);
     }
 
-    /// <summary>The big number: the water deadline and its countdown, coloured by the worst bed
-    /// the board found (past its deadline red, water soon amber). A card with no water clock says
-    /// so plainly - pots are watched, not clocked.</summary>
+    /// <summary>The big number: the water deadline and its countdown, coloured by the card's
+    /// thirst. A card with no water clock says so plainly - pots are watched, not clocked.</summary>
     private static void DrawHeadline(VisitCard card, DateTimeOffset now)
     {
         ImGui.SetWindowFontScale(HeadlineScale);
         if (card.WaterBy is { } by)
         {
-            var looks = card.Patches.Where(p => !p.IsPots).SelectMany(p => p.Cells).Select(c => c.Look).ToList();
             var text = WindowFormat.WaterBy(by.ToLocalTime(), now.ToLocalTime());
-            if (looks.Contains(ContainerLook.PastDeadline))
-                ImGui.TextColored(Red, text);
-            else if (looks.Contains(ContainerLook.WaterSoon))
-                ImGui.TextColored(Amber, text);
-            else
-                ImGui.Text(text);
+            switch (card.Thirst)
+            {
+                case ContainerLook.PastDeadline: ImGui.TextColored(Red, text); break;
+                case ContainerLook.WaterSoon: ImGui.TextColored(Amber, text); break;
+                default: ImGui.Text(text); break;
+            }
             ImGui.SetWindowFontScale(1f);
             ImGui.SameLine();
             ImGui.TextDisabled(WindowFormat.Countdown(by, now));
@@ -116,11 +112,11 @@ internal static class GardenTab
 
     private static void DrawNotes(VisitCard card)
     {
-        if (card.WateringUnheard > 0)
+        if (card.TendUnheard > 0)
         {
-            ImGui.TextColored(Amber, card.WateringUnheard == 1
+            ImGui.TextColored(Amber, card.TendUnheard == 1
                 ? "1 bed with no watering heard"
-                : $"{card.WateringUnheard} beds with no watering heard");
+                : $"{card.TendUnheard} beds with no watering heard");
             if (ImGui.IsItemHovered())
                 ImGui.SetTooltip("their deadline counts from the sowing; a bed with no sowing heard either has no deadline at all");
         }
@@ -131,11 +127,12 @@ internal static class GardenTab
 
     private static void DrawChips(VisitCard card)
     {
-        Chip("water", card.Water, "beds due within a day of this card's deadline");
+        var span = $"{GardenBoard.ChipSpan.TotalHours:0}h";
+        Chip("water", card.Water, $"beds due within {span} of this card's deadline");
         ImGui.SameLine();
         Chip("harvest", card.Harvest, card.RipeNow > 0
-            ? $"{card.RipeNow} ripe now; the rest ripen within a day"
-            : "ripening within a day");
+            ? $"{card.RipeNow} seen ripe; the rest may ripen within {span}"
+            : $"may ripen within {span}");
         ImGui.SameLine();
         Chip("replant", card.Replant, "emptied by a harvest or an empty read, nothing sown since");
     }
@@ -169,10 +166,10 @@ internal static class GardenTab
             ImGui.SameLine();
             var crops = string.Join(" + ", group.Crops.Select(c => Plugin.Tables.SpeciesName(c.Species)));
             var who = group.IsPots ? $"pots ({crops})" : crops;
-            ImGui.Text($"{who} {MainWindow.SpokenWindow(group.Window, now, approxMark: true)} {WindowFormat.Mark(group.Window.Provenance)}");
+            ImGui.Text($"{who} {WindowText.SpokenWindow(group.Window, now, approxMark: true)} {WindowFormat.Mark(group.Window.Provenance)}");
             if (ImGui.IsItemHovered())
                 ImGui.SetTooltip(string.Join("\n\n", group.Crops.Select(c =>
-                    $"{Plugin.Tables.SpeciesName(c.Species)}: {MainWindow.WindowTooltip(c.Window)}")));
+                    $"{Plugin.Tables.SpeciesName(c.Species)}: {WindowText.WindowTooltip(c.Window)}")));
             if (i < card.Ripe.Count - 1)
             {
                 ImGui.SameLine();
@@ -181,43 +178,78 @@ internal static class GardenTab
         }
     }
 
-    // ------------------------------------------------------------------ the picture
+    // ------------------------------------------------------------------ the garden picture
 
-    /// <summary>One patch as a row of eight cells in slot order, or the pots in map-key order. The
-    /// in-game bed layout is read from the game before the row becomes a ring (spec open question).
-    /// A dashed outline marks a bed whose watering was never heard.</summary>
-    private static void DrawPicture(PatchPicture patch, DateTimeOffset now)
+    /// <summary>Each patch as the game lays its beds out (<see cref="GardenBoard.RingPosition"/>),
+    /// side by side, then the pots in map-key order. A dashed amber outline marks a bed whose tend
+    /// was never heard.</summary>
+    private static void DrawPictures(VisitCard card, DateTimeOffset now)
     {
-        ImGui.TextDisabled(patch.IsPots ? "pots   " : $"patch {patch.Ordinal + 1}");
         var side = ImGui.GetTextLineHeight() * 1.2f;
-        var draw = ImGui.GetWindowDrawList();
-
-        foreach (var cell in patch.Cells)
+        var first = true;
+        foreach (var patch in card.Patches.Where(p => !p.IsPots))
         {
-            ImGui.SameLine(0f, CellGap);
-            ImGui.InvisibleButton($"c{(patch.IsPots ? "p" : patch.Ordinal.ToString())}-{cell.Slot}", new Vector2(side, side));
-            var min = ImGui.GetItemRectMin();
-            var max = ImGui.GetItemRectMax();
-            draw.AddRectFilled(min, max, ImGui.ColorConvertFloat4ToU32(Fill(cell)), 3f);
-            var outline = ImGui.ColorConvertFloat4ToU32(cell.Look == ContainerLook.Ripe
-                ? new Vector4(0.52f, 0.72f, 1f, 1f)
-                : new Vector4(0.40f, 0.40f, 0.40f, 1f));
-            if (cell.WateringUnheard)
-                DashedRect(draw, min, max, ImGui.ColorConvertFloat4ToU32(Amber));
-            else
-                draw.AddRect(min, max, outline, 3f);
+            if (!first)
+                ImGui.SameLine(0f, PictureGap);
+            first = false;
 
-            if (ImGui.IsItemHovered())
-                ImGui.SetTooltip(CellTooltip(patch, cell, now));
+            using (ImRaii.Group())
+            {
+                ImGui.TextDisabled($"patch {patch.Ordinal + 1}");
+                var origin = ImGui.GetCursorScreenPos();
+                foreach (var cell in patch.Cells)
+                {
+                    var (column, row) = GardenBoard.RingPosition(cell.Position);
+                    ImGui.SetCursorScreenPos(origin + new Vector2(column, row) * (side + CellGap));
+                    DrawContainer(patch, cell, side, now);
+                }
+                ImGui.SetCursorScreenPos(origin + new Vector2(0, 3 * (side + CellGap)));
+                ImGui.Dummy(new Vector2(3 * (side + CellGap), 0));
+            }
         }
+
+        if (card.Patches.FirstOrDefault(p => p.IsPots) is not { } pots)
+            return;
+        if (!first)
+            ImGui.SameLine(0f, PictureGap);
+        using (ImRaii.Group())
+        {
+            ImGui.TextDisabled("pots");
+            for (var i = 0; i < pots.Cells.Count; i++)
+            {
+                if (i > 0)
+                    ImGui.SameLine(0f, CellGap);
+                DrawContainer(pots, pots.Cells[i], side, now);
+            }
+        }
+    }
+
+    private static void DrawContainer(PatchPicture patch, ContainerCell cell, float side, DateTimeOffset now)
+    {
+        var draw = ImGui.GetWindowDrawList();
+        ImGui.InvisibleButton($"c{patch.Ordinal?.ToString() ?? "p"}-{cell.Position}", new Vector2(side, side));
+        var min = ImGui.GetItemRectMin();
+        var max = ImGui.GetItemRectMax();
+        draw.AddRectFilled(min, max, ImGui.ColorConvertFloat4ToU32(Fill(cell)), 3f);
+        if (cell.TendUnheard)
+            DashedRect(draw, min, max, ImGui.ColorConvertFloat4ToU32(Amber));
+        else
+            draw.AddRect(min, max, ImGui.ColorConvertFloat4ToU32(cell.Look == ContainerLook.Ripe
+                ? new Vector4(0.52f, 0.72f, 1f, 1f)
+                : new Vector4(0.40f, 0.40f, 0.40f, 1f)), 3f);
+
+        if (ImGui.IsItemHovered())
+            ImGui.SetTooltip(CellTooltip(patch, cell, now));
     }
 
     /// <summary>State colours: green ramp by stage while growing, amber water soon, red past the
     /// deadline or wilting, blue ripe (the 2026-08-18 ruling: ripe is a payoff, kept off the
-    /// health gradient), earth for a known-empty container, near-black for an unclaimed slot.</summary>
+    /// health gradient), earth for a known-empty container, grey for one never read, near-black
+    /// for an unclaimed slot.</summary>
     private static Vector4 Fill(ContainerCell cell) => cell.Look switch
     {
         ContainerLook.Unclaimed => new Vector4(0.12f, 0.12f, 0.12f, 1f),
+        ContainerLook.Unread => new Vector4(0.30f, 0.30f, 0.30f, 1f),
         ContainerLook.Empty => new Vector4(0.24f, 0.19f, 0.13f, 1f),
         ContainerLook.WaterSoon => new Vector4(0.62f, 0.46f, 0.16f, 1f),
         ContainerLook.PastDeadline or ContainerLook.Wilting => new Vector4(0.62f, 0.20f, 0.20f, 1f),
@@ -249,11 +281,13 @@ internal static class GardenTab
 
     private static string CellTooltip(PatchPicture patch, ContainerCell cell, DateTimeOffset now)
     {
-        var name = patch.IsPots ? $"Pot {cell.Slot}" : $"Bed {cell.Slot + 1}";
+        var name = patch.IsPots ? $"Pot {cell.Position}" : $"Bed {cell.Position + 1}";
         switch (cell.Look)
         {
             case ContainerLook.Unclaimed:
                 return $"{name}: nothing recorded here";
+            case ContainerLook.Unread:
+                return $"{name}: recorded, contents not read yet";
             case ContainerLook.Empty:
                 return $"{name}: empty - harvested or read empty, nothing sown since";
         }
@@ -269,9 +303,9 @@ internal static class GardenTab
         else if (cell.WaterBy is { } by)
         {
             lines.Add($"{WindowFormat.WaterBy(by.ToLocalTime(), now.ToLocalTime())} ({WindowFormat.Countdown(by, now)})");
-            lines.Add(cell.WateringUnheard
-                ? "no watering heard - counting from the sowing"
-                : $"watered {WindowFormat.Ago(cell.Bed!.LastTended!.Value, now)}");
+            lines.Add(cell.Bed?.LastTended is { } tended
+                ? $"watered {WindowFormat.Ago(tended, now)}"
+                : "no watering heard - counting from the sowing");
         }
         else if (cell.Look != ContainerLook.Ripe)
             lines.Add("no watering or sowing heard - no deadline");

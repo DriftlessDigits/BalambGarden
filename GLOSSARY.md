@@ -283,6 +283,10 @@ _Avoid_: chain (that is a run), recipe tree, cross plan
 The per-patch summary the dashboard rows carry: counts of claimed, ripe, due, overdue, danger, unknown, and the next ripe window. Pots roll up as one group per estate.
 _Avoid_: aggregate, summary row, stats
 
+**Garden picture**:
+The Garden tab's small picture of an estate: each patch with its eight beds where the game puts them (the ring, see Bed), then the pots, every container coloured by its state (growing by stage, water soon, past its deadline, ripe, empty, never read), a dashed outline on a bed whose tend was never heard. The patch strip's successor.
+_Avoid_: map, mini-map, heatmap, grid
+
 **Patch strip**:
 The one-cell-per-slot view of a patch, the same census spread out instead of summed. A cell is unclaimed, unknown, growing or ripe.
 _Avoid_: bed grid (the expanded table underneath), heatmap, mini-map
@@ -425,7 +429,7 @@ _Avoid_: grow time (fine in prose), duration, cycle length
 
 **Tend**:
 Watering an outdoor bed, the plugin's and the household's most frequent act. Ungated game-wide: anyone who can reach a bed can tend it.
-_Avoid_: water (keep it for pots), care, maintain
+_Avoid_: water (keep it for pots; the player-facing water deadline and "no watering heard" are the ruled exception), care, maintain
 
 **Pot-water**:
 Watering a pot. The game calls the verb "Tend Crop", there is no separate water verb, and the plugin keeps it a distinct kind from tend because pots and beds diverge in verbs, wording and wilt publication.

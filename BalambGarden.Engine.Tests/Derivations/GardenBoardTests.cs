@@ -64,14 +64,14 @@ public class GardenBoardTests
         var cells = Assert.Single(card.Patches).Cells;
 
         Assert.Equal(Now.AddHours(46), cells[0].WaterBy);   // 2h ago + 48h
-        Assert.False(cells[0].WateringUnheard);
+        Assert.False(cells[0].TendUnheard);
         Assert.Equal(Now.AddHours(14), cells[1].WaterBy);   // sown 10h ago + 24h
-        Assert.True(cells[1].WateringUnheard);
+        Assert.True(cells[1].TendUnheard);
         Assert.Null(cells[2].WaterBy);                      // no watering, no sowing: no claim
-        Assert.True(cells[2].WateringUnheard);
+        Assert.True(cells[2].TendUnheard);
 
         Assert.Equal(Now.AddHours(14), card.WaterBy);       // the earliest bed's deadline wins
-        Assert.Equal(2, card.WateringUnheard);
+        Assert.Equal(2, card.TendUnheard);
     }
 
     [Fact] // ruling 5: nothing planted, no card - emptied containers and no containers alike
@@ -101,9 +101,9 @@ public class GardenBoardTests
 
         var pots = Assert.Single(card.Patches);
         Assert.True(pots.IsPots);
-        Assert.Equal(3, Assert.Single(pots.Cells).Slot);
+        Assert.Equal(3, Assert.Single(pots.Cells).Position);
         Assert.Null(card.WaterBy);          // pots are observed, never clocked
-        Assert.Equal(0, card.WateringUnheard);
+        Assert.Equal(0, card.TendUnheard);
     }
 
     [Fact]
@@ -215,13 +215,13 @@ public class GardenBoardTests
         };
         var estates = new List<EstateRecord> { Estate(room, "Room"), Estate(Cottage, "Cottage") };
 
-        var standing = GardenBoard.Cards(estates, beds, Roster(room, Cottage), T, Now, here: room, liveIndoor: live);
+        var standing = GardenBoard.Cards(estates, beds, Roster(room, Cottage), T, Now, standing: new Standing(room, Inside: true, live));
         var roomCard = standing.Single(c => c.Estate.Key == room);
         Assert.Equal(1, roomCard.PotsWilting);
         Assert.Equal([ContainerLook.Wilting, ContainerLook.Growing], roomCard.Patches.Single().Cells.Select(c => c.Look));
         Assert.Equal(0, standing.Single(c => c.Estate.Key == Cottage).PotsWilting);
 
-        var away = GardenBoard.Cards(estates, beds, Roster(room, Cottage), T, Now, here: null, liveIndoor: live);
+        var away = GardenBoard.Cards(estates, beds, Roster(room, Cottage), T, Now, standing: null);
         Assert.All(away, c => Assert.Equal(0, c.PotsWilting));
     }
 
@@ -236,10 +236,94 @@ public class GardenBoardTests
         };
 
         var card = Assert.Single(GardenBoard.Cards(
-            [Estate(room, "Room")], [pot], Roster(room), T, Now, here: room, liveIndoor: live));
+            [Estate(room, "Room")], [pot], Roster(room), T, Now, standing: new Standing(room, Inside: true, live)));
 
         Assert.Equal(0, card.PotsWilting);
         Assert.Equal(ContainerLook.Ripe, card.Patches.Single().Cells.Single().Look);
+    }
+
+    [Fact] // a record made by a tend heard before any read was never emptied: not a replant
+    public void ARecordNeverReadIsNotKnownEmpty()
+    {
+        var tendedFirst = Seed.Tend(Bed(Yard, 0, 1), Now.AddHours(-2), Krakka);
+        var beds = new List<ClaimedBed> { Seed.Plant(Bed(Yard, 0, 0), Now.AddHours(-1), Krakka, stage: 1), tendedFirst };
+
+        var card = Assert.Single(Board([Estate(Yard, "Yard")], beds));
+
+        Assert.Equal(ContainerLook.Unread, card.Patches[0].Cells[1].Look);
+        Assert.Equal(0, card.Replant);
+    }
+
+    [Fact] // the pots are one group of their own, whatever crops they hold
+    public void ThePotsAreOneRipeGroup()
+    {
+        var beds = new List<ClaimedBed>
+        {
+            Seed.Plant(Pot(Cottage, 1), Now.AddHours(-60), Krakka, stage: 2),   // ripe +12h
+            Seed.Plant(Pot(Cottage, 2), Now.AddHours(-10), Fig, stage: 1),      // ripe +110h
+        };
+
+        var group = Assert.Single(Assert.Single(Board([Estate(Cottage, "Cottage")], beds)).Ripe);
+
+        Assert.True(group.IsPots);
+        Assert.Equal(Now.AddHours(12), group.Window.Earliest);
+        Assert.Equal([Krakka, Fig], group.Crops.Select(c => c.Species));
+    }
+
+    [Fact] // among estates with no water clock, a plant seen ripe lifts the card above a window merely open
+    public void SeenRipeLiftsAboveAnOpenWindow()
+    {
+        var room = new EstateKey(342, 1, 1);
+        var opened = Seed.Sight(Pot(Cottage, 1), Now.AddHours(-30), Krakka, stage: 3);   // estimated window, already open
+        var beds = new List<ClaimedBed>
+        {
+            opened,
+            Seed.Ripe(Seed.Plant(Pot(room, 1), Now.AddHours(-80), Krakka, stage: 3), Now.AddHours(-1), Krakka),
+        };
+
+        var cards = Board([Estate(Cottage, "Cottage"), Estate(room, "Room")], beds);
+
+        Assert.True(cards.Single(c => c.Estate.Key == Cottage).Ripe[0].Window.Earliest < Now);
+        Assert.Equal(["Room", "Cottage"], cards.Select(c => c.Estate.DisplayName));
+    }
+
+    [Fact] // the last indoor read outlives the room: outside, it says nothing about the pots
+    public void TheLiveReadSpeaksOnlyWhileInside()
+    {
+        var pot = Seed.Plant(Pot(Yard, 1), Now.AddHours(-10), Krakka, stage: 1);   // the house's pots share the yard's key
+        var live = new Dictionary<int, PotReading>
+        {
+            [1] = new(Krakka, Stage: 1, Color: 0, Extra: 0, Occupied: true, Recognized: true, Wilt: 1),
+        };
+
+        var card = Assert.Single(GardenBoard.Cards(
+            [Estate(Yard, "Yard")], [pot], Roster(Yard), T, Now, standing: new Standing(Yard, Inside: false, live)));
+
+        Assert.Equal(0, card.PotsWilting);
+    }
+
+    [Fact] // the card's thirst is its worst bed's: the window colours the headline from it
+    public void ThirstIsTheWorstBed()
+    {
+        var soon = Seed.Plant(Bed(Yard, 0, 0), Now.AddHours(-20), Krakka, stage: 1);   // 20h of 24: water soon
+        var past = Seed.Plant(Bed(Cottage, 0, 0), Now.AddHours(-30), Krakka, stage: 1); // past its deadline
+        var fine = Seed.Plant(Bed(Cottage, 0, 1), Now.AddHours(-1), Krakka, stage: 1);
+
+        var cards = Board([Estate(Yard, "Yard"), Estate(Cottage, "Cottage")], [soon, past, fine]);
+
+        Assert.Equal(ContainerLook.PastDeadline, cards.Single(c => c.Estate.Key == Cottage).Thirst);
+        Assert.Equal(ContainerLook.WaterSoon, cards.Single(c => c.Estate.Key == Yard).Thirst);
+    }
+
+    [Fact] // GLOSSARY "Bed": 1 2 3 across the top, 4 and 5 down the right, 6 and 7 back along the bottom, 8 on the left
+    public void BedsRingThePatchClockwiseFromTheTopLeft()
+    {
+        Assert.Equal((0, 0), GardenBoard.RingPosition(0));
+        Assert.Equal((2, 0), GardenBoard.RingPosition(2));
+        Assert.Equal((2, 1), GardenBoard.RingPosition(3));
+        Assert.Equal((2, 2), GardenBoard.RingPosition(4));
+        Assert.Equal((0, 2), GardenBoard.RingPosition(6));
+        Assert.Equal((0, 1), GardenBoard.RingPosition(7));
     }
 
     [Fact] // a patch picture is always eight slots, so an empty slot reads as a hole
@@ -250,7 +334,7 @@ public class GardenBoardTests
         var patch = Assert.Single(Assert.Single(Board([Estate(Yard, "Yard")], [bed])).Patches);
 
         Assert.Equal(1, patch.Ordinal);
-        Assert.Equal(Enumerable.Range(0, 8), patch.Cells.Select(c => c.Slot));
+        Assert.Equal(Enumerable.Range(0, 8), patch.Cells.Select(c => c.Position));
         Assert.Equal(ContainerLook.Unclaimed, patch.Cells[0].Look);
         Assert.Same(bed, patch.Cells[5].Bed);
     }

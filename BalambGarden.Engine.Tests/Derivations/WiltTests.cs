@@ -34,7 +34,7 @@ public class WiltTests
         => Assert.Equal(WaterState.Unknown, Source.StateFor(Bed(null), Krakka, T0));
 
     // ------------------------------------------------------------- sowing start
-    // Dashboard rethink ruling 3 (2026-11-08): a sowing starts the thirst clock, so a
+    // Dashboard rethink ruling 3 (2026-11-08): a sowing starts the wilt clock, so a
     // freshly sown bed whose watering was never heard counts from its sowing.
 
     private static ClaimedBed Sown(DateTimeOffset sownAt) => Seed.Plant(Bed(null), sownAt, 0x31, stage: 1);
@@ -68,12 +68,12 @@ public class WiltTests
     }
 
     [Fact] // the sowing start is a deadline resting on no heard watering - say so
-    public void WateringUnheardOnlyWithoutATend()
+    public void TendUnheardOnlyWithoutATend()
     {
-        Assert.True(ClockWiltSource.WateringUnheard(Sown(T0)));
-        Assert.True(ClockWiltSource.WateringUnheard(Bed(null)));
-        Assert.False(ClockWiltSource.WateringUnheard(Bed(T0)));
-        Assert.False(ClockWiltSource.WateringUnheard(Pot(null)));
+        Assert.True(ClockWiltSource.TendUnheard(Sown(T0)));
+        Assert.True(ClockWiltSource.TendUnheard(Bed(null)));
+        Assert.False(ClockWiltSource.TendUnheard(Bed(T0)));
+        Assert.False(ClockWiltSource.TendUnheard(Pot(null)));
     }
 
     private static ClaimedBed Pot(DateTimeOffset? tended) => new()

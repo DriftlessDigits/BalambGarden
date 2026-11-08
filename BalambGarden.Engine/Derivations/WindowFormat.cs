@@ -130,7 +130,7 @@ public static class WindowFormat
     }
 
     /// <summary>The water deadline as the card says it (dashboard rethink ruling 2): "water by
-    /// today ~14:05" or "tonight" (5pm on) on the reader's own day, "water by ~Mon 06:15" on
+    /// today ~14:05" or "tonight" (the evening and night day-parts) on the reader's own day, "water by ~Mon 06:15" on
     /// another, and "water now" once it has passed. The "~" says the crop table's wilt hours are
     /// community data, not a game readout. Caller converts both instants to local time.</summary>
     public static string WaterBy(DateTimeOffset deadline, DateTimeOffset now)
@@ -138,7 +138,7 @@ public static class WindowFormat
         if (deadline <= now)
             return "water now";
         if (deadline.Date == now.Date)
-            return $"water by {(deadline.Hour >= 17 ? "tonight" : "today")} ~{Clock(deadline, withDay: false)}";
+            return $"water by {(DayPart(deadline) is "evening" or "night" ? "tonight" : "today")} ~{Clock(deadline, withDay: false)}";
         return $"water by ~{Clock(deadline, withDay: true)}";
     }
 
