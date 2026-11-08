@@ -4,11 +4,12 @@ using System.Numerics;
 namespace BalambGarden.Windows;
 
 /// <summary>
-/// Every colour the Garden tab draws, named by the one thing it means: each colour means one
-/// thing on every surface (the colour map ruling). A screen picks a meaning here and never holds
-/// a colour value of its own. A meaning has a fill (cells, bands, bars) and, where text or a thin
-/// mark carries it, a brighter ink. Shape, line style and words carry what colour does not: a
-/// dashed outline is "not heard", provenance is a glyph, status and cautions are plain words.
+/// The plugin's colours, each named by the one thing it means (the colour map ruling: one colour,
+/// one meaning, on every surface). A meaning has a fill (cells, bands, bars) and, where text or a
+/// thin mark carries it, a brighter ink. The Garden tab and its lanes take every colour value from
+/// here; the estate tabs still hold their own. Two double uses stand in the Garden tab as drawn:
+/// past the deadline (overdue and danger alike) and a pot wilting both draw <see cref="Dying"/>,
+/// and the no-watering-heard line and dashed outline draw <see cref="WaterSoonInk"/>.
 /// </summary>
 internal static class Palette
 {
@@ -42,21 +43,22 @@ internal static class Palette
     /// <summary>Empty: earth, ready to replant.</summary>
     public static readonly Vector4 Empty = new(0.24f, 0.19f, 0.13f, 1f);
 
-    /// <summary>No claim, in greys: a slot with nothing recorded (near-black), a record never
-    /// read (mid grey), a water clock that is fine and asks nothing.</summary>
-    public static readonly Vector4 NothingRecorded = new(0.12f, 0.12f, 0.12f, 1f);
-    public static readonly Vector4 NeverRead = new(0.30f, 0.30f, 0.30f, 1f);
+    /// <summary>No claim, in greys: an unclaimed slot, nothing recorded (near-black); an unread
+    /// record, contents never read (mid grey); a water clock that is fine and asks nothing.</summary>
+    public static readonly Vector4 Unclaimed = new(0.12f, 0.12f, 0.12f, 1f);
+    public static readonly Vector4 Unread = new(0.30f, 0.30f, 0.30f, 1f);
     public static readonly Vector4 ClockFine = new(0.42f, 0.42f, 0.45f, 1f);
 
     // ------------------------------------------------------------------ text
 
-    /// <summary>Plain text, full brightness: what matters now.</summary>
+    /// <summary>Plain text drawn by hand, full brightness: what matters now (ImGui's own text
+    /// uses the theme's colour).</summary>
     public static readonly Vector4 Text = Vector4.One;
 
     /// <summary>Dim text: ages, counts at zero, labels.</summary>
     public static readonly Vector4 TextDim = new(0.55f, 0.55f, 0.55f, 1f);
 
-    // ------------------------------------------------------------------ structure, meaning nothing
+    // ------------------------------------------------------------------ structure: frames, rules, chips
 
     /// <summary>A card's frame.</summary>
     public static readonly Vector4 Frame = new(0.35f, 0.35f, 0.35f, 1f);

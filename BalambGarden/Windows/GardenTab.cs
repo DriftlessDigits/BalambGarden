@@ -14,8 +14,8 @@ namespace BalambGarden.Windows;
 /// The Garden tab: one card per planted estate, most urgent first, each leading with its water
 /// deadline. Everything on it comes from <see cref="GardenBoard"/>; this file only draws - the
 /// order, the deadlines, the counts, the groups, the card's thirst and every container's look are
-/// the board's. A card carries no verbs: they live on the estate tabs. Every colour is a
-/// <see cref="Palette"/> meaning.
+/// the board's. A card carries no verbs: they live on the estate tabs. Every colour value comes
+/// from <see cref="Palette"/>; plain ImGui text keeps the theme's colour.
 /// </summary>
 internal static class GardenTab
 {
@@ -407,8 +407,8 @@ internal static class GardenTab
     /// for an unclaimed slot.</summary>
     private static Vector4 Fill(ContainerCell cell) => cell.Look switch
     {
-        ContainerLook.Unclaimed => Palette.NothingRecorded,
-        ContainerLook.Unread => Palette.NeverRead,
+        ContainerLook.Unclaimed => Palette.Unclaimed,
+        ContainerLook.Unread => Palette.Unread,
         ContainerLook.Empty => Palette.Empty,
         ContainerLook.WaterSoon => Palette.WaterSoon,
         ContainerLook.PastDeadline or ContainerLook.Wilting => Palette.Dying,
