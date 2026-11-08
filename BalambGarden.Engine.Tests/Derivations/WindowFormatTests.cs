@@ -162,4 +162,43 @@ public class WindowFormatTests
         Assert.Equal("?", WindowFormat.Water(WaterState.Unknown));
         Assert.Equal("danger", WindowFormat.Water(WaterState.Danger));
     }
+
+    // ------------------------------------------------------------- the water deadline
+    // Dashboard rethink ruling 2 (2026-11-08): the water number is a deadline, "water by
+    // tonight ~6:15pm", never an age. The caller converts both instants to local time.
+
+    [Fact]
+    public void WaterBySaysTodayTonightOrTheDay()
+    {
+        var sun = DateTimeOffset.Parse("2026-11-08T10:35:00-06:00");
+        Assert.Equal("water by today ~14:05", WindowFormat.WaterBy(sun.AddHours(3.5), sun));
+        Assert.Equal("water by tonight ~18:15", WindowFormat.WaterBy(DateTimeOffset.Parse("2026-11-08T18:15:00-06:00"), sun));
+        Assert.Equal("water by ~Mon 06:15", WindowFormat.WaterBy(DateTimeOffset.Parse("2026-11-09T06:15:00-06:00"), sun));
+        Assert.Equal("water now", WindowFormat.WaterBy(sun.AddMinutes(-1), sun));
+    }
+
+    [Fact]
+    public void WaterByFollowsTheReadersClock()
+    {
+        var sun = DateTimeOffset.Parse("2026-11-08T10:35:00-06:00");
+        try
+        {
+            WindowFormat.TwelveHourClock = true;
+            Assert.Equal("water by tonight ~6:15 pm", WindowFormat.WaterBy(DateTimeOffset.Parse("2026-11-08T18:15:00-06:00"), sun));
+        }
+        finally
+        {
+            WindowFormat.TwelveHourClock = false;
+        }
+    }
+
+    [Fact] // the countdown beside the deadline; past it, how far over
+    public void CountdownSaysHowLongIsLeft()
+    {
+        Assert.Equal("in 4h 45m", WindowFormat.Countdown(Now.AddHours(4.75), Now));
+        Assert.Equal("in 25m", WindowFormat.Countdown(Now.AddMinutes(25.5), Now));
+        Assert.Equal("in 2d 3h", WindowFormat.Countdown(Now.AddHours(51.5), Now));
+        Assert.Equal("3h over", WindowFormat.Countdown(Now.AddHours(-3.2), Now));
+        Assert.Equal("now", WindowFormat.Countdown(Now.AddSeconds(20), Now));
+    }
 }

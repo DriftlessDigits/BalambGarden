@@ -29,9 +29,52 @@ public class WiltTests
     public void KrakkaClockStates(int hoursSinceTend, WaterState expected)
         => Assert.Equal(expected, Source.StateFor(Bed(T0), Krakka, T0.AddHours(hoursSinceTend)));
 
-    [Fact] // never tended under watch: honest Unknown, not a guess
+    [Fact] // no watering and no sowing heard: honest Unknown, not a guess
     public void NoTendReceiptMeansUnknown()
         => Assert.Equal(WaterState.Unknown, Source.StateFor(Bed(null), Krakka, T0));
+
+    // ------------------------------------------------------------- sowing start
+    // Dashboard rethink ruling 3 (2026-11-08): a sowing starts the wilt clock, so a
+    // freshly sown bed whose watering was never heard counts from its sowing.
+
+    private static ClaimedBed Sown(DateTimeOffset sownAt) => Seed.Plant(Bed(null), sownAt, 0x31, stage: 1);
+
+    [Theory]
+    [InlineData(17, WaterState.Watered)]  // under 18h since the sowing
+    [InlineData(19, WaterState.Due)]
+    [InlineData(25, WaterState.Overdue)]
+    [InlineData(37, WaterState.Danger)]
+    public void SowingStartsTheClockWhenNoWateringWasHeard(int hoursSinceSowing, WaterState expected)
+        => Assert.Equal(expected, Source.StateFor(Sown(T0), Krakka, T0.AddHours(hoursSinceSowing)));
+
+    [Fact] // a watering heard after the sowing restarts the clock from the watering
+    public void AWateringAfterTheSowingWins()
+    {
+        var bed = Seed.Tend(Sown(T0), T0.AddHours(20), 0x31);
+        Assert.Equal(WaterState.Watered, Source.StateFor(bed, Krakka, T0.AddHours(30)));
+    }
+
+    [Fact]
+    public void DiesAtCountsFromTheSowingWhenNoWateringWasHeard()
+        => Assert.Equal(T0.AddHours(48), ClockWiltSource.DiesAt(Sown(T0), Krakka));
+
+    [Fact] // the water deadline: start of the clock + the crop's wilt hours
+    public void WaterByIsTheClockStartPlusWiltHours()
+    {
+        Assert.Equal(T0.AddHours(24), ClockWiltSource.WaterBy(Sown(T0), Krakka));
+        Assert.Equal(T0.AddHours(44), ClockWiltSource.WaterBy(Seed.Tend(Sown(T0), T0.AddHours(20), 0x31), Krakka));
+        Assert.Null(ClockWiltSource.WaterBy(Bed(null), Krakka));
+        Assert.Null(ClockWiltSource.WaterBy(Pot(T0), Krakka));
+    }
+
+    [Fact] // the sowing start is a deadline resting on no heard watering - say so
+    public void TendUnheardOnlyWithoutATend()
+    {
+        Assert.True(ClockWiltSource.TendUnheard(Sown(T0)));
+        Assert.True(ClockWiltSource.TendUnheard(Bed(null)));
+        Assert.False(ClockWiltSource.TendUnheard(Bed(T0)));
+        Assert.False(ClockWiltSource.TendUnheard(Pot(null)));
+    }
 
     private static ClaimedBed Pot(DateTimeOffset? tended) => new()
     {

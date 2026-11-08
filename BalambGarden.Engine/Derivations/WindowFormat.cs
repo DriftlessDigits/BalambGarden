@@ -129,6 +129,35 @@ public static class WindowFormat
             : $"{(int)span.TotalDays}d ago";
     }
 
+    /// <summary>The water deadline as the card says it (dashboard rethink ruling 2): "water by
+    /// today ~14:05" or "tonight" (the evening and night day-parts) on the reader's own day, "water by ~Mon 06:15" on
+    /// another, and "water now" once it has passed. The "~" says the crop table's wilt hours are
+    /// community data, not a game readout. Caller converts both instants to local time.</summary>
+    public static string WaterBy(DateTimeOffset deadline, DateTimeOffset now)
+    {
+        if (deadline <= now)
+            return "water now";
+        if (deadline.Date == now.Date)
+            return $"water by {(DayPart(deadline) is "evening" or "night" ? "tonight" : "today")} ~{Clock(deadline, withDay: false)}";
+        return $"water by ~{Clock(deadline, withDay: true)}";
+    }
+
+    /// <summary>The countdown beside a deadline: "in 4h 45m", "in 2d 3h", "in 25m"; under a
+    /// minute "now"; past it, how far over ("3h over"). Two units at most - the third would
+    /// claim a precision the wilt table does not have.</summary>
+    public static string Countdown(DateTimeOffset deadline, DateTimeOffset now)
+    {
+        var span = deadline - now;
+        var abs = span.Duration();
+        if (abs < TimeSpan.FromMinutes(1))
+            return "now";
+        var over = span < TimeSpan.Zero;
+        var text = abs.TotalDays >= 1 ? $"{(int)abs.TotalDays}d {abs.Hours}h"
+            : abs.TotalHours >= 1 ? over ? $"{(int)abs.TotalHours}h" : $"{(int)abs.TotalHours}h {abs.Minutes}m"
+            : $"{abs.Minutes}m";
+        return over ? $"{text} over" : $"in {text}";
+    }
+
     /// <summary>The water state as a word. "-" means the state makes no claim for this row
     /// (pot wilt is unverified - the twins labs will say; until then pots assert nothing);
     /// "?" means we genuinely do not know. Two different silences, two different marks.</summary>

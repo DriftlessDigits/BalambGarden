@@ -144,6 +144,11 @@ public class MainWindow : Window, IDisposable
         {
             if (bar.Success)
             {
+                // The Garden tab leads: the window opens on the visit cards. The verbs live on the
+                // estate tabs behind it, so arriving at an estate selects that estate's tab once
+                // (selectOnce).
+                GardenTab.Draw(here, now);
+
                 // A tab is an estate the GAME grants (spec 2026-08-15: the roster is the tab set),
                 // plus wherever we are standing - the one place that must explain itself even when
                 // it is nobody's. Never-visited grants still tab: "access granted" is real state.
@@ -193,24 +198,7 @@ public class MainWindow : Window, IDisposable
         ImGui.SameLine();
         ImGui.TextDisabled(WindowFormat.Mark(window.Provenance));
         if (ImGui.IsItemHovered())
-            ImGui.SetTooltip(WindowTooltip(window));
-    }
-
-    /// <summary>The hover behind every day-part window: the exact range the model holds
-    /// (precision ruling 2026-08-16 - the surface speaks in day-parts, the hover keeps
-    /// the hours) plus what kind of claim the marker is making.</summary>
-    private static string WindowTooltip(EtaWindow window)
-        => WindowFormat.Range(window.Earliest.ToLocalTime(), window.Latest.ToLocalTime())
-           + $"\n{WindowFormat.MarkMeaning(window.Provenance)}";
-
-    /// <summary>The spoken day-part window, clamped at now - and the "~" approx marker
-    /// only while there is still a future range to approximate ("~any time now" would be
-    /// hedging a hedge). The hover keeps the raw math either way.</summary>
-    private static string SpokenWindow(EtaWindow w, DateTimeOffset now, bool approxMark = false)
-    {
-        var local = now.ToLocalTime();
-        var phrase = WindowFormat.Coarse(w.Earliest.ToLocalTime(), w.Latest.ToLocalTime(), local);
-        return approxMark && local < w.Earliest.ToLocalTime() ? "~" + phrase : phrase;
+            ImGui.SetTooltip(WindowText.WindowTooltip(window));
     }
 
     /// <summary>The two things the verdict cannot say: that no estate has a tab yet, and
@@ -682,14 +670,14 @@ public class MainWindow : Window, IDisposable
         if (rollup.RipeBySpecies.FirstOrDefault() is { } next)
         {
             ImGui.SameLine();
-            var range = SpokenWindow(next.Window, now, approxMark: true);
+            var range = WindowText.SpokenWindow(next.Window, now, approxMark: true);
             ImGui.TextDisabled($"· {Plugin.Tables.SpeciesName(next.SpeciesIndex)} {range}");
             if (ImGui.IsItemHovered())
-                ImGui.SetTooltip(WindowTooltip(next.Window));
+                ImGui.SetTooltip(WindowText.WindowTooltip(next.Window));
             ImGui.SameLine();
             ImGui.TextDisabled(WindowFormat.Mark(next.Window.Provenance));
             if (ImGui.IsItemHovered())
-                ImGui.SetTooltip(WindowTooltip(next.Window));
+                ImGui.SetTooltip(WindowText.WindowTooltip(next.Window));
 
             var rest = rollup.RipeBySpecies.Skip(1).ToList();
             if (rest.Count > 0)
@@ -699,7 +687,7 @@ public class MainWindow : Window, IDisposable
                 if (ImGui.IsItemHovered())
                     ImGui.SetTooltip(string.Join("\n", rest.Select(s =>
                         $"{Plugin.Tables.SpeciesName(s.SpeciesIndex)} "
-                        + SpokenWindow(s.Window, now, approxMark: true)
+                        + WindowText.SpokenWindow(s.Window, now, approxMark: true)
                         + $" {WindowFormat.Mark(s.Window.Provenance)}")));
             }
         }
@@ -1096,7 +1084,9 @@ public class MainWindow : Window, IDisposable
                             : $"· thirsty{deadline}");
                     if (dies is { } dd && ImGui.IsItemHovered())
                         ImGui.SetTooltip(
-                            $"unwatered {WindowFormat.Ago(bed.LastTended!.Value, now)}"
+                            (bed.LastTended is { } tendedAt
+                                ? $"unwatered {WindowFormat.Ago(tendedAt, now)}"
+                                : $"no watering heard - sown {WindowFormat.Ago(bed.PlantedAt!.Value, now)}")
                             + $"\nwilts at {crop!.WiltHours}h dry · dead at {crop.WitherHours}h dry"
                             + $"\ndies ~{WindowFormat.Range(dd.ToLocalTime(), dd.ToLocalTime())}");
                 }
@@ -1188,9 +1178,9 @@ public class MainWindow : Window, IDisposable
         // it reads disabled, and only "ripe now" (above) is bright. No per-row provenance
         // marker either: the rollup line carries the claim once per species, and the
         // hover here keeps the exact hours plus what kind of claim it is.
-        ImGui.TextDisabled(SpokenWindow(window, now));
+        ImGui.TextDisabled(WindowText.SpokenWindow(window, now));
         if (ImGui.IsItemHovered())
-            ImGui.SetTooltip(WindowTooltip(window));
+            ImGui.SetTooltip(WindowText.WindowTooltip(window));
     }
 
     /// <summary>Tend appears only for a bed that is actually in reach - and it is the only
