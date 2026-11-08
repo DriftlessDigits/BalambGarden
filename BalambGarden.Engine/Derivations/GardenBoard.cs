@@ -60,7 +60,49 @@ public sealed record Standing(EstateKey Estate, bool Inside, IReadOnlyDictionary
 public sealed record VisitCard(
     EstateRecord Estate, DateTimeOffset? WaterBy, ContainerLook Thirst, int TendUnheard,
     int Water, int Harvest, int RipeNow, int Replant, int PotsWilting,
-    IReadOnlyList<RipeGroup> Ripe, IReadOnlyList<PatchPicture> Patches);
+    IReadOnlyList<RipeGroup> Ripe, IReadOnlyList<PatchPicture> Patches, TimelineLane Lane);
+
+/// <summary>A card's lane on the timeline under the cards (ruling 17). <see cref="WaterFrom"/> is
+/// where the water bar starts: the clock start of the bed that sets the card's water deadline, so
+/// the bar is one real clock, from its watering (or sowing) to the deadline drop; null when no bed
+/// carries a clock.</summary>
+public sealed record TimelineLane(DateTimeOffset? WaterFrom, IReadOnlyList<LaneMark> Marks);
+
+/// <summary>The stretch of time the lanes draw.</summary>
+public sealed record TimelineSpan(DateTimeOffset From, DateTimeOffset To)
+{
+    /// <summary>Every midnight inside the span in <paramref name="zone"/> (the reader's own, which
+    /// the window passes in), each with that day's own offset, so a clock change moves the line
+    /// with it.</summary>
+    public IReadOnlyList<DateTimeOffset> Midnights(TimeZoneInfo zone)
+    {
+        var days = new List<DateTimeOffset>();
+        var day = TimeZoneInfo.ConvertTime(From, zone).Date.AddDays(1);
+        for (var midnight = AtMidnight(day, zone); midnight < To; midnight = AtMidnight(day = day.AddDays(1), zone))
+            days.Add(midnight);
+        return days;
+    }
+
+    private static DateTimeOffset AtMidnight(DateTime date, TimeZoneInfo zone) => new(date, zone.GetUtcOffset(date));
+}
+
+/// <summary>Which row of a lane a mark sits on: the beds' ripe times, or the pots' below them.</summary>
+public enum LaneRow { Beds, Pots }
+
+/// <summary>How a ripe mark is drawn. <see cref="Tick"/> is an anchored window (a witnessed
+/// sowing, zero width); <see cref="Band"/> a bracketed window, as wide as it is;
+/// <see cref="EstimatedBand"/> an estimated one, striped. <see cref="RipeNow"/> marks containers
+/// seen ripe, at the now line: they carry no window, and the lane would otherwise be blank where
+/// the most urgent harvest is.</summary>
+public enum LaneMarkKind { Tick, Band, EstimatedBand, RipeNow }
+
+/// <summary>One mark on a lane: a ripe group (or what is seen ripe) and its crops for the label.
+/// <see cref="Group"/> is the card's own ripe group it draws, so the lane and the card cannot
+/// disagree (ruled at rethink slice 4: the lane says what the card says); null only for
+/// <see cref="LaneMarkKind.RipeNow"/>, which has no window and so needs its own extent.</summary>
+public sealed record LaneMark(
+    LaneRow Row, LaneMarkKind Kind, DateTimeOffset From, DateTimeOffset To, IReadOnlyList<ushort> Crops,
+    RipeGroup? Group = null);
 
 /// <summary>
 /// The garden board (dashboard rethink spec, 2026-11-08): everything the Garden tab draws,
@@ -89,6 +131,18 @@ public static class GardenBoard
 
     private static readonly (int Column, int Row)[] Ring =
         [(0, 0), (1, 0), (2, 0), (2, 1), (2, 2), (1, 2), (0, 2), (0, 1)];
+
+    /// <summary>The lanes' span: from <see cref="SpanBefore"/> ago to <see cref="SpanAhead"/> ahead.
+    /// A lane holds every mark that starts before the span's end: one whose window already closed
+    /// is still on the card, likely ripe and unpicked, and stays on the lane pinned at its start.</summary>
+    public static TimelineSpan Span(DateTimeOffset now) => new(now - SpanBefore, now + SpanAhead);
+
+    /// <summary>How far back the lanes reach: enough to show a water bar's start and a window just
+    /// opened. Tunable on the bench.</summary>
+    public static readonly TimeSpan SpanBefore = TimeSpan.FromHours(6);
+
+    /// <summary>How far ahead the lanes reach: the next six days (ruling 17). Tunable on the bench.</summary>
+    public static readonly TimeSpan SpanAhead = TimeSpan.FromDays(6);
 
     private static readonly ClockWiltSource Clock = new();
 
@@ -164,7 +218,37 @@ public static class GardenBoard
             water, harvest, ripeNow,
             Replant: cells.Count(c => c.Look == ContainerLook.Empty),
             PotsWilting: cells.Count(c => c.Look == ContainerLook.Wilting),
-            ripe, patches);
+            ripe, patches, new TimelineLane(WaterFrom(bedCells, waterBy),
+                RipeNowMarks(LaneRow.Beds, bedCells, now)
+                    .Concat(RipeNowMarks(LaneRow.Pots, cells.Where(c => c.Bed!.IsPot), now))
+                    .Concat(ripe.Select(Mark))
+                    .Where(m => m.From <= Span(now).To)
+                    .ToList()));
+    }
+
+    /// <summary>Where the water bar starts: the clock start of the bed whose deadline is the card's.</summary>
+    private static DateTimeOffset? WaterFrom(List<ContainerCell> bedCells, DateTimeOffset? waterBy) => waterBy is null
+        ? null
+        : bedCells.Where(c => c.WaterBy == waterBy).Select(c => ClockWiltSource.ClockStart(c.Bed!)).Min();
+
+    /// <summary>A card's ripe group as a lane mark: its provenance decides the drawing.</summary>
+    private static LaneMark Mark(RipeGroup group) => new(
+        group.IsPots ? LaneRow.Pots : LaneRow.Beds,
+        group.Window.Provenance switch
+        {
+            Provenance.Anchored => LaneMarkKind.Tick,
+            Provenance.Bracketed => LaneMarkKind.Band,
+            _ => LaneMarkKind.EstimatedBand,
+        },
+        group.Window.Earliest, group.Window.Latest,
+        group.Crops.Select(c => c.Species).ToList(), group);
+
+    /// <summary>One "ripe now" mark for a row, when anything on it is seen ripe.</summary>
+    private static IEnumerable<LaneMark> RipeNowMarks(LaneRow row, IEnumerable<ContainerCell> cells, DateTimeOffset now)
+    {
+        var crops = cells.Where(c => c.Look == ContainerLook.Ripe).Select(c => c.Species).Distinct().Order().ToList();
+        if (crops.Count > 0)
+            yield return new LaneMark(row, LaneMarkKind.RipeNow, now, now, crops);
     }
 
     /// <summary>The pot wilt rule on the live read: a pot wilts only when the map in front of the

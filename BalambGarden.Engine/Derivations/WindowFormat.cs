@@ -112,6 +112,11 @@ public static class WindowFormat
         _ => "night",
     };
 
+    /// <summary>A day line's head on the timeline lanes, "Mon 9". Caller converts to local time
+    /// first.</summary>
+    public static string DayHead(DateTimeOffset midnight)
+        => midnight.ToString("ddd d", CultureInfo.InvariantCulture);
+
     /// <summary>An exact past moment for hovers - the full date, because a "3d ago" only
     /// resolves to a real calendar moment with the date said outright. Caller converts to
     /// local time first, same as <see cref="Range"/>.</summary>
