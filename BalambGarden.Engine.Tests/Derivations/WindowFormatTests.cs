@@ -201,4 +201,8 @@ public class WindowFormatTests
         Assert.Equal("3h over", WindowFormat.Countdown(Now.AddHours(-3.2), Now));
         Assert.Equal("now", WindowFormat.Countdown(Now.AddSeconds(20), Now));
     }
+
+    [Fact] // the lanes' day heads read the same on every machine, whatever its culture
+    public void DayHeadIsTheWeekdayAndTheDayOfTheMonth()
+        => Assert.Equal("Mon 9", WindowFormat.DayHead(DateTimeOffset.Parse("2026-11-09T00:00:00-06:00")));
 }

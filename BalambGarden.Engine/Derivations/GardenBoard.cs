@@ -69,20 +69,37 @@ public sealed record VisitCard(
 public sealed record TimelineLane(DateTimeOffset? WaterFrom, IReadOnlyList<LaneMark> Marks);
 
 /// <summary>The stretch of time the lanes draw.</summary>
-public sealed record TimelineSpan(DateTimeOffset From, DateTimeOffset To);
+public sealed record TimelineSpan(DateTimeOffset From, DateTimeOffset To)
+{
+    /// <summary>Every midnight inside the span in <paramref name="zone"/> (the reader's own, which
+    /// the window passes in), each with that day's own offset, so a clock change moves the line
+    /// with it.</summary>
+    public IReadOnlyList<DateTimeOffset> Midnights(TimeZoneInfo zone)
+    {
+        var days = new List<DateTimeOffset>();
+        var day = TimeZoneInfo.ConvertTime(From, zone).Date.AddDays(1);
+        for (var midnight = AtMidnight(day, zone); midnight < To; midnight = AtMidnight(day = day.AddDays(1), zone))
+            days.Add(midnight);
+        return days;
+    }
+
+    private static DateTimeOffset AtMidnight(DateTime date, TimeZoneInfo zone) => new(date, zone.GetUtcOffset(date));
+}
 
 /// <summary>Which row of a lane a mark sits on: the beds' ripe times, or the pots' below them.</summary>
 public enum LaneRow { Beds, Pots }
 
-/// <summary>How a ripe mark is drawn. <see cref="Tick"/> is an exact ripe time (a witnessed
-/// sowing, a zero-width window); <see cref="Band"/> a bracketed window, as wide as it is;
-/// <see cref="EstimateBand"/> an estimated one, striped. <see cref="RipeNow"/> marks containers
+/// <summary>How a ripe mark is drawn. <see cref="Tick"/> is an anchored window (a witnessed
+/// sowing, zero width); <see cref="Band"/> a bracketed window, as wide as it is;
+/// <see cref="EstimatedBand"/> an estimated one, striped. <see cref="RipeNow"/> marks containers
 /// seen ripe, at the now line: they carry no window, and the lane would otherwise be blank where
 /// the most urgent harvest is.</summary>
-public enum LaneMarkKind { Tick, Band, EstimateBand, RipeNow }
+public enum LaneMarkKind { Tick, Band, EstimatedBand, RipeNow }
 
 /// <summary>One mark on a lane: a ripe group (or what is seen ripe) and its crops for the label.
-/// <see cref="Group"/> is the card's ripe group it draws, for the hover; null for ripe now.</summary>
+/// <see cref="Group"/> is the card's own ripe group it draws, so the lane and the card cannot
+/// disagree (ruled at rethink slice 4: the lane says what the card says); null only for
+/// <see cref="LaneMarkKind.RipeNow"/>, which has no window and so needs its own extent.</summary>
 public sealed record LaneMark(
     LaneRow Row, LaneMarkKind Kind, DateTimeOffset From, DateTimeOffset To, IReadOnlyList<ushort> Crops,
     RipeGroup? Group = null);
@@ -115,7 +132,9 @@ public static class GardenBoard
     private static readonly (int Column, int Row)[] Ring =
         [(0, 0), (1, 0), (2, 0), (2, 1), (2, 2), (1, 2), (0, 2), (0, 1)];
 
-    /// <summary>The lanes' span: from <see cref="SpanBefore"/> ago to <see cref="SpanAhead"/> ahead.</summary>
+    /// <summary>The lanes' span: from <see cref="SpanBefore"/> ago to <see cref="SpanAhead"/> ahead.
+    /// A lane holds every mark that starts before the span's end: one whose window already closed
+    /// is still on the card, likely ripe and unpicked, and stays on the lane pinned at its start.</summary>
     public static TimelineSpan Span(DateTimeOffset now) => new(now - SpanBefore, now + SpanAhead);
 
     /// <summary>How far back the lanes reach: enough to show a water bar's start and a window just
@@ -200,14 +219,17 @@ public static class GardenBoard
             Replant: cells.Count(c => c.Look == ContainerLook.Empty),
             PotsWilting: cells.Count(c => c.Look == ContainerLook.Wilting),
             ripe, patches, new TimelineLane(WaterFrom(bedCells, waterBy),
-                RipeNowMarks(cells, now).Concat(ripe.Select(Mark)).Where(m => Touches(m, Span(now))).ToList()));
+                RipeNowMarks(LaneRow.Beds, bedCells, now)
+                    .Concat(RipeNowMarks(LaneRow.Pots, cells.Where(c => c.Bed!.IsPot), now))
+                    .Concat(ripe.Select(Mark))
+                    .Where(m => m.From <= Span(now).To)
+                    .ToList()));
     }
 
     /// <summary>Where the water bar starts: the clock start of the bed whose deadline is the card's.</summary>
-    private static DateTimeOffset? WaterFrom(List<ContainerCell> bedCells, DateTimeOffset? waterBy) => bedCells
-        .Where(c => waterBy is not null && c.WaterBy == waterBy)
-        .Select(c => ClockWiltSource.ClockStart(c.Bed!))
-        .Min();
+    private static DateTimeOffset? WaterFrom(List<ContainerCell> bedCells, DateTimeOffset? waterBy) => waterBy is null
+        ? null
+        : bedCells.Where(c => c.WaterBy == waterBy).Select(c => ClockWiltSource.ClockStart(c.Bed!)).Min();
 
     /// <summary>A card's ripe group as a lane mark: its provenance decides the drawing.</summary>
     private static LaneMark Mark(RipeGroup group) => new(
@@ -216,20 +238,18 @@ public static class GardenBoard
         {
             Provenance.Anchored => LaneMarkKind.Tick,
             Provenance.Bracketed => LaneMarkKind.Band,
-            _ => LaneMarkKind.EstimateBand,
+            _ => LaneMarkKind.EstimatedBand,
         },
         group.Window.Earliest, group.Window.Latest,
         group.Crops.Select(c => c.Species).ToList(), group);
 
-    private static bool Touches(LaneMark mark, TimelineSpan span) => mark.To >= span.From && mark.From <= span.To;
-
-    /// <summary>One "ripe now" mark per row holding a container seen ripe, at the now line.</summary>
-    private static IEnumerable<LaneMark> RipeNowMarks(IEnumerable<ContainerCell> cells, DateTimeOffset now) => cells
-        .Where(c => c.Look == ContainerLook.Ripe)
-        .GroupBy(c => c.Bed!.IsPot ? LaneRow.Pots : LaneRow.Beds)
-        .OrderBy(g => g.Key)
-        .Select(g => new LaneMark(g.Key, LaneMarkKind.RipeNow, now, now,
-            g.Select(c => c.Species).Distinct().Order().ToList()));
+    /// <summary>One "ripe now" mark for a row, when anything on it is seen ripe.</summary>
+    private static IEnumerable<LaneMark> RipeNowMarks(LaneRow row, IEnumerable<ContainerCell> cells, DateTimeOffset now)
+    {
+        var crops = cells.Where(c => c.Look == ContainerLook.Ripe).Select(c => c.Species).Distinct().Order().ToList();
+        if (crops.Count > 0)
+            yield return new LaneMark(row, LaneMarkKind.RipeNow, now, now, crops);
+    }
 
     /// <summary>The pot wilt rule on the live read: a pot wilts only when the map in front of the
     /// player says so, and never at ripe (<see cref="PotWiltRule"/>).</summary>

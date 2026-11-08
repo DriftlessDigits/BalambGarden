@@ -369,7 +369,7 @@ public class GardenBoardTests
         Assert.Equal(Now.AddHours(-20), card.Lane.WaterFrom);   // the Krakka's watering, not the fig's older one
     }
 
-    [Fact] // user story 17: an exact ripe time is a tick; a bracketed one a band its own width, an estimated one striped
+    [Fact] // user story 17: an anchored ripe window is a tick; a bracketed one a band its own width, an estimated one striped
     public void EachRipeGroupIsATickOrABandOnItsRow()
     {
         const ushort mirror = 17;   // grow 120h
@@ -377,7 +377,7 @@ public class GardenBoardTests
         Seed.Sight(bracketed, Now.AddHours(-1), mirror, stage: 2);
         var beds = new List<ClaimedBed>
         {
-            Seed.Plant(Bed(Yard, 0, 0), Now.AddHours(-60), Krakka, stage: 2),   // sown: ripe exactly +12h
+            Seed.Plant(Bed(Yard, 0, 0), Now.AddHours(-60), Krakka, stage: 2),   // sown: anchored at +12h
             bracketed,                                                          // two stages seen: +70h..+79h
             Seed.Sight(Bed(Yard, 1, 1), Now.AddHours(-1), Fig, stage: 1),        // one stage seen: +79h..+119h
             Seed.Plant(Pot(Yard, 3), Now.AddHours(-58), Krakka, stage: 2),       // a pot, sown: +14h
@@ -390,11 +390,15 @@ public class GardenBoardTests
                 (LaneRow.Beds, LaneMarkKind.Tick, Now.AddHours(12), Now.AddHours(12)),
                 (LaneRow.Pots, LaneMarkKind.Tick, Now.AddHours(14), Now.AddHours(14)),
                 (LaneRow.Beds, LaneMarkKind.Band, Now.AddHours(70), Now.AddHours(79)),
-                (LaneRow.Beds, LaneMarkKind.EstimateBand, Now.AddHours(79), Now.AddHours(119)),
+                (LaneRow.Beds, LaneMarkKind.EstimatedBand, Now.AddHours(79), Now.AddHours(119)),
             ],
             card.Lane.Marks.Select(m => (m.Row, m.Kind, m.From, m.To)));
         Assert.Equal([Krakka], card.Lane.Marks[0].Crops);
         Assert.Equal([Fig], card.Lane.Marks[3].Crops);
+
+        // The lane and the card cannot disagree: each mark is the card's own ripe group.
+        Assert.Equal(card.Ripe.Count, card.Lane.Marks.Count);
+        Assert.All(card.Lane.Marks.Zip(card.Ripe), pair => Assert.Same(pair.Second, pair.First.Group));
     }
 
     [Fact] // orient scope call 2026-11-08: a plant seen ripe has no window, so the lane marks it at the now line
@@ -418,22 +422,39 @@ public class GardenBoardTests
         Assert.Single(marks, m => m.Kind == LaneMarkKind.Tick);
     }
 
-    [Fact] // user story 16: the lanes span from a few hours ago to six days ahead; a mark wholly outside is not on them
-    public void TheLanesSpanAFewHoursAgoToSixDaysAheadAndHoldOnlyWhatTouchesIt()
+    [Fact] // user story 16: the lanes span from a few hours ago to six days ahead; past its end nothing is drawn
+    public void TheLanesSpanAFewHoursAgoToSixDaysAhead()
     {
         Assert.Equal(new TimelineSpan(Now.AddHours(-6), Now.AddDays(6)), GardenBoard.Span(Now));
 
         const ushort mirror = 17;   // grow 120h
         var beds = new List<ClaimedBed>
         {
-            Seed.Plant(Bed(Yard, 0, 0), Now.AddHours(-82), Krakka, stage: 3),   // ripe exactly -10h, not yet seen ripe: before the span
-            Seed.Plant(Bed(Yard, 0, 1), Now.AddHours(-30), Fig, stage: 1),      // ripe +90h: on it
-            Seed.Plant(Bed(Yard, 1, 0), Now.AddHours(30), mirror, stage: 0),    // a clock-skewed sowing: ripe +150h, past its end
+            Seed.Plant(Bed(Yard, 0, 0), Now.AddHours(-82), Krakka, stage: 3),   // anchored at -10h, not yet seen ripe
+            Seed.Plant(Bed(Yard, 0, 1), Now.AddHours(-30), Fig, stage: 1),      // +90h
+            Seed.Plant(Bed(Yard, 1, 0), Now.AddHours(30), mirror, stage: 0),    // a clock-skewed sowing: +150h, past the end
         };
 
         var card = Assert.Single(Board([Estate(Yard, "Yard")], beds));
 
-        Assert.Equal(3, card.Ripe.Count);   // the card still says all three
-        Assert.Equal([Now.AddHours(90)], card.Lane.Marks.Select(m => m.From));
+        Assert.Equal(3, card.Ripe.Count);   // the card says all three
+        // A window that closed before the span is the likeliest harvest on the estate: it stays.
+        Assert.Equal([Now.AddHours(-10), Now.AddHours(90)], card.Lane.Marks.Select(m => m.From));
+    }
+
+    [Fact] // a day line sits at the reader's own midnight, each day with its own offset across a clock change
+    public void MidnightsFollowTheReadersClockAcrossAClockChange()
+    {
+        var central = TimeZoneInfo.FindSystemTimeZoneById("Central Standard Time");   // daylight time ends Sun 2026-11-01 2am
+        var span = new TimelineSpan(DateTimeOffset.Parse("2026-10-31T17:00:00Z"), DateTimeOffset.Parse("2026-11-03T12:00:00Z"));
+
+        Assert.Equal(
+            [
+                DateTimeOffset.Parse("2026-11-01T00:00:00-05:00"),
+                DateTimeOffset.Parse("2026-11-02T00:00:00-06:00"),
+                DateTimeOffset.Parse("2026-11-03T00:00:00-06:00"),
+            ],
+            span.Midnights(central));
+        Assert.Equal(TimeSpan.FromHours(-6), span.Midnights(central)[1].Offset);
     }
 }

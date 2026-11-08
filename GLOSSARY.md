@@ -296,7 +296,7 @@ One trip to one estate, where the water, harvest, replant and pot care due there
 _Avoid_: trip, run (a chain's word), route, schedule
 
 **Timeline lane**:
-One visit's row in "the next six days" under the Garden tab's cards, in card order: the water bar from the deadline bed's watering (or sowing) to the drop at the water deadline, and the ripe times as marks (a tick when exact, a band as wide as the window otherwise, striped when estimated, a dot at the now line for what is seen ripe), the pots on a row of their own.
+One visit's row in "the next six days" under the Garden tab's cards, in card order: the water bar from the deadline bed's watering (or sowing) to the drop at the water deadline, and the ripe times as marks (a tick when anchored, a band as wide as the window otherwise, striped when estimated, a dot at the now line for what is seen ripe), the pots on a row of their own.
 _Avoid_: gantt, schedule, calendar, timeline strip (the mock's smaller version, not built)
 
 **Verdict**:

@@ -84,12 +84,12 @@ internal static class GardenTab
             * (float)Math.Clamp((t - span.From).TotalSeconds / (span.To - span.From).TotalSeconds, 0d, 1d);
 
         var draw = ImGui.GetWindowDrawList();
-        var midnights = Midnights(span).ToList();
+        var midnights = span.Midnights(TimeZoneInfo.Local);
 
         // Day heads.
         foreach (var midnight in midnights)
             draw.AddText(new Vector2(X(midnight) + 4f, left.Y), ImGui.ColorConvertFloat4ToU32(Dim),
-                midnight.ToString("ddd d"));
+                WindowFormat.DayHead(midnight));
         var lanesTop = left.Y + line;
         var lanesBottom = lanesTop + laneHeight * cards.Count;
 
@@ -100,7 +100,9 @@ internal static class GardenTab
             var top = lanesTop + laneHeight * i;
             draw.AddLine(new Vector2(left.X, top + laneHeight), new Vector2(left.X + width, top + laneHeight),
                 ImGui.ColorConvertFloat4ToU32(DayLine));
+            draw.PushClipRect(new Vector2(left.X, top), new Vector2(trackX - 4f, top + laneHeight), true);
             draw.AddText(new Vector2(left.X + 4f, top + line * 0.2f), ImGui.GetColorU32(ImGuiCol.Text), card.Estate.DisplayName);
+            draw.PopClipRect();
 
             foreach (var midnight in midnights)
                 draw.AddLine(new Vector2(X(midnight), top), new Vector2(X(midnight), top + laneHeight),
@@ -123,14 +125,6 @@ internal static class GardenTab
         ImGui.Dummy(new Vector2(width, lanesBottom - left.Y));
     }
 
-    /// <summary>Every local midnight inside the span.</summary>
-    private static IEnumerable<DateTimeOffset> Midnights(TimelineSpan span)
-    {
-        var from = span.From.ToLocalTime();
-        for (var day = new DateTimeOffset(from.Date, from.Offset).AddDays(1); day < span.To; day = day.AddDays(1))
-            yield return new DateTimeOffset(day.Date, TimeZoneInfo.Local.GetUtcOffset(day.Date));
-    }
-
     /// <summary>The thin bar from the deadline bed's watering (or sowing) to the drop at the card's
     /// deadline, coloured by the card's thirst like the headline. No clock, no bar.</summary>
     private static void DrawWaterBar(VisitCard card, float top, float line, Func<DateTimeOffset, float> x, DateTimeOffset now)
@@ -139,12 +133,7 @@ internal static class GardenTab
             return;
 
         var draw = ImGui.GetWindowDrawList();
-        var colour = ImGui.ColorConvertFloat4ToU32(card.Thirst switch
-        {
-            ContainerLook.PastDeadline => Red,
-            ContainerLook.WaterSoon => Amber,
-            _ => Water,
-        });
+        var colour = ImGui.ColorConvertFloat4ToU32(ThirstColour(card.Thirst) ?? Water);
         var y = top + line * 0.5f;
         draw.AddRectFilled(new Vector2(x(from), y - 2.5f), new Vector2(x(by), y + 2.5f), colour, 2.5f);
 
@@ -158,10 +147,11 @@ internal static class GardenTab
         ImGui.InvisibleButton("drop", new Vector2(r * 2, r * 3));
         if (ImGui.IsItemHovered())
             ImGui.SetTooltip($"{WindowFormat.WaterBy(by.ToLocalTime(), now.ToLocalTime())} ({WindowFormat.Countdown(by, now)})\n"
-                             + $"the bar starts at that bed's last watering, or its sowing if none was heard ({WindowFormat.Ago(from, now)})");
+                             + "the bar is the first bed here to reach its crop's wilt hours, from its last watering\n"
+                             + $"(or its sowing, when no watering was heard) {WindowFormat.Ago(from, now)}");
     }
 
-    /// <summary>A ripe mark: a tick for an exact time, a band as wide as its window (striped when
+    /// <summary>A ripe mark: a tick for an anchored window, a band as wide as its window (striped when
     /// estimated), a dot at the now line for what is seen ripe; its crops and glyph beside it.
     /// <paramref name="leftFree"/> is where the row's previous label ended; returns where this one ends.</summary>
     private static float DrawMark(LaneMark mark, float y, float height, float leftFree, float right, Func<DateTimeOffset, float> x)
@@ -184,15 +174,14 @@ internal static class GardenTab
             default:
                 (min, max) = (new Vector2(x0, y), new Vector2(MathF.Max(x1, x0 + 4f), y + height));
                 draw.AddRectFilled(min, max, gold, height / 2);
-                if (mark.Kind == LaneMarkKind.EstimateBand)
+                if (mark.Kind == LaneMarkKind.EstimatedBand)
                     Stripes(draw, min, max, ImGui.ColorConvertFloat4ToU32(GoldDark));
                 break;
         }
 
         var crops = string.Join(" + ", mark.Crops.Select(c => Plugin.Tables.SpeciesName(c)));
-        var label = mark.Kind == LaneMarkKind.RipeNow
-            ? $"{(mark.Row == LaneRow.Pots ? "pots: " : "")}{crops} ripe now"
-            : $"{(mark.Row == LaneRow.Pots ? "pots: " : "")}{crops} {WindowFormat.Mark(mark.Group!.Window.Provenance)}";
+        var who = mark.Row == LaneRow.Pots ? $"pots ({crops})" : crops;
+        var label = mark.Group is { } shown ? $"{who} {WindowFormat.Mark(shown.Window.Provenance)}" : $"{who} ripe now";
         // Beside the mark; before it when it would run off the lane's end and the row's previous
         // label leaves room; otherwise beside it, cut at the end (the hover has it whole).
         var labelWidth = ImGui.CalcTextSize(label).X;
@@ -214,7 +203,7 @@ internal static class GardenTab
         return labelEnd;
     }
 
-    /// <summary>Diagonal stripes across a band, clipped to it: an estimate, not a bracket.</summary>
+    /// <summary>Diagonal stripes across a band, clipped to it: estimated, not bracketed.</summary>
     private static void Stripes(ImDrawListPtr draw, Vector2 min, Vector2 max, uint colour)
     {
         draw.PushClipRect(min, max, true);
@@ -261,12 +250,10 @@ internal static class GardenTab
         if (card.WaterBy is { } by)
         {
             var text = WindowFormat.WaterBy(by.ToLocalTime(), now.ToLocalTime());
-            switch (card.Thirst)
-            {
-                case ContainerLook.PastDeadline: ImGui.TextColored(Red, text); break;
-                case ContainerLook.WaterSoon: ImGui.TextColored(Amber, text); break;
-                default: ImGui.Text(text); break;
-            }
+            if (ThirstColour(card.Thirst) is { } colour)
+                ImGui.TextColored(colour, text);
+            else
+                ImGui.Text(text);
             ImGui.SetWindowFontScale(1f);
             ImGui.SameLine();
             ImGui.TextDisabled(WindowFormat.Countdown(by, now));
@@ -281,6 +268,15 @@ internal static class GardenTab
             ImGui.SetTooltip("no bed here carries a clock: pots are watched, not clocked - Balamb only knows\n"
                              + "a pot is wilting while you stand in its room");
     }
+
+    /// <summary>The card's thirst as a colour, shared by the headline and the lane's water bar so
+    /// the two cannot disagree: red past the deadline, amber water soon, null for plain.</summary>
+    private static Vector4? ThirstColour(ContainerLook thirst) => thirst switch
+    {
+        ContainerLook.PastDeadline => Red,
+        ContainerLook.WaterSoon => Amber,
+        _ => null,
+    };
 
     private static void DrawNotes(VisitCard card)
     {
