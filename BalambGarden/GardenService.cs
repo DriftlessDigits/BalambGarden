@@ -116,8 +116,9 @@ public sealed class GardenService
             }
         }
 
-        // The saved access roster is a copy of the game's own answer, rebuilt by the next fresh
-        // read, so an unreadable one is not parked: it is treated as absent and overwritten.
+        // The saved access roster is a copy of the game's own answer, rebuilt from the next
+        // access-roster read, so an unreadable one is not parked: it is treated as absent and
+        // overwritten.
         SavedAccessRoster? savedRoster = null;
         if (File.Exists(accessRosterPath))
         {
@@ -208,23 +209,23 @@ public sealed class GardenService
         RememberEra();
     }
 
-    /// <summary>Saves a fresh access-roster read to <c>access-roster.json</c> when it differs from
-    /// the saved one (ruled 2026-11-07: only on a change, stamped with the read's time), so readers
-    /// outside the game (the bench) can answer the tab set. Never read back in game.</summary>
-    public void SaveAccessRoster(AccessRoster fresh, DateTimeOffset readAt)
+    /// <summary>Saves an access-roster read to <c>access-roster.json</c> when it differs from the
+    /// saved one (ruled 2026-11-07: only on a change, stamped with the read's time), so readers
+    /// outside the game (Bench) can answer the tab set. Never read back in game.</summary>
+    public void SaveAccessRoster(AccessRoster read, DateTimeOffset readAt)
     {
-        if (!SavedAccessRoster.NeedsSaving(savedRoster, fresh))
+        if (!SavedAccessRoster.NeedsSaving(savedRoster, read))
             return;
-        var next = SavedAccessRoster.Of(fresh, readAt);
+        var next = SavedAccessRoster.Of(read, readAt);
         try
         {
             File.WriteAllText(accessRosterPath, next.ToJson());
             savedRoster = next;
-            Plugin.Log.Information($"[Roster] access roster saved: {fresh.Estates.Count} estate(s), read {readAt:O}");
+            Plugin.Log.Information($"[Roster] access roster saved: {read.Estates.Count} estate(s), read {readAt:O}");
         }
         catch (Exception ex)
         {
-            // The saved copy stays as it was, so the next fresh read tries again.
+            // The saved copy stays as it was, so the next pump tick tries again.
             Plugin.Log.Error($"[Roster] access roster save failed: {ex.Message}");
         }
     }

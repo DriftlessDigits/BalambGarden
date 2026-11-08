@@ -40,6 +40,17 @@ public class SavedAccessRosterTests
     public void TheSameEstatesInAnotherOrderAreSaved()
         => Assert.True(SavedAccessRoster.NeedsSaving(Saved(Roster()), new AccessRoster(Roster().Estates.Reverse().ToList())));
 
+    [Fact]
+    public void AnEmptyReadIsNeverSaved()
+    {
+        Assert.False(SavedAccessRoster.NeedsSaving(saved: null, AccessRoster.Empty));
+        Assert.False(SavedAccessRoster.NeedsSaving(Saved(Roster()), AccessRoster.Empty));
+    }
+
+    [Fact]
+    public void AFileWithNoReadTimeIsUnreadable()
+        => Assert.Throws<InvalidOperationException>(() => SavedAccessRoster.FromJson("{}"));
+
     // The file a reader outside the game parses, written out by hand: pins the field names.
     private const string OnDisk = """
         {
@@ -64,7 +75,7 @@ public class SavedAccessRosterTests
             saved.Estates);
     }
 
-    /// <summary>Through the file, as the plugin compares a fresh read against what is on disk.</summary>
+    /// <summary>Through the file, as the plugin compares an access-roster read against what is on disk.</summary>
     private static SavedAccessRoster Saved(AccessRoster roster)
         => SavedAccessRoster.FromJson(SavedAccessRoster.Of(roster, ReadAt).ToJson());
 }
