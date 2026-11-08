@@ -41,7 +41,7 @@ internal static unsafe class MapSensor
     /// Every placed piece of furniture: where it stands and which vector slot it is.
     ///
     /// <para>DEMOTED from identity duty (08-16): the 08-15 "vector index == DataMap key"
-    /// receipts (Papa's 180/181, apartment 0/1) were the special case of a house whose
+    /// receipts (Drift's 180/181, apartment 0/1) were the special case of a house whose
     /// furniture slots were never recycled. The redecorated FC estate is the
     /// counterexample - pot data at keys 208/227/392/393 against pot vector entries at
     /// idx 378/379, two pots not in the vector at all. Identity now reads

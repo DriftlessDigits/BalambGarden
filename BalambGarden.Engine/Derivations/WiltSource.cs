@@ -20,7 +20,7 @@ public sealed class ClockWiltSource : IWiltSource
 
     public WaterState StateFor(ClaimedBed bed, Crop crop, DateTimeOffset now)
     {
-        // Pots DO wilt (08-16, Papa's Krakka twins), but they also BROADCAST it - the
+        // Pots DO wilt (08-16, Drift's Krakka twins), but they also BROADCAST it - the
         // live map's b4=1 is the game's own claim, so pot wilt is observed, never
         // clocked. The prediction machinery below is for beds, where the byte hunt
         // closed refuted and a clock is all there is.

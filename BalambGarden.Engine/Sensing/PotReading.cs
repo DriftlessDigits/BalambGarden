@@ -3,7 +3,7 @@ namespace BalambGarden.Engine.Sensing;
 /// <summary>One decoded indoor pot. Recognized=false -> species newer than our index:
 /// track it, display "Unknown (0xNN)", never guess. Color is the pigment nibble
 /// (b2 high, 08-16 receipt): 0 = unpigmented crop, named values in
-/// <see cref="PotPigment"/>. Wilt is byte[4] raw: 1 = wilting (08-16, Papa's Krakka
+/// <see cref="PotPigment"/>. Wilt is byte[4] raw: 1 = wilting (08-16, Drift's Krakka
 /// twins - byte-identical except +4, exactly one drooping); 2 = seen on every ripe
 /// flower, meaning unreceipted; 0 = neither. Only the value 1 is ever interpreted.</summary>
 public sealed record PotReading(
