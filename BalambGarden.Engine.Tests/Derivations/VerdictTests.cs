@@ -54,9 +54,9 @@ public class VerdictTests
         ];
 
         var verdict = Verdicts.ForGarden(
-            [Estate(Gardener, "Papa's Place")], beds, T, new ClockWiltSource(), Now);
+            [Estate(Gardener, "Drift's Place")], beds, T, new ClockWiltSource(), Now);
 
-        Assert.Equal("Patch 2 at Papa's Place: 3 beds thirsty", verdict.Text);
+        Assert.Equal("Patch 2 at Drift's Place: 3 beds thirsty", verdict.Text);
     }
 
     [Fact] // thirst can kill; ripeness only waits - so thirst leads even when outnumbered
@@ -69,9 +69,9 @@ public class VerdictTests
         ];
 
         var verdict = Verdicts.ForGarden(
-            [Estate(Gardener, "Papa's Place"), Estate(Fc, "FC")], beds, T, new ClockWiltSource(), Now);
+            [Estate(Gardener, "Drift's Place"), Estate(Fc, "FC")], beds, T, new ClockWiltSource(), Now);
 
-        Assert.StartsWith("Patch 1 at Papa's Place: 1 bed thirsty", verdict.Text);
+        Assert.StartsWith("Patch 1 at Drift's Place: 1 bed thirsty", verdict.Text);
     }
 
     [Fact] // a bed in the danger band beats a bigger merely-due pile, and says why
@@ -84,9 +84,9 @@ public class VerdictTests
         ];
 
         var verdict = Verdicts.ForGarden(
-            [Estate(Gardener, "Papa's Place"), Estate(Fc, "FC")], beds, T, new ClockWiltSource(), Now);
+            [Estate(Gardener, "Drift's Place"), Estate(Fc, "FC")], beds, T, new ClockWiltSource(), Now);
 
-        Assert.StartsWith("Patch 1 at Papa's Place: 1 bed thirsty (1 critical)", verdict.Text);
+        Assert.StartsWith("Patch 1 at Drift's Place: 1 bed thirsty (1 critical)", verdict.Text);
         Assert.Contains("3 more thirsty elsewhere", verdict.Text);
     }
 
@@ -99,7 +99,7 @@ public class VerdictTests
         beds.Add(Bed(Gardener, 0, 0, 4, 1));
 
         var verdict = Verdicts.ForGarden(
-            [Estate(Gardener, "Papa's Place"), Estate(Fc, "FC")], beds, T, new ClockWiltSource(), Now);
+            [Estate(Gardener, "Drift's Place"), Estate(Fc, "FC")], beds, T, new ClockWiltSource(), Now);
 
         Assert.StartsWith("8 beds ripe at FC", verdict.Text);
         Assert.Contains("1 more ripe elsewhere", verdict.Text);
@@ -109,7 +109,7 @@ public class VerdictTests
     public void QuietGardenQuotesTheNextWindow()
     {
         var verdict = Verdicts.ForGarden(
-            [Estate(Gardener, "Papa's Place")], [Bed(Gardener, 0, 0, 2, 1)], T,
+            [Estate(Gardener, "Drift's Place")], [Bed(Gardener, 0, 0, 2, 1)], T,
             new ClockWiltSource(), Now, _ => "Fri 09:00");
 
         Assert.Equal("Nothing to do but wait - next window ~Fri 09:00", verdict.Text);
@@ -120,7 +120,7 @@ public class VerdictTests
     public void PotsNeverReadAsThirsty()
     {
         var verdict = Verdicts.ForGarden(
-            [Estate(Gardener, "Papa's Place")], [Bed(Gardener, 0, 0, 2, 500, isPot: true)], T,
+            [Estate(Gardener, "Drift's Place")], [Bed(Gardener, 0, 0, 2, 500, isPot: true)], T,
             new ClockWiltSource(), Now);
 
         Assert.DoesNotContain("thirsty", verdict.Text);

@@ -82,7 +82,7 @@ public class IndoorMapTests
         Assert.Equal(0, pot.Color);
     }
 
-    // Papa's Krakka twins, 08-16 12:01 - the wilt lab's verdict. Byte-identical except
+    // Drift's Krakka twins, 08-16 12:01 - the wilt lab's verdict. Byte-identical except
     // offset +4, and exactly one wilts by Drift's eyes: b4 is the wilt flag. First pot-wilt
     // receipt ever taken; pot-immortality dies for normal crops (flower tail unaffected).
     private const string WiltingTwin =

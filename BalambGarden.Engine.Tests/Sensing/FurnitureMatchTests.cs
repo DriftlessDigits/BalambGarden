@@ -5,13 +5,13 @@ using Xunit;
 namespace BalambGarden.Engine.Tests.Sensing;
 
 /// <summary>The pure half of pot identity. Receipt under test (08-15, two estates): the
-/// furniture vector index IS the pot's DataMap key - Papa's Place idx 180/181 against keys
+/// furniture vector index IS the pot's DataMap key - Drift's Place idx 180/181 against keys
 /// 180/181, apartment idx 0/1 against keys 0/1 - and the furniture entry's position is the
 /// same position the game object reports.</summary>
 public class FurnitureMatchTests
 {
-    // Papa's Place, 08-15 15:47: the Krakka twins, 0.6y apart.
-    private static readonly List<FurniturePlacement> PapasPots =
+    // Drift's Place, 08-15 15:47: the Krakka twins, 0.6y apart.
+    private static readonly List<FurniturePlacement> DriftsPots =
     [
         new(180, new Vector3(-4.6f, 0.0f, 1.6f)),
         new(181, new Vector3(-4.5f, 0.0f, 1.0f)),
@@ -20,21 +20,21 @@ public class FurnitureMatchTests
     [Fact]
     public void ExactPositionNamesTheIndex()
     {
-        Assert.Equal(180, FurnitureMatch.IndexAt(PapasPots, new Vector3(-4.6f, 0.0f, 1.6f)));
-        Assert.Equal(181, FurnitureMatch.IndexAt(PapasPots, new Vector3(-4.5f, 0.0f, 1.0f)));
+        Assert.Equal(180, FurnitureMatch.IndexAt(DriftsPots, new Vector3(-4.6f, 0.0f, 1.6f)));
+        Assert.Equal(181, FurnitureMatch.IndexAt(DriftsPots, new Vector3(-4.5f, 0.0f, 1.0f)));
     }
 
     [Fact] // the last bits of a float, not slack for a guess
     public void NearMissInsideToleranceStillNamesTheIndex()
-        => Assert.Equal(180, FurnitureMatch.IndexAt(PapasPots, new Vector3(-4.6001f, 0.0f, 1.6002f)));
+        => Assert.Equal(180, FurnitureMatch.IndexAt(DriftsPots, new Vector3(-4.6001f, 0.0f, 1.6002f)));
 
     [Fact]
     public void NothingNearIsNoAnswer()
-        => Assert.Null(FurnitureMatch.IndexAt(PapasPots, new Vector3(0f, 0f, 0f)));
+        => Assert.Null(FurnitureMatch.IndexAt(DriftsPots, new Vector3(0f, 0f, 0f)));
 
     [Fact] // twins 0.6y apart never contest each other - the tolerance is 12x tighter
     public void TwinsDoNotContestEachOther()
-        => Assert.Null(FurnitureMatch.IndexAt(PapasPots, new Vector3(-4.55f, 0.0f, 1.3f)));
+        => Assert.Null(FurnitureMatch.IndexAt(DriftsPots, new Vector3(-4.55f, 0.0f, 1.3f)));
 
     [Fact]
     public void TwoEntriesInsideToleranceRefuse()

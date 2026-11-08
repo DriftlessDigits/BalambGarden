@@ -40,7 +40,7 @@
 20:39:40 here: currentHouseId=0x00370154000B0039 ward=11 plot=57 room=0 inside=False hasHousePermissions=False   # FC yard
 20:39:50 here: currentHouseId=0x00370154000B0039 inside=True hasHousePermissions=True  indoor=SAME               # FC hall
 20:40:07 here: currentHouseId=0x0037015401CB0039 ward=11 plot=57 room=7 inside=True hasHousePermissions=True     # FC chambers (room 7)
-20:40:36 here: currentHouseId=0x0037028100030033 ward=3 plot=51 room=0 inside=False hasHousePermissions=False    # Papa's outside (OWN house: still False)
-20:41:03 here: currentHouseId=0x0037028100030033 inside=True hasHousePermissions=True  indoor=SAME               # Papa's inside
+20:40:36 here: currentHouseId=0x0037028100030033 ward=3 plot=51 room=0 inside=False hasHousePermissions=False    # Drift's outside (OWN house: still False)
+20:41:03 here: currentHouseId=0x0037028100030033 inside=True hasHousePermissions=True  indoor=SAME               # Drift's inside
 20:41:47 here: currentHouseId=0x003703D307470080 ward=7 plot=-128 room=29 inside=True hasHousePermissions=True   # Apartment
 20:42:42 here: currentHouseId=0x0037028100030032 ward=3 plot=50 room=0 inside=False hasHousePermissions=False    # RANDO (negative - matches nothing)

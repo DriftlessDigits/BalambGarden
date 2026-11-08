@@ -1148,7 +1148,7 @@ public class MainWindow : Window, IDisposable
             // here; the steady state is one word on the rollup line above.
             //
             // Pots are OBSERVED, not predicted: the map itself says wilting (byte[4]=1,
-            // 08-16 Papa's twins - pots DO wilt for normal crops; the flower no-wilt
+            // 08-16 Drift's twins - pots DO wilt for normal crops; the flower no-wilt
             // evidence stands separately). No clock model, just what the game showed us -
             // except at stage 4, where the byte is not a water claim (PotWiltRule,
             // field receipt 2026-08-26: a ripe pot offers no watering verb at all).
@@ -1744,7 +1744,7 @@ public class MainWindow : Window, IDisposable
     /// filler, and filler trains people to stop reading the panel that matters.</summary>
     private static void DrawTipsTab(DateTimeOffset now)
     {
-        // Tips speak the names the tabs wear - a renamed estate is "Papa's Place" in
+        // Tips speak the names the tabs wear - a renamed estate is "Drift's Place" in
         // every sentence, never its ward-plot serial number.
         var tips = PipelineReader.Tips(Plugin.Garden.Census.LedgerBeds, Plugin.Tables, now,
             key => Plugin.Garden.Ledger.Estates.FirstOrDefault(e => e.Key == key)?.DisplayName
