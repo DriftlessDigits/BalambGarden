@@ -18,45 +18,82 @@ namespace BalambGarden.Game;
 /// writer: in debug builds, <c>LastRead</c> is what the census pump saves for readers outside
 /// the game.
 ///
-/// <para>Fail-open on staleness, fail-closed on shape: a refused refresh keeps the last
-/// good roster (an estate does not stop being Drift's because a read misfired), but a row
-/// that fits no receipted shape is dropped with its raw HouseId in the log.</para>
+/// <para>Read on ARRIVALS, never on a clock (ruled 2026-11-08): plugin load, login, and every
+/// zone line. Access changes when the game grants or drops an estate, which a player meets on
+/// arrival, so between arrivals the roster is held, not re-read. An arrival does not trust one
+/// read: the teleport list is settle-async state, so the sensor reads every
+/// <see cref="ReadSpacing"/> from the first answer until <see cref="SettleWindow"/> has passed
+/// and keeps the last (each read logged at DBG, so the field shows whether the window earns
+/// its keep). Named cost: an access change while standing still shows at the next zone line.</para>
+///
+/// <para>Fail-open on staleness, fail-closed on shape: a refused read keeps the last
+/// good roster (an estate does not stop being Drift's because a read misfired) and retries,
+/// but a row that fits no receipted shape is dropped with its raw HouseId in the log.</para>
 /// </summary>
 internal static unsafe class RosterSensor
 {
+    private static readonly TimeSpan ReadSpacing = TimeSpan.FromSeconds(2);
+    private static readonly TimeSpan SettleWindow = TimeSpan.FromSeconds(10);
+
     private static AccessRoster cached = AccessRoster.Empty;
 #if DEBUG
     private static DateTimeOffset? cachedReadAt;
 #endif
+    // No read before this instant. Bench pins it to DateTime.MaxValue to hold a roster it set,
+    // so the name and meaning stay.
     private static DateTime nextRefreshUtc = DateTime.MinValue;
+    // True from an arrival until the settle window closes; plugin load counts as an arrival.
+    private static bool settling = true;
+    private static DateTime? firstAnswerUtc;
+    private static int settleReads;
     private static bool warnedNoRead;
+
+    /// <summary>An arrival (login or zone line): read the roster again until it settles.</summary>
+    internal static void NoteArrival()
+    {
+        settling = true;
+        firstAnswerUtc = null;
+        settleReads = 0;
+        nextRefreshUtc = DateTime.MinValue;
+    }
 
     internal static AccessRoster Current()
     {
-        if (DateTime.UtcNow < nextRefreshUtc)
+        var now = DateTime.UtcNow;
+        if (!settling || now < nextRefreshUtc)
             return cached;
-        nextRefreshUtc = DateTime.UtcNow.AddSeconds(60);
+        nextRefreshUtc = now + ReadSpacing;
 
         try
         {
             if (Read() is { } fresh)
             {
-                cached = fresh;
-#if DEBUG
-                cachedReadAt = DateTimeOffset.UtcNow;
-#endif
                 warnedNoRead = false;
+                firstAnswerUtc ??= now;
+                settleReads++;
+                var changed = !fresh.Estates.SequenceEqual(cached.Estates);
+                cached = fresh;
+                Plugin.Log.Debug($"[Roster] settle read {settleReads}: {fresh.Estates.Count} estate(s)"
+                    + (changed ? " (changed)" : ""));
+                if (now - firstAnswerUtc >= SettleWindow)
+                {
+                    settling = false;
+#if DEBUG
+                    cachedReadAt = DateTimeOffset.UtcNow;
+#endif
+                    Plugin.Log.Debug($"[Roster] settled: {cached.Estates.Count} estate(s) after {settleReads} read(s)");
+                }
             }
             else if (!warnedNoRead)
             {
                 warnedNoRead = true;
-                Plugin.Log.Warning("[Roster] refresh refused (no player or game said no) - "
-                    + $"holding the last good roster ({cached.Estates.Count} estate(s))");
+                Plugin.Log.Warning("[Roster] read refused (no player or game said no) - "
+                    + $"holding the last good roster ({cached.Estates.Count} estate(s)), retrying");
             }
         }
         catch (Exception ex)
         {
-            Plugin.Log.Warning($"[Roster] read failed: {ex.Message} - holding the last good roster");
+            Plugin.Log.Warning($"[Roster] read failed: {ex.Message} - holding the last good roster, retrying");
         }
 
         return cached;
@@ -64,10 +101,11 @@ internal static unsafe class RosterSensor
 
 #if DEBUG
     /// <summary>The cached roster and when the game answered it, without reading again; null
-    /// until the game has answered once this session (an empty cache is not an answer).
+    /// until the game has answered once this session (an empty cache is not an answer), and
+    /// null while an arrival is still settling (a half-settled list is not saved).
     /// Debug builds only: its one reader saves the roster for tooling outside the game.</summary>
     internal static (AccessRoster Roster, DateTimeOffset ReadAt)? LastRead
-        => cachedReadAt is { } at ? (cached, at) : null;
+        => !settling && cachedReadAt is { } at ? (cached, at) : null;
 #endif
 
     private static AccessRoster? Read()

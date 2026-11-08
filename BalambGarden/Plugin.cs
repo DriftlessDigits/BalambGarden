@@ -146,8 +146,10 @@ public sealed class Plugin : IDalamudPlugin
         Game.SowQuestion.Start();
 
         // A zone line pulls the next relay poll close (piece 3's zone-in cadence) - the
-        // moment you arrive somewhere is the moment a foreign receipt would matter.
+        // moment you arrive somewhere is the moment a foreign receipt would matter. It is also
+        // when the access roster is read again; so is a login (RosterSensor reads on arrivals).
         Svc.ClientState.TerritoryChanged += OnZoneLine;
+        Svc.ClientState.Login += OnLogin;
 
 #if DEBUG
         // Scoped recording: the persisted flag means "arm near pots", and a rezone ends
@@ -174,6 +176,7 @@ public sealed class Plugin : IDalamudPlugin
         PluginInterface.UiBuilder.OpenMainUi -= ToggleMainUi;
         Svc.Framework.Update -= OnFrameworkUpdate;
         Svc.ClientState.TerritoryChanged -= OnZoneLine;
+        Svc.ClientState.Login -= OnLogin;
 #if DEBUG
         Svc.ClientState.TerritoryChanged -= OnTerritoryChanged;
 #endif
@@ -260,7 +263,13 @@ public sealed class Plugin : IDalamudPlugin
         }
     }
 
-    private static void OnZoneLine(uint territory) => Sync.RelayPoller.NoteZoneIn();
+    private static void OnZoneLine(uint territory)
+    {
+        Sync.RelayPoller.NoteZoneIn();
+        Game.RosterSensor.NoteArrival();
+    }
+
+    private static void OnLogin() => Game.RosterSensor.NoteArrival();
 
     /// <summary>Nothing sensed before the player exists: no character, no estate,
     /// no census. The pump throttles itself past this gate.</summary>
