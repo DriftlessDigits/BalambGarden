@@ -16,6 +16,11 @@ public sealed class GardenService
     private readonly string ledgerPath;
     private readonly string receiptsPath;
     private readonly string historyPath;
+    private readonly string accessRosterPath;
+
+    /// <summary>What <c>access-roster.json</c> holds, as last loaded or written; null when there
+    /// is no readable file yet.</summary>
+    private SavedAccessRoster? savedRoster;
 
     public LedgerStore Ledger { get; }
     public CensusEngine Census { get; }
@@ -36,11 +41,14 @@ public sealed class GardenService
 
     private GardenService(
         string ledgerPath, LedgerStore ledger, string trailPath,
-        string receiptsPath, ReceiptLog receipts, string historyPath, GardenHistory history)
+        string receiptsPath, ReceiptLog receipts, string historyPath, GardenHistory history,
+        string accessRosterPath, SavedAccessRoster? savedRoster)
     {
         this.ledgerPath = ledgerPath;
         this.receiptsPath = receiptsPath;
         this.historyPath = historyPath;
+        this.accessRosterPath = accessRosterPath;
+        this.savedRoster = savedRoster;
         Ledger = ledger;
         Census = new CensusEngine(ledger);
         Trail = new DebugTrail(trailPath);
@@ -55,6 +63,7 @@ public sealed class GardenService
         var trailPath = Path.Combine(configDirectory, "trail.jsonl");
         var receiptsPath = Path.Combine(configDirectory, "receipts.json");
         var historyPath = Path.Combine(configDirectory, "history.json");
+        var accessRosterPath = Path.Combine(configDirectory, "access-roster.json");
 
         var ledger = new LedgerStore();
         if (File.Exists(ledgerPath))
@@ -107,8 +116,24 @@ public sealed class GardenService
             }
         }
 
+        // The saved access roster is a copy of the game's own answer, rebuilt by the next fresh
+        // read, so an unreadable one is not parked: it is treated as absent and overwritten.
+        SavedAccessRoster? savedRoster = null;
+        if (File.Exists(accessRosterPath))
+        {
+            try
+            {
+                savedRoster = SavedAccessRoster.FromJson(File.ReadAllText(accessRosterPath));
+            }
+            catch (Exception ex)
+            {
+                Plugin.Log.Warning($"[Roster] saved access roster unreadable ({ex.Message}) - the next read rewrites it");
+            }
+        }
+
         var service = new GardenService(
-            ledgerPath, ledger, trailPath, receiptsPath, receipts, historyPath, history);
+            ledgerPath, ledger, trailPath, receiptsPath, receipts, historyPath, history,
+            accessRosterPath, savedRoster);
 
         // v2 -> v3 (2026-10-14): the per-bed observation ring becomes the planting record. The
         // v2 file is copied aside ONCE before its first v3 write, because a v0.3.0 rollback
@@ -181,6 +206,27 @@ public sealed class GardenService
         }
 
         RememberEra();
+    }
+
+    /// <summary>Saves a fresh access-roster read to <c>access-roster.json</c> when it differs from
+    /// the saved one (ruled 2026-11-07: only on a change, stamped with the read's time), so readers
+    /// outside the game (the bench) can answer the tab set. Never read back in game.</summary>
+    public void SaveAccessRoster(AccessRoster fresh, DateTimeOffset readAt)
+    {
+        if (!SavedAccessRoster.NeedsSaving(savedRoster, fresh))
+            return;
+        var next = SavedAccessRoster.Of(fresh, readAt);
+        try
+        {
+            File.WriteAllText(accessRosterPath, next.ToJson());
+            savedRoster = next;
+            Plugin.Log.Information($"[Roster] access roster saved: {fresh.Estates.Count} estate(s), read {readAt:O}");
+        }
+        catch (Exception ex)
+        {
+            // The saved copy stays as it was, so the next fresh read tries again.
+            Plugin.Log.Error($"[Roster] access roster save failed: {ex.Message}");
+        }
     }
 
     /// <summary>Writes the history. Returns whether it is on disk - the relay cursor advances

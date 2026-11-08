@@ -14,7 +14,9 @@ namespace BalambGarden.Game;
 /// one instrument, one app, one truth) and HousingManager's owned-estate answers (which
 /// also carry the chambers no teleport row names). The union is the set of estates the
 /// game says Drift can reach; per Drift's v1 ruling that set is assumed actionable, and the
-/// composed menu handles any per-verb weirdness gracefully at act time.
+/// composed menu handles any per-verb weirdness gracefully at act time. Each fresh read is
+/// handed to <see cref="GardenService.SaveAccessRoster"/>, which writes it to disk when the list
+/// changed: the one copy a reader outside the game can see.
 ///
 /// <para>Fail-open on staleness, fail-closed on shape: a refused refresh keeps the last
 /// good roster (an estate does not stop being Drift's because a read misfired), but a row
@@ -38,6 +40,7 @@ internal static unsafe class RosterSensor
             {
                 cached = fresh;
                 warnedNoRead = false;
+                Plugin.Garden.SaveAccessRoster(fresh, DateTimeOffset.UtcNow);
             }
             else if (!warnedNoRead)
             {
