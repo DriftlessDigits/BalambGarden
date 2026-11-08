@@ -15,7 +15,8 @@ namespace BalambGarden.Game;
 /// also carry the chambers no teleport row names). The union is the set of estates the
 /// game says Drift can reach; per Drift's v1 ruling that set is assumed actionable, and the
 /// composed menu handles any per-verb weirdness gracefully at act time. A reader, never a
-/// writer: <see cref="LastRead"/> is what the census pump saves for readers outside the game.
+/// writer: in debug builds, <c>LastRead</c> is what the census pump saves for readers outside
+/// the game.
 ///
 /// <para>Fail-open on staleness, fail-closed on shape: a refused refresh keeps the last
 /// good roster (an estate does not stop being Drift's because a read misfired), but a row
@@ -24,7 +25,9 @@ namespace BalambGarden.Game;
 internal static unsafe class RosterSensor
 {
     private static AccessRoster cached = AccessRoster.Empty;
+#if DEBUG
     private static DateTimeOffset? cachedReadAt;
+#endif
     private static DateTime nextRefreshUtc = DateTime.MinValue;
     private static bool warnedNoRead;
 
@@ -39,7 +42,9 @@ internal static unsafe class RosterSensor
             if (Read() is { } fresh)
             {
                 cached = fresh;
+#if DEBUG
                 cachedReadAt = DateTimeOffset.UtcNow;
+#endif
                 warnedNoRead = false;
             }
             else if (!warnedNoRead)
@@ -57,10 +62,13 @@ internal static unsafe class RosterSensor
         return cached;
     }
 
+#if DEBUG
     /// <summary>The cached roster and when the game answered it, without reading again; null
-    /// until the game has answered once this session (an empty cache is not an answer).</summary>
+    /// until the game has answered once this session (an empty cache is not an answer).
+    /// Debug builds only: its one reader saves the roster for tooling outside the game.</summary>
     internal static (AccessRoster Roster, DateTimeOffset ReadAt)? LastRead
         => cachedReadAt is { } at ? (cached, at) : null;
+#endif
 
     private static AccessRoster? Read()
     {

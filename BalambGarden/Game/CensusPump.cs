@@ -68,10 +68,13 @@ internal static class CensusPump
             return;
         nextTickUtc = DateTime.UtcNow.AddSeconds(2);
 
+#if DEBUG
         // The access roster's last read, saved for readers outside the game (written only on a
-        // change). Takes the sensor's cache as it stands: never a game read of its own.
+        // change; debug builds only - it serves our tooling, not the player). Takes the sensor's
+        // cache as it stands: never a game read of its own.
         if (RosterSensor.LastRead is { } roster)
             Plugin.Garden.SaveAccessRoster(roster.Roster, roster.ReadAt);
+#endif
 
         var estate = EstateSensor.Current();
         if (estate is null)
