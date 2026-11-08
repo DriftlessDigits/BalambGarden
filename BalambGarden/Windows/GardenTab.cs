@@ -56,9 +56,12 @@ internal static class GardenTab
 
     // ------------------------------------------------------------------ the timeline lanes
 
-    private static readonly Vector4 Water = new(0.35f, 0.62f, 0.95f, 1f);
-    private static readonly Vector4 Gold = new(0.93f, 0.74f, 0.30f, 1f);
-    private static readonly Vector4 GoldDark = new(0.54f, 0.42f, 0.15f, 1f);
+    // One colour, one meaning (spec ruling 22): blue is ripe - the same blue as a ripe cell, its
+    // lighter outline blue for the words - and a water clock that is fine is grey, asking nothing.
+    private static readonly Vector4 Ripe = new(0.22f, 0.45f, 0.80f, 1f);
+    private static readonly Vector4 RipeText = new(0.52f, 0.72f, 1f, 1f);
+    private static readonly Vector4 RipeStripe = new(0.12f, 0.26f, 0.50f, 1f);
+    private static readonly Vector4 ClockFine = new(0.42f, 0.42f, 0.45f, 1f);
     private static readonly Vector4 NowLine = new(0.85f, 0.85f, 0.95f, 0.9f);
     private static readonly Vector4 DayLine = new(0.24f, 0.24f, 0.27f, 1f);
 
@@ -133,7 +136,7 @@ internal static class GardenTab
             return;
 
         var draw = ImGui.GetWindowDrawList();
-        var colour = ImGui.ColorConvertFloat4ToU32(ThirstColour(card.Thirst) ?? Water);
+        var colour = ImGui.ColorConvertFloat4ToU32(ThirstColour(card.Thirst) ?? ClockFine);
         var y = top + line * 0.5f;
         draw.AddRectFilled(new Vector2(x(from), y - 2.5f), new Vector2(x(by), y + 2.5f), colour, 2.5f);
 
@@ -157,7 +160,7 @@ internal static class GardenTab
     private static float DrawMark(LaneMark mark, float y, float height, float leftFree, float right, Func<DateTimeOffset, float> x)
     {
         var draw = ImGui.GetWindowDrawList();
-        var gold = ImGui.ColorConvertFloat4ToU32(Gold);
+        var ripe = ImGui.ColorConvertFloat4ToU32(Ripe);
         var x0 = x(mark.From);
         var x1 = x(mark.To);
         Vector2 min, max;
@@ -165,17 +168,17 @@ internal static class GardenTab
         {
             case LaneMarkKind.Tick:
                 (min, max) = (new Vector2(x0 - 2f, y), new Vector2(x0 + 2f, y + height));
-                draw.AddRectFilled(min, max, gold, 1f);
+                draw.AddRectFilled(min, max, ripe, 1f);
                 break;
             case LaneMarkKind.RipeNow:
                 (min, max) = (new Vector2(x0 - height / 2, y), new Vector2(x0 + height / 2, y + height));
-                draw.AddCircleFilled((min + max) / 2, height / 2, gold);
+                draw.AddCircleFilled((min + max) / 2, height / 2, ripe);
                 break;
             default:
                 (min, max) = (new Vector2(x0, y), new Vector2(MathF.Max(x1, x0 + 4f), y + height));
-                draw.AddRectFilled(min, max, gold, height / 2);
+                draw.AddRectFilled(min, max, ripe, height / 2);
                 if (mark.Kind == LaneMarkKind.EstimatedBand)
-                    Stripes(draw, min, max, ImGui.ColorConvertFloat4ToU32(GoldDark));
+                    Stripes(draw, min, max, ImGui.ColorConvertFloat4ToU32(RipeStripe));
                 break;
         }
 
@@ -190,7 +193,7 @@ internal static class GardenTab
             : min.X - 5f - labelWidth;
         var labelPos = new Vector2(labelX, y + (height - ImGui.GetTextLineHeight()) / 2);
         draw.PushClipRect(new Vector2(leftFree, y - height), new Vector2(right, y + height * 2), true);
-        draw.AddText(labelPos, gold, label);
+        draw.AddText(labelPos, ImGui.ColorConvertFloat4ToU32(RipeText), label);
         draw.PopClipRect();
         var labelEnd = MathF.Max(labelX + labelWidth, max.X);
 
