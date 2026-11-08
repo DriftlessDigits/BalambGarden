@@ -14,14 +14,11 @@ namespace BalambGarden.Windows;
 /// The Garden tab: one card per planted estate, most urgent first, each leading with its water
 /// deadline. Everything on it comes from <see cref="GardenBoard"/>; this file only draws - the
 /// order, the deadlines, the counts, the groups, the card's thirst and every container's look are
-/// the board's. A card carries no verbs: they live on the estate tabs.
+/// the board's. A card carries no verbs: they live on the estate tabs. Every colour value comes
+/// from <see cref="Palette"/>; plain ImGui text keeps the theme's colour.
 /// </summary>
 internal static class GardenTab
 {
-    private static readonly Vector4 Red = new(1f, 0.4f, 0.4f, 1f);
-    private static readonly Vector4 Amber = new(1f, 0.78f, 0.35f, 1f);
-    private static readonly Vector4 Dim = new(0.55f, 0.55f, 0.55f, 1f);
-
     private const float CardPad = 8f;
     private const float CellGap = 3f;
     private const float PictureGap = 14f;
@@ -56,15 +53,6 @@ internal static class GardenTab
 
     // ------------------------------------------------------------------ the timeline lanes
 
-    // One colour, one meaning (spec ruling 22): blue is ripe - the same blue as a ripe cell, its
-    // lighter outline blue for the words - and a water clock that is fine is grey, asking nothing.
-    private static readonly Vector4 Ripe = new(0.22f, 0.45f, 0.80f, 1f);
-    private static readonly Vector4 RipeText = new(0.52f, 0.72f, 1f, 1f);
-    private static readonly Vector4 RipeStripe = new(0.12f, 0.26f, 0.50f, 1f);
-    private static readonly Vector4 ClockFine = new(0.42f, 0.42f, 0.45f, 1f);
-    private static readonly Vector4 NowLine = new(0.85f, 0.85f, 0.95f, 0.9f);
-    private static readonly Vector4 DayLine = new(0.24f, 0.24f, 0.27f, 1f);
-
     private const float LaneLabelWidth = 120f;
 
     /// <summary>"The next six days" under the cards (ruling 17): one lane per card in card order,
@@ -91,7 +79,7 @@ internal static class GardenTab
 
         // Day heads.
         foreach (var midnight in midnights)
-            draw.AddText(new Vector2(X(midnight) + 4f, left.Y), ImGui.ColorConvertFloat4ToU32(Dim),
+            draw.AddText(new Vector2(X(midnight) + 4f, left.Y), ImGui.ColorConvertFloat4ToU32(Palette.TextDim),
                 WindowFormat.DayHead(midnight));
         var lanesTop = left.Y + line;
         var lanesBottom = lanesTop + laneHeight * cards.Count;
@@ -102,14 +90,14 @@ internal static class GardenTab
             using var id = ImRaii.PushId(card.Estate.Key.BindingKey(0));
             var top = lanesTop + laneHeight * i;
             draw.AddLine(new Vector2(left.X, top + laneHeight), new Vector2(left.X + width, top + laneHeight),
-                ImGui.ColorConvertFloat4ToU32(DayLine));
+                ImGui.ColorConvertFloat4ToU32(Palette.DayLine));
             draw.PushClipRect(new Vector2(left.X, top), new Vector2(trackX - 4f, top + laneHeight), true);
             draw.AddText(new Vector2(left.X + 4f, top + line * 0.2f), ImGui.GetColorU32(ImGuiCol.Text), card.Estate.DisplayName);
             draw.PopClipRect();
 
             foreach (var midnight in midnights)
                 draw.AddLine(new Vector2(X(midnight), top), new Vector2(X(midnight), top + laneHeight),
-                    ImGui.ColorConvertFloat4ToU32(DayLine));
+                    ImGui.ColorConvertFloat4ToU32(Palette.DayLine));
 
             DrawWaterBar(card, top, line, X, now);
 
@@ -120,7 +108,7 @@ internal static class GardenTab
         }
 
         draw.AddLine(new Vector2(X(now), lanesTop), new Vector2(X(now), lanesBottom),
-            ImGui.ColorConvertFloat4ToU32(NowLine), 2f);
+            ImGui.ColorConvertFloat4ToU32(Palette.NowLine), 2f);
 
         // The hovers placed the cursor where they sat; one item spanning the lanes tells the
         // window how tall they are.
@@ -136,7 +124,7 @@ internal static class GardenTab
             return;
 
         var draw = ImGui.GetWindowDrawList();
-        var colour = ImGui.ColorConvertFloat4ToU32(ThirstColour(card.Thirst) ?? ClockFine);
+        var colour = ImGui.ColorConvertFloat4ToU32(ThirstColour(card.Thirst) ?? Palette.ClockFine);
         var y = top + line * 0.5f;
         draw.AddRectFilled(new Vector2(x(from), y - 2.5f), new Vector2(x(by), y + 2.5f), colour, 2.5f);
 
@@ -160,7 +148,7 @@ internal static class GardenTab
     private static float DrawMark(LaneMark mark, float y, float height, float leftFree, float right, Func<DateTimeOffset, float> x)
     {
         var draw = ImGui.GetWindowDrawList();
-        var ripe = ImGui.ColorConvertFloat4ToU32(Ripe);
+        var ripe = ImGui.ColorConvertFloat4ToU32(Palette.Ripe);
         var x0 = x(mark.From);
         var x1 = x(mark.To);
         Vector2 min, max;
@@ -178,7 +166,7 @@ internal static class GardenTab
                 (min, max) = (new Vector2(x0, y), new Vector2(MathF.Max(x1, x0 + 4f), y + height));
                 draw.AddRectFilled(min, max, ripe, height / 2);
                 if (mark.Kind == LaneMarkKind.EstimatedBand)
-                    Stripes(draw, min, max, ImGui.ColorConvertFloat4ToU32(RipeStripe));
+                    Stripes(draw, min, max, ImGui.ColorConvertFloat4ToU32(Palette.RipeStripe));
                 break;
         }
 
@@ -193,7 +181,7 @@ internal static class GardenTab
             : min.X - 5f - labelWidth;
         var labelPos = new Vector2(labelX, y + (height - ImGui.GetTextLineHeight()) / 2);
         draw.PushClipRect(new Vector2(leftFree, y - height), new Vector2(right, y + height * 2), true);
-        draw.AddText(labelPos, ImGui.ColorConvertFloat4ToU32(RipeText), label);
+        draw.AddText(labelPos, ImGui.ColorConvertFloat4ToU32(Palette.RipeInk), label);
         draw.PopClipRect();
         var labelEnd = MathF.Max(labelX + labelWidth, max.X);
 
@@ -242,7 +230,7 @@ internal static class GardenTab
 
         var bottom = ImGui.GetItemRectMax().Y;
         draw.AddRect(top, new Vector2(top.X + width, bottom),
-            ImGui.ColorConvertFloat4ToU32(new Vector4(0.35f, 0.35f, 0.35f, 1f)), 4f);
+            ImGui.ColorConvertFloat4ToU32(Palette.Frame), 4f);
     }
 
     /// <summary>The big number: the water deadline and its countdown, coloured by the card's
@@ -276,8 +264,8 @@ internal static class GardenTab
     /// the two cannot disagree: red past the deadline, amber water soon, null for plain.</summary>
     private static Vector4? ThirstColour(ContainerLook thirst) => thirst switch
     {
-        ContainerLook.PastDeadline => Red,
-        ContainerLook.WaterSoon => Amber,
+        ContainerLook.PastDeadline => Palette.DyingInk,
+        ContainerLook.WaterSoon => Palette.WaterSoonInk,
         _ => null,
     };
 
@@ -285,7 +273,7 @@ internal static class GardenTab
     {
         if (card.TendUnheard > 0)
         {
-            ImGui.TextColored(Amber, card.TendUnheard == 1
+            ImGui.TextColored(Palette.WaterSoonInk, card.TendUnheard == 1
                 ? "1 bed with no watering heard"
                 : $"{card.TendUnheard} beds with no watering heard");
             if (ImGui.IsItemHovered())
@@ -293,7 +281,7 @@ internal static class GardenTab
         }
 
         if (card.PotsWilting > 0)
-            ImGui.TextColored(Red, card.PotsWilting == 1 ? "pot wilting - water now" : $"{card.PotsWilting} pots wilting - water now");
+            ImGui.TextColored(Palette.DyingInk, card.PotsWilting == 1 ? "pot wilting - water now" : $"{card.PotsWilting} pots wilting - water now");
     }
 
     private static void DrawChips(VisitCard card)
@@ -319,8 +307,8 @@ internal static class GardenTab
         var draw = ImGui.GetWindowDrawList();
         var lit = count > 0;
         draw.AddRectFilled(pos, pos + size, ImGui.ColorConvertFloat4ToU32(
-            lit ? new Vector4(0.22f, 0.30f, 0.40f, 1f) : new Vector4(0.16f, 0.16f, 0.16f, 1f)), 6f);
-        draw.AddText(pos + pad, ImGui.ColorConvertFloat4ToU32(lit ? Vector4.One : Dim), text);
+            lit ? Palette.ChipLit : Palette.ChipUnlit), 6f);
+        draw.AddText(pos + pad, ImGui.ColorConvertFloat4ToU32(lit ? Palette.Text : Palette.TextDim), text);
         if (ImGui.IsItemHovered())
             ImGui.SetTooltip(tooltip);
     }
@@ -403,11 +391,11 @@ internal static class GardenTab
         var max = ImGui.GetItemRectMax();
         draw.AddRectFilled(min, max, ImGui.ColorConvertFloat4ToU32(Fill(cell)), 3f);
         if (cell.TendUnheard)
-            DashedRect(draw, min, max, ImGui.ColorConvertFloat4ToU32(Amber));
+            DashedRect(draw, min, max, ImGui.ColorConvertFloat4ToU32(Palette.WaterSoonInk));
         else
             draw.AddRect(min, max, ImGui.ColorConvertFloat4ToU32(cell.Look == ContainerLook.Ripe
-                ? new Vector4(0.52f, 0.72f, 1f, 1f)
-                : new Vector4(0.40f, 0.40f, 0.40f, 1f)), 3f);
+                ? Palette.RipeInk
+                : Palette.Outline), 3f);
 
         if (ImGui.IsItemHovered())
             ImGui.SetTooltip(CellTooltip(patch, cell, now));
@@ -419,20 +407,14 @@ internal static class GardenTab
     /// for an unclaimed slot.</summary>
     private static Vector4 Fill(ContainerCell cell) => cell.Look switch
     {
-        ContainerLook.Unclaimed => new Vector4(0.12f, 0.12f, 0.12f, 1f),
-        ContainerLook.Unread => new Vector4(0.30f, 0.30f, 0.30f, 1f),
-        ContainerLook.Empty => new Vector4(0.24f, 0.19f, 0.13f, 1f),
-        ContainerLook.WaterSoon => new Vector4(0.62f, 0.46f, 0.16f, 1f),
-        ContainerLook.PastDeadline or ContainerLook.Wilting => new Vector4(0.62f, 0.20f, 0.20f, 1f),
-        ContainerLook.Ripe => new Vector4(0.22f, 0.45f, 0.80f, 1f),
-        _ => Grow(cell.Stage),
+        ContainerLook.Unclaimed => Palette.Unclaimed,
+        ContainerLook.Unread => Palette.Unread,
+        ContainerLook.Empty => Palette.Empty,
+        ContainerLook.WaterSoon => Palette.WaterSoon,
+        ContainerLook.PastDeadline or ContainerLook.Wilting => Palette.Dying,
+        ContainerLook.Ripe => Palette.Ripe,
+        _ => Palette.Growing(cell.Stage),
     };
-
-    private static Vector4 Grow(byte stage)
-    {
-        var t = Math.Clamp(stage / 3f, 0f, 1f);
-        return new Vector4(0.13f + 0.10f * t, 0.28f + 0.44f * t, 0.16f + 0.12f * t, 1f);
-    }
 
     private static void DashedRect(ImDrawListPtr draw, Vector2 min, Vector2 max, uint colour)
     {

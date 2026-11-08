@@ -287,6 +287,10 @@ _Avoid_: aggregate, summary row, stats
 The Garden tab's small picture of an estate: each patch with its eight beds where the game puts them (the ring, see Bed), then the pots, every container coloured by its state (growing by stage, water soon, past its deadline, ripe, empty, never read), a dashed outline on a bed whose tend was never heard. The patch strip's successor.
 _Avoid_: map, mini-map, heatmap, grid
 
+**Palette**:
+The one home of the plugin's colours, each named by the one thing it means under the colour map: growing (a green ramp by stage), water soon, wilting, dying, ripe, empty, and the no-claim greys (unclaimed, unread, a water clock that is fine); plus plain and dim text and the structure greys of frames, rules and chips. A screen picks a meaning, never a value; what colour does not carry (not heard, provenance, status) goes to line style, glyphs and words.
+_Avoid_: theme (ImGui's own style), colour scheme, color constants
+
 **Patch strip**:
 The one-cell-per-slot view of a patch, the same census spread out instead of summed. A cell is unclaimed, unknown, growing or ripe.
 _Avoid_: bed grid (the expanded table underneath), heatmap, mini-map
