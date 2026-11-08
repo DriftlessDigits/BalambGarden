@@ -33,6 +33,9 @@ public sealed class Plugin : IDalamudPlugin
     internal Chains.CycleChain CycleChain { get; init; }
     internal Chains.PotChain PotChain { get; init; }
 
+    /// <summary>What every button press starts. Screens draw and call it; it draws nothing.</summary>
+    internal Chains.GardenVerbs Verbs { get; init; }
+
     /// <summary>One chain at a time. They all drive the same menus through the same
     /// character - two running at once would interleave clicks into a conversation
     /// neither of them is having.</summary>
@@ -100,6 +103,7 @@ public sealed class Plugin : IDalamudPlugin
         TendChain = new Chains.TendChain();
         CycleChain = new Chains.CycleChain();
         PotChain = new Chains.PotChain();
+        Verbs = new Chains.GardenVerbs(this);
 
         // Only now: the chains the accessor answers about have to exist before anything can be
         // told they are idle.
