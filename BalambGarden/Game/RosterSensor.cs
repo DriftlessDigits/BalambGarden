@@ -46,6 +46,11 @@ internal static unsafe class RosterSensor
     private static bool settling = true;
     private static DateTime? firstAnswerUtc;
     private static int settleReads;
+    // A refusal is expected mid-zone (no player yet: field 2026-11-08, every zone into a house),
+    // so the first refusal of an arrival logs at DBG; only a refusal still standing
+    // RefusalWarnAfter later warns. Both reset on an answer and on an arrival.
+    private static readonly TimeSpan RefusalWarnAfter = TimeSpan.FromSeconds(30);
+    private static DateTime? firstRefusalUtc;
     private static bool warnedNoRead;
 
     /// <summary>An arrival (login or zone line): read the roster again until it settles.</summary>
@@ -54,6 +59,8 @@ internal static unsafe class RosterSensor
         settling = true;
         firstAnswerUtc = null;
         settleReads = 0;
+        firstRefusalUtc = null;
+        warnedNoRead = false;
         nextRefreshUtc = DateTime.MinValue;
     }
 
@@ -68,6 +75,7 @@ internal static unsafe class RosterSensor
         {
             if (Read() is { } fresh)
             {
+                firstRefusalUtc = null;
                 warnedNoRead = false;
                 firstAnswerUtc ??= now;
                 settleReads++;
@@ -84,10 +92,16 @@ internal static unsafe class RosterSensor
                     Plugin.Log.Debug($"[Roster] settled: {cached.Estates.Count} estate(s) after {settleReads} read(s)");
                 }
             }
-            else if (!warnedNoRead)
+            else if (firstRefusalUtc is null)
+            {
+                firstRefusalUtc = now;
+                Plugin.Log.Debug("[Roster] read refused (no player yet, or game said no) - "
+                    + $"holding the last good roster ({cached.Estates.Count} estate(s)), retrying");
+            }
+            else if (!warnedNoRead && now - firstRefusalUtc >= RefusalWarnAfter)
             {
                 warnedNoRead = true;
-                Plugin.Log.Warning("[Roster] read refused (no player or game said no) - "
+                Plugin.Log.Warning($"[Roster] read still refused {RefusalWarnAfter.TotalSeconds:0}s on - "
                     + $"holding the last good roster ({cached.Estates.Count} estate(s)), retrying");
             }
         }
