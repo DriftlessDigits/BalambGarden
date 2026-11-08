@@ -34,10 +34,10 @@ public sealed class ClockWiltSource : IWiltSource
         if (bed.Latest is { Stage: >= 4 })
             return WaterState.NotApplicable;
 
-        if (bed.LastTended is not { } tended)
+        if (ClockStart(bed) is not { } start)
             return WaterState.Unknown;
 
-        var hours = (now - tended).TotalHours;
+        var hours = (now - start).TotalHours;
         var dangerAt = crop.WiltHours + (crop.WitherHours - crop.WiltHours) / 2.0;
 
         return hours switch
@@ -49,13 +49,28 @@ public sealed class ClockWiltSource : IWiltSource
         };
     }
 
-    /// <summary>When this bed's plant becomes unrecoverable if nobody waters: tend +
+    /// <summary>Where the thirst clock starts: the last heard watering, else the witnessed
+    /// sowing (dashboard rethink ruling 3, 2026-11-08: a sowing starts the clock, so a fresh
+    /// bed gets a deadline instead of a "?"). A planting always rebases at its own instant,
+    /// so a surviving watering is newer than the sowing and "watering, else sowing" is the
+    /// later of the two. Null where the clock makes no claim: pots (observed, never
+    /// clocked), ripe beds (cannot wilt), and a bed with neither receipt.</summary>
+    public static DateTimeOffset? ClockStart(ClaimedBed bed)
+        => bed.IsPot || bed.Latest is { Stage: >= 4 } ? null : bed.LastTended ?? bed.PlantedAt;
+
+    /// <summary>The water deadline: when this bed reaches its crop's wilt hours if nobody
+    /// waters it. Null wherever <see cref="ClockStart"/> is.</summary>
+    public static DateTimeOffset? WaterBy(ClaimedBed bed, Crop crop)
+        => ClockStart(bed)?.AddHours(crop.WiltHours);
+
+    /// <summary>A bed whose watering was never heard: its deadline, if it has one, rests on the
+    /// sowing. Beds only - a pot makes no water claim to rest on anything.</summary>
+    public static bool WateringUnheard(ClaimedBed bed) => !bed.IsPot && bed.LastTended is null;
+
+    /// <summary>When this bed's plant becomes unrecoverable if nobody waters: the clock's start +
     /// WitherHours (2026-08-18, the Allagan Melons - wilt is a countdown, not an end
     /// state, and the deadline deserves saying out loud). Null wherever the clock makes
-    /// no claim: pots (observed, not clocked), ripe beds (cannot die), no tend receipt
-    /// (no clock to run).</summary>
+    /// no claim (<see cref="ClockStart"/>).</summary>
     public static DateTimeOffset? DiesAt(ClaimedBed bed, Crop crop)
-        => bed.IsPot || bed.Latest is { Stage: >= 4 } || bed.LastTended is not { } tended
-            ? null
-            : tended.AddHours(crop.WitherHours);
+        => ClockStart(bed)?.AddHours(crop.WitherHours);
 }

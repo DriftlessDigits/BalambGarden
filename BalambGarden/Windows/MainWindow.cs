@@ -144,6 +144,11 @@ public class MainWindow : Window, IDisposable
         {
             if (bar.Success)
             {
+                // The Garden tab leads (dashboard rethink slice 3): the window opens on the visit
+                // cards. The estate tabs stay behind it while the verbs live there; arriving at an
+                // estate still selects its tab once (selectOnce) until the here card takes the verbs.
+                GardenTab.Draw(here, now);
+
                 // A tab is an estate the GAME grants (spec 2026-08-15: the roster is the tab set),
                 // plus wherever we are standing - the one place that must explain itself even when
                 // it is nobody's. Never-visited grants still tab: "access granted" is real state.
@@ -199,14 +204,14 @@ public class MainWindow : Window, IDisposable
     /// <summary>The hover behind every day-part window: the exact range the model holds
     /// (precision ruling 2026-08-16 - the surface speaks in day-parts, the hover keeps
     /// the hours) plus what kind of claim the marker is making.</summary>
-    private static string WindowTooltip(EtaWindow window)
+    internal static string WindowTooltip(EtaWindow window)
         => WindowFormat.Range(window.Earliest.ToLocalTime(), window.Latest.ToLocalTime())
            + $"\n{WindowFormat.MarkMeaning(window.Provenance)}";
 
     /// <summary>The spoken day-part window, clamped at now - and the "~" approx marker
     /// only while there is still a future range to approximate ("~any time now" would be
     /// hedging a hedge). The hover keeps the raw math either way.</summary>
-    private static string SpokenWindow(EtaWindow w, DateTimeOffset now, bool approxMark = false)
+    internal static string SpokenWindow(EtaWindow w, DateTimeOffset now, bool approxMark = false)
     {
         var local = now.ToLocalTime();
         var phrase = WindowFormat.Coarse(w.Earliest.ToLocalTime(), w.Latest.ToLocalTime(), local);

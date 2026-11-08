@@ -225,7 +225,7 @@ _Avoid_: backup (the v3 pre-fold copy is a backup; a park is a quarantine), corr
 
 **Window**:
 Every timer: a span from earliest to latest, never a point, carrying its provenance. Precision equals visit cadence, displayed honestly.
-_Avoid_: ETA (fine as the column label, never as the type of claim), estimate, countdown, deadline
+_Avoid_: ETA (fine as the column label, never as the type of claim), estimate; for a ripe time, countdown and deadline (those are the water deadline's words)
 
 **Provenance**:
 What kind of claim a window is making: anchored, bracketed or estimated. Rendered on every number as a glyph, never by color alone.
@@ -252,12 +252,16 @@ The model's slice of grow time each stage occupies (equal thirds for stages one 
 _Avoid_: stage fraction (the ratio), growth curve, timing table
 
 **Wilt clock**:
-The derived water status of a bed from last tended plus the crop's wilt and wither hours: watered, due, overdue, danger. Beds only; pots broadcast their wilt and are observed, never clocked. A plant seen ripe makes no water claim.
+The derived water status of a bed from where its clock starts (the last heard watering, else the witnessed sowing) plus the crop's wilt and wither hours: watered, due, overdue, danger. Beds only; pots broadcast their wilt and are observed, never clocked. A plant seen ripe makes no water claim.
 _Avoid_: wilt timer, thirst meter, water ETA, wilt model (the design word for the same thing)
 
 **Water state**:
 One of the clock's verdicts: watered (under three quarters of the wilt hours), due (approaching wilt), overdue (wilt likely live), danger (halfway to wither), plus unknown and not applicable.
 _Avoid_: wilt state (the game's own condition, which the plugin cannot read outdoors), thirst level, status
+
+**Water deadline**:
+When a bed reaches its crop's wilt hours if nobody waters it: the wilt clock's start plus the wilt hours. A visit's deadline is its earliest bed's. Said as "water by tonight ~6:15pm" with a countdown beside it; a bed whose watering was never heard counts from its sowing and is marked so. Beds only: pots are observed, never clocked.
+_Avoid_: water ETA, thirst timer, age (the age is the clock's input, the deadline its answer)
 
 **Pot wilt rule**:
 A pot claims water only when its map wilt flag is set and its stage is below ripe. Ripe pots broadcast a nonzero flag while the game offers no watering verb.
@@ -282,6 +286,10 @@ _Avoid_: aggregate, summary row, stats
 **Patch strip**:
 The one-cell-per-slot view of a patch, the same census spread out instead of summed. A cell is unclaimed, unknown, growing or ripe.
 _Avoid_: bed grid (the expanded table underneath), heatmap, mini-map
+
+**Visit**:
+One trip to one estate, where the water, harvest, replant and pot care due there happen together; the unit the Garden tab is built around, one card per planted estate. Its deadline is the estate's water deadline.
+_Avoid_: trip, run (a chain's word), route, schedule
 
 **Verdict**:
 The one sentence above the tabs: across every estate, the worst thing that wants a human and where. Thirst outranks ripeness; when nothing needs anyone it says so and names the next window.
