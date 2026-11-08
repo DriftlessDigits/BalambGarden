@@ -10,7 +10,7 @@ Dalamud plugin for FFXIV gardening: census, timers, and one-press tend/harvest/r
 - **Bench draws this plugin's real windows out of the game** (private tooling, not in this repo): it compiles a mirror of this checkout in its own folder, never builds here and never writes to the dev-load folder or the plugin's data; no code or build step here depends on it.
 - **Tests are safe anytime**: `dotnet test BalambGarden.Engine.Tests/BalambGarden.Engine.Tests.csproj` - the Engine has zero game dependency. A compile check of the plugin project goes to a scratch output folder (`-o <scratch>`), never to the dev-load path.
 - Feature branches only; merge to main (no-ff) = save point; this doc's review rides every merge.
-- Repo is quasi-public. The maintainer persona is **Drift** (GitHub: DriftlessDigits); no real names in code, comments, commits, or docs; no private paths, workspace or tooling names. No AI co-authorship lines in commits. A machine-local pre-commit name guard backs this up (installed per machine from the maintainer's own tooling; untracked BY DESIGN - a tracked hook would ship the names it blocks).
+- Repo is quasi-public. The maintainer persona is **Drift** (GitHub: DriftlessDigits); no real names in code, comments, commits, or docs; no private paths, and nothing that identifies the maintainer, their machine or their setup. Naming Bench is fine. No AI co-authorship lines in commits. A machine-local pre-commit name guard backs this up (installed per machine from the maintainer's own tooling; untracked BY DESIGN - a tracked hook would ship the names it blocks).
 
 ## Solution layout
 
