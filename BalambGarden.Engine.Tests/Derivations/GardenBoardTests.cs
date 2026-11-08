@@ -338,4 +338,102 @@ public class GardenBoardTests
         Assert.Equal(ContainerLook.Unclaimed, patch.Cells[0].Look);
         Assert.Same(bed, patch.Cells[5].Bed);
     }
+
+    // ---- the timeline lanes (slice 4): one lane per card, under the cards ----
+
+    [Fact] // user story 18: the water bar fills from the watering (or the sowing) to the deadline
+    public void TheWaterBarStartsWhereTheDeadlineBedsClockStarts()
+    {
+        var watered = Seed.Tend(Seed.Plant(Bed(Cottage, 0, 0), Now.AddHours(-30), Krakka, stage: 1), Now.AddHours(-10), Krakka);
+        var sown = Seed.Plant(Bed(Yard, 0, 0), Now.AddHours(-20), Krakka, stage: 1);
+        var pots = Seed.Plant(Pot(Cottage, 1), Now.AddHours(-10), Krakka, stage: 1);
+        var room = new EstateKey(342, 1, 1);
+        var potsOnly = Seed.Plant(Pot(room, 1), Now.AddHours(-10), Krakka, stage: 1);
+
+        var cards = Board([Estate(Cottage, "Cottage"), Estate(Yard, "Yard"), Estate(room, "Room")], [watered, sown, pots, potsOnly]);
+
+        Assert.Equal(Now.AddHours(-20), cards.Single(c => c.Estate.Key == Yard).Lane.WaterFrom);    // never watered: the sowing
+        Assert.Equal(Now.AddHours(-10), cards.Single(c => c.Estate.Key == Cottage).Lane.WaterFrom); // the watering
+        Assert.Null(cards.Single(c => c.Estate.Key == room).Lane.WaterFrom);                        // pots are never clocked
+    }
+
+    [Fact] // orient scope call 2026-11-08: on a mixed card the bar is the deadline bed's own clock, not the oldest watering's
+    public void OnAMixedCardTheWaterBarIsTheDeadlineBedsClock()
+    {
+        var fig = Seed.Tend(Seed.Plant(Bed(Yard, 0, 0), Now.AddHours(-50), Fig, stage: 1), Now.AddHours(-40), Fig);         // water by +8h
+        var krakka = Seed.Tend(Seed.Plant(Bed(Yard, 0, 1), Now.AddHours(-30), Krakka, stage: 1), Now.AddHours(-20), Krakka); // water by +4h
+
+        var card = Assert.Single(Board([Estate(Yard, "Yard")], [fig, krakka]));
+
+        Assert.Equal(Now.AddHours(4), card.WaterBy);
+        Assert.Equal(Now.AddHours(-20), card.Lane.WaterFrom);   // the Krakka's watering, not the fig's older one
+    }
+
+    [Fact] // user story 17: an exact ripe time is a tick; a bracketed one a band its own width, an estimated one striped
+    public void EachRipeGroupIsATickOrABandOnItsRow()
+    {
+        const ushort mirror = 17;   // grow 120h
+        var bracketed = Seed.Sight(Bed(Yard, 1, 0), Now.AddHours(-10), mirror, stage: 1);
+        Seed.Sight(bracketed, Now.AddHours(-1), mirror, stage: 2);
+        var beds = new List<ClaimedBed>
+        {
+            Seed.Plant(Bed(Yard, 0, 0), Now.AddHours(-60), Krakka, stage: 2),   // sown: ripe exactly +12h
+            bracketed,                                                          // two stages seen: +70h..+79h
+            Seed.Sight(Bed(Yard, 1, 1), Now.AddHours(-1), Fig, stage: 1),        // one stage seen: +79h..+119h
+            Seed.Plant(Pot(Yard, 3), Now.AddHours(-58), Krakka, stage: 2),       // a pot, sown: +14h
+        };
+
+        var card = Assert.Single(Board([Estate(Yard, "Yard")], beds));
+
+        Assert.Equal(
+            [
+                (LaneRow.Beds, LaneMarkKind.Tick, Now.AddHours(12), Now.AddHours(12)),
+                (LaneRow.Pots, LaneMarkKind.Tick, Now.AddHours(14), Now.AddHours(14)),
+                (LaneRow.Beds, LaneMarkKind.Band, Now.AddHours(70), Now.AddHours(79)),
+                (LaneRow.Beds, LaneMarkKind.EstimateBand, Now.AddHours(79), Now.AddHours(119)),
+            ],
+            card.Lane.Marks.Select(m => (m.Row, m.Kind, m.From, m.To)));
+        Assert.Equal([Krakka], card.Lane.Marks[0].Crops);
+        Assert.Equal([Fig], card.Lane.Marks[3].Crops);
+    }
+
+    [Fact] // orient scope call 2026-11-08: a plant seen ripe has no window, so the lane marks it at the now line
+    public void WhatIsSeenRipeIsMarkedRipeNowOnItsRow()
+    {
+        var beds = new List<ClaimedBed>
+        {
+            Seed.Ripe(Seed.Plant(Bed(Yard, 0, 0), Now.AddHours(-80), Krakka, stage: 3), Now.AddHours(-1), Krakka),
+            Seed.Ripe(Seed.Plant(Bed(Yard, 0, 1), Now.AddHours(-80), Krakka, stage: 3), Now.AddHours(-1), Krakka),
+            Seed.Ripe(Seed.Plant(Pot(Yard, 3), Now.AddHours(-130), Fig, stage: 3), Now.AddHours(-2), Fig),
+            Seed.Plant(Bed(Yard, 0, 2), Now.AddHours(-60), Krakka, stage: 2),   // still growing: its tick, not ripe now
+        };
+
+        var marks = Assert.Single(Board([Estate(Yard, "Yard")], beds)).Lane.Marks;
+
+        var inBeds = Assert.Single(marks, m => m.Kind == LaneMarkKind.RipeNow && m.Row == LaneRow.Beds);
+        Assert.Equal((Now, Now), (inBeds.From, inBeds.To));
+        Assert.Equal([Krakka], inBeds.Crops);   // one crop, however many beds
+        var pots = Assert.Single(marks, m => m.Kind == LaneMarkKind.RipeNow && m.Row == LaneRow.Pots);
+        Assert.Equal([Fig], pots.Crops);
+        Assert.Single(marks, m => m.Kind == LaneMarkKind.Tick);
+    }
+
+    [Fact] // user story 16: the lanes span from a few hours ago to six days ahead; a mark wholly outside is not on them
+    public void TheLanesSpanAFewHoursAgoToSixDaysAheadAndHoldOnlyWhatTouchesIt()
+    {
+        Assert.Equal(new TimelineSpan(Now.AddHours(-6), Now.AddDays(6)), GardenBoard.Span(Now));
+
+        const ushort mirror = 17;   // grow 120h
+        var beds = new List<ClaimedBed>
+        {
+            Seed.Plant(Bed(Yard, 0, 0), Now.AddHours(-82), Krakka, stage: 3),   // ripe exactly -10h, not yet seen ripe: before the span
+            Seed.Plant(Bed(Yard, 0, 1), Now.AddHours(-30), Fig, stage: 1),      // ripe +90h: on it
+            Seed.Plant(Bed(Yard, 1, 0), Now.AddHours(30), mirror, stage: 0),    // a clock-skewed sowing: ripe +150h, past its end
+        };
+
+        var card = Assert.Single(Board([Estate(Yard, "Yard")], beds));
+
+        Assert.Equal(3, card.Ripe.Count);   // the card still says all three
+        Assert.Equal([Now.AddHours(90)], card.Lane.Marks.Select(m => m.From));
+    }
 }

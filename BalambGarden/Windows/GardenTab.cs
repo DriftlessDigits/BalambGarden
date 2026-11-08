@@ -50,6 +50,178 @@ internal static class GardenTab
             DrawCard(card, now);
             ImGui.Spacing();
         }
+
+        DrawLanes(cards, now);
+    }
+
+    // ------------------------------------------------------------------ the timeline lanes
+
+    private static readonly Vector4 Water = new(0.35f, 0.62f, 0.95f, 1f);
+    private static readonly Vector4 Gold = new(0.93f, 0.74f, 0.30f, 1f);
+    private static readonly Vector4 GoldDark = new(0.54f, 0.42f, 0.15f, 1f);
+    private static readonly Vector4 NowLine = new(0.85f, 0.85f, 0.95f, 0.9f);
+    private static readonly Vector4 DayLine = new(0.24f, 0.24f, 0.27f, 1f);
+
+    private const float LaneLabelWidth = 120f;
+
+    /// <summary>"The next six days" under the cards (ruling 17): one lane per card in card order,
+    /// the water bar from <see cref="TimelineLane.WaterFrom"/> to the card's deadline drop, the ripe
+    /// marks on a beds row and a pots row, a line per local midnight and one for now. The span and
+    /// every mark are the board's; this only places them.</summary>
+    private static void DrawLanes(IReadOnlyList<VisitCard> cards, DateTimeOffset now)
+    {
+        ImGui.Spacing();
+        ImGui.TextDisabled("THE NEXT SIX DAYS");
+
+        var span = GardenBoard.Span(now);
+        var line = ImGui.GetTextLineHeight();
+        var laneHeight = line * 3.2f;
+        var left = ImGui.GetCursorScreenPos();
+        var width = ImGui.GetContentRegionAvail().X;
+        var trackX = left.X + LaneLabelWidth;
+        var trackWidth = MathF.Max(width - LaneLabelWidth, 1f);
+        float X(DateTimeOffset t) => trackX + trackWidth
+            * (float)Math.Clamp((t - span.From).TotalSeconds / (span.To - span.From).TotalSeconds, 0d, 1d);
+
+        var draw = ImGui.GetWindowDrawList();
+        var midnights = Midnights(span).ToList();
+
+        // Day heads.
+        foreach (var midnight in midnights)
+            draw.AddText(new Vector2(X(midnight) + 4f, left.Y), ImGui.ColorConvertFloat4ToU32(Dim),
+                midnight.ToString("ddd d"));
+        var lanesTop = left.Y + line;
+        var lanesBottom = lanesTop + laneHeight * cards.Count;
+
+        for (var i = 0; i < cards.Count; i++)
+        {
+            var card = cards[i];
+            using var id = ImRaii.PushId(card.Estate.Key.BindingKey(0));
+            var top = lanesTop + laneHeight * i;
+            draw.AddLine(new Vector2(left.X, top + laneHeight), new Vector2(left.X + width, top + laneHeight),
+                ImGui.ColorConvertFloat4ToU32(DayLine));
+            draw.AddText(new Vector2(left.X + 4f, top + line * 0.2f), ImGui.GetColorU32(ImGuiCol.Text), card.Estate.DisplayName);
+
+            foreach (var midnight in midnights)
+                draw.AddLine(new Vector2(X(midnight), top), new Vector2(X(midnight), top + laneHeight),
+                    ImGui.ColorConvertFloat4ToU32(DayLine));
+
+            DrawWaterBar(card, top, line, X, now);
+
+            var labelEnds = new Dictionary<LaneRow, float>();
+            foreach (var mark in card.Lane.Marks.OrderBy(m => m.From))
+                labelEnds[mark.Row] = DrawMark(mark, top + line * (mark.Row == LaneRow.Beds ? 1.15f : 2.15f), line * 0.7f,
+                    labelEnds.GetValueOrDefault(mark.Row, trackX), trackX + trackWidth, X);
+        }
+
+        draw.AddLine(new Vector2(X(now), lanesTop), new Vector2(X(now), lanesBottom),
+            ImGui.ColorConvertFloat4ToU32(NowLine), 2f);
+
+        // The hovers placed the cursor where they sat; one item spanning the lanes tells the
+        // window how tall they are.
+        ImGui.SetCursorScreenPos(left);
+        ImGui.Dummy(new Vector2(width, lanesBottom - left.Y));
+    }
+
+    /// <summary>Every local midnight inside the span.</summary>
+    private static IEnumerable<DateTimeOffset> Midnights(TimelineSpan span)
+    {
+        var from = span.From.ToLocalTime();
+        for (var day = new DateTimeOffset(from.Date, from.Offset).AddDays(1); day < span.To; day = day.AddDays(1))
+            yield return new DateTimeOffset(day.Date, TimeZoneInfo.Local.GetUtcOffset(day.Date));
+    }
+
+    /// <summary>The thin bar from the deadline bed's watering (or sowing) to the drop at the card's
+    /// deadline, coloured by the card's thirst like the headline. No clock, no bar.</summary>
+    private static void DrawWaterBar(VisitCard card, float top, float line, Func<DateTimeOffset, float> x, DateTimeOffset now)
+    {
+        if (card.WaterBy is not { } by || card.Lane.WaterFrom is not { } from)
+            return;
+
+        var draw = ImGui.GetWindowDrawList();
+        var colour = ImGui.ColorConvertFloat4ToU32(card.Thirst switch
+        {
+            ContainerLook.PastDeadline => Red,
+            ContainerLook.WaterSoon => Amber,
+            _ => Water,
+        });
+        var y = top + line * 0.5f;
+        draw.AddRectFilled(new Vector2(x(from), y - 2.5f), new Vector2(x(by), y + 2.5f), colour, 2.5f);
+
+        // The drop: a round bottom with a point on top, at the deadline.
+        var drop = new Vector2(x(by), y);
+        var r = line * 0.28f;
+        draw.AddCircleFilled(drop + new Vector2(0, r * 0.4f), r, colour);
+        draw.AddTriangleFilled(drop + new Vector2(-r * 0.9f, 0), drop + new Vector2(r * 0.9f, 0), drop + new Vector2(0, -r * 1.6f), colour);
+
+        ImGui.SetCursorScreenPos(drop - new Vector2(r, r * 1.6f));
+        ImGui.InvisibleButton("drop", new Vector2(r * 2, r * 3));
+        if (ImGui.IsItemHovered())
+            ImGui.SetTooltip($"{WindowFormat.WaterBy(by.ToLocalTime(), now.ToLocalTime())} ({WindowFormat.Countdown(by, now)})\n"
+                             + $"the bar starts at that bed's last watering, or its sowing if none was heard ({WindowFormat.Ago(from, now)})");
+    }
+
+    /// <summary>A ripe mark: a tick for an exact time, a band as wide as its window (striped when
+    /// estimated), a dot at the now line for what is seen ripe; its crops and glyph beside it.
+    /// <paramref name="leftFree"/> is where the row's previous label ended; returns where this one ends.</summary>
+    private static float DrawMark(LaneMark mark, float y, float height, float leftFree, float right, Func<DateTimeOffset, float> x)
+    {
+        var draw = ImGui.GetWindowDrawList();
+        var gold = ImGui.ColorConvertFloat4ToU32(Gold);
+        var x0 = x(mark.From);
+        var x1 = x(mark.To);
+        Vector2 min, max;
+        switch (mark.Kind)
+        {
+            case LaneMarkKind.Tick:
+                (min, max) = (new Vector2(x0 - 2f, y), new Vector2(x0 + 2f, y + height));
+                draw.AddRectFilled(min, max, gold, 1f);
+                break;
+            case LaneMarkKind.RipeNow:
+                (min, max) = (new Vector2(x0 - height / 2, y), new Vector2(x0 + height / 2, y + height));
+                draw.AddCircleFilled((min + max) / 2, height / 2, gold);
+                break;
+            default:
+                (min, max) = (new Vector2(x0, y), new Vector2(MathF.Max(x1, x0 + 4f), y + height));
+                draw.AddRectFilled(min, max, gold, height / 2);
+                if (mark.Kind == LaneMarkKind.EstimateBand)
+                    Stripes(draw, min, max, ImGui.ColorConvertFloat4ToU32(GoldDark));
+                break;
+        }
+
+        var crops = string.Join(" + ", mark.Crops.Select(c => Plugin.Tables.SpeciesName(c)));
+        var label = mark.Kind == LaneMarkKind.RipeNow
+            ? $"{(mark.Row == LaneRow.Pots ? "pots: " : "")}{crops} ripe now"
+            : $"{(mark.Row == LaneRow.Pots ? "pots: " : "")}{crops} {WindowFormat.Mark(mark.Group!.Window.Provenance)}";
+        // Beside the mark; before it when it would run off the lane's end and the row's previous
+        // label leaves room; otherwise beside it, cut at the end (the hover has it whole).
+        var labelWidth = ImGui.CalcTextSize(label).X;
+        var labelX = max.X + 5f + labelWidth <= right || min.X - 5f - labelWidth < leftFree + 5f
+            ? max.X + 5f
+            : min.X - 5f - labelWidth;
+        var labelPos = new Vector2(labelX, y + (height - ImGui.GetTextLineHeight()) / 2);
+        draw.PushClipRect(new Vector2(leftFree, y - height), new Vector2(right, y + height * 2), true);
+        draw.AddText(labelPos, gold, label);
+        draw.PopClipRect();
+        var labelEnd = MathF.Max(labelX + labelWidth, max.X);
+
+        ImGui.SetCursorScreenPos(min);
+        ImGui.InvisibleButton($"m{(int)mark.Row}-{mark.From.ToUnixTimeSeconds()}", Vector2.Max(max - min, new Vector2(4f, 4f)));
+        if (ImGui.IsItemHovered())
+            ImGui.SetTooltip(mark.Group is { } group
+                ? string.Join("\n\n", group.Crops.Select(c => $"{Plugin.Tables.SpeciesName(c.Species)}: {WindowText.WindowTooltip(c.Window)}"))
+                : $"{crops}: seen ripe - harvest any time");
+        return labelEnd;
+    }
+
+    /// <summary>Diagonal stripes across a band, clipped to it: an estimate, not a bracket.</summary>
+    private static void Stripes(ImDrawListPtr draw, Vector2 min, Vector2 max, uint colour)
+    {
+        draw.PushClipRect(min, max, true);
+        var h = max.Y - min.Y;
+        for (var sx = min.X - h; sx < max.X; sx += 6f)
+            draw.AddLine(new Vector2(sx, max.Y), new Vector2(sx + h, min.Y), colour, 2f);
+        draw.PopClipRect();
     }
 
     // ------------------------------------------------------------------ the card
