@@ -238,10 +238,22 @@ internal sealed unsafe class PotChain : ChainBase
     /// wilting - its water is only picked up by the read the next pot's step triggers, and the
     /// last pot has no next step). A watered pot has settled when the display no longer claims
     /// it is wilting - by the ONE wilt rule the dashboard reads (<see cref="PotWiltRule"/>: b4 = 1
-    /// below ripe), so the settle can never wait on a flag the dashboard would not show.</summary>
+    /// below ripe), so the settle can never wait on a flag the dashboard would not show.
+    ///
+    /// <para>Then one census read (rethink slice 19): every pot receipt sights the room first,
+    /// so in a sweep a pot watered a moment ago can be read with its flag still up and keep a
+    /// wilt sighting newer than its watering; the read after the settle, once the flags have
+    /// cleared, answers it. Nothing else reads the room again until a door or the next act.</para></summary>
     private void EnqueueWaterSettle(IEnumerable<PotObject> pots)
-        => EnqueueDisplaySettle(pots.Select(p => p.MapKey).ToList(),
+    {
+        EnqueueDisplaySettle(pots.Select(p => p.MapKey).ToList(),
             static r => r.Occupied && !PotWiltRule.Claims(r.Wilt, r.Stage), "wilting");
+        TaskManager.Enqueue(() =>
+        {
+            CensusPump.SightNow();
+            return true;
+        }, "sight");
+    }
 
     private void EnqueueDisplaySettle(IReadOnlyList<int?> keys, Func<PotReading, bool> settled, string stillShows)
     {

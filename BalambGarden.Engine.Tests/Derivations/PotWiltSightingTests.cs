@@ -101,6 +101,18 @@ public class PotWiltSightingTests
         Assert.Equal(0, Card().PotsWilting);
     }
 
+    [Fact] // a sweep: the next pot's receipt reads the room while this pot's flag still lags its watering; the read after the settle answers it
+    public void AFlagLaggingAWateringIsAnsweredByTheReadAfterIt()
+    {
+        Read(1, Seen, stage: 1, wilt: 1);
+        Act(1, ReceiptVerb.PotWater, Seen.AddSeconds(3));
+        Read(1, Seen.AddSeconds(6), stage: 1, wilt: 1);    // the next pot's pre-receipt read: the flag has not cleared yet
+        Assert.Equal(1, Card().PotsWilting);                 // honest about what the map said, for now
+        Read(1, Seen.AddSeconds(12), stage: 1, wilt: 0);   // the census read after the water settle
+
+        Assert.Equal(0, Card().PotsWilting);
+    }
+
     [Fact] // the pot wilt rule: a ripe pot's flag is no water claim, so a ripe read answers the sighting too
     public void ARipeReadClearsItAndNeverStampsOne()
     {
