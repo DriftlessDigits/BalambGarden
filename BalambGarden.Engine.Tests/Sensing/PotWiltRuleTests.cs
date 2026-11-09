@@ -1,4 +1,4 @@
-using BalambGarden.Engine.Derivations;
+using BalambGarden.Engine.Sensing;
 using Xunit;
 
 namespace BalambGarden.Engine.Tests;

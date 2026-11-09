@@ -59,6 +59,15 @@ public sealed class ClaimedBed
     public Hand? LastTendedBy { get; set; }
     public ushort LastTendedSpecies { get; set; }
 
+    /// <summary>A pot only: the last instant this install's live map read showed it wilting (the
+    /// pot wilt rule), so the card can keep saying so after the player leaves the room (rethink
+    /// slice 19, spec ruling 4). Null = no sighting standing. Gone once the plugin knows the pot
+    /// is no longer thirsty: a watering newer than it (<see cref="Tend"/>), a read showing it not
+    /// wilting (<see cref="SightWilt"/>), or a reset (<see cref="Rebase"/>: a harvest, a sowing,
+    /// an empty or absent read). Own sightings only; the relay's pot-wilt kind is never applied.
+    /// Absent from a file written before it, which loads as no sighting.</summary>
+    public DateTimeOffset? WiltSeenAt { get; set; }
+
     /// <summary>THE FENCE: the instant of the last reset, and why. Only ever moves forward.</summary>
     public DateTimeOffset? PlantingResetAt { get; set; }
     public RebaseReason? PlantingResetReason { get; set; }
@@ -145,6 +154,11 @@ public sealed class ClaimedBed
         FoldStage(at, stage);
     }
 
+    /// <summary>A LIVE pot read's wilt, already judged by the pot wilt rule: wilting stamps
+    /// <see cref="WiltSeenAt"/> with this read; not wilting clears it (the game shows the pot is
+    /// not thirsty, ripe included).</summary>
+    public void SightWilt(DateTimeOffset at, bool wilting) => WiltSeenAt = wilting ? at : null;
+
     /// <summary>Wire evidence about contents (a household Stage or Ripe receipt). THE RULE lives
     /// here. Fenced: nothing. Older than the newest evidence: agrees -> the stage bracket
     /// tightens (ruled 2026-10-14: "update the stage-2 timestamps, don't trigger a replant");
@@ -202,6 +216,7 @@ public sealed class ClaimedBed
     /// species of record watered the plant that left, and lands nowhere. A tend NEWER than the
     /// evidence lands whatever it names - trust event ordering (Q1, ruled 2026-10-14): it may be
     /// the first word of a replant we have not seen yet, and the next sighting sorts it out.
+    /// A landing watering newer than a pot's <see cref="WiltSeenAt"/> clears it.
     /// True = the clock moved.</summary>
     public bool Tend(DateTimeOffset at, Hand by, ushort species)
     {
@@ -209,6 +224,9 @@ public sealed class ClaimedBed
             return false;
         if (species != 0 && SpeciesOfRecord != 0 && species != SpeciesOfRecord && OlderThanEvidence(at))
             return false;
+        // A watering newer than the wilt sighting answered it; an older one is not news.
+        if (WiltSeenAt is { } seen && at > seen)
+            WiltSeenAt = null;
         if (LastTended is { } t && at <= t)
             return false;
         LastTended = at;
@@ -257,6 +275,8 @@ public sealed class ClaimedBed
     /// own read asks, because the game wins and a fence ahead of now is skew. A cut equal to the
     /// fence is allowed and refreshes the reason.
     ///
+    /// <para>A pot's wilt sighting at or before the cut goes with the plant it was about.</para>
+    ///
     /// <para>Tends: at or before the cut, gone. On a sighted species change, a tend AFTER the cut
     /// that named the OLD species also goes - it watered the plant that left (the apple->fig
     /// scene, pass-3 must-fix #1). A post-cut tend naming the new species or no species stays
@@ -293,6 +313,11 @@ public sealed class ClaimedBed
                 StageSeen[stage] = seen with { FirstSeen = seen.LastSeen };
                 removed = true;
             }
+        }
+        if (WiltSeenAt is { } w && w <= cut)
+        {
+            WiltSeenAt = null;
+            removed = true;
         }
         if (LastTended is { } t)
         {

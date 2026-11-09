@@ -1,3 +1,5 @@
+using BalambGarden.Engine.Sensing;
+
 namespace BalambGarden.Engine.Derivations;
 
 /// <summary>Whether a bed belongs in a tend SWEEP (Tend All / Water Patch) - the bed-side twin

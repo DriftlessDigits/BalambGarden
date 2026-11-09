@@ -282,13 +282,14 @@ internal static class CensusPump
 
             // One reusable change list for the whole pass; receipts save ONCE after the
             // loop (a 30-pot room must not pay 30 whole-file writes in one sighting). The
-            // rebase sink is reported after the ledger save, once per pass.
+            // rebase sink is reported after the ledger save, once per pass. The wilt byte rides
+            // along so the census keeps a pot's wilt sighting for the cards away from the room.
             var changes = new List<SightingChange>();
             var rebases = new List<RebaseEvent>();
             foreach (var (key, pot) in LastIndoor)
             {
                 landed += Plugin.Garden.Census.OnMapSighting(estate, key,
-                    [new BedReading(0, pot.SpeciesIndex, pot.Stage, pot.Extra, pot.Occupied)], now,
+                    [new BedReading(0, pot.SpeciesIndex, pot.Stage, pot.Extra, pot.Occupied) { Wilt = pot.Wilt }], now,
                     isPot: true, mayRecord: CoveredHere, changes: changes, rebases: rebases);
             }
             if (MintSightingReceipts(estate, isPot: true, changes, now) > 0)

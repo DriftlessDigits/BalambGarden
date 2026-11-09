@@ -267,6 +267,10 @@ _Avoid_: water ETA, thirst timer, age (the age is the clock's input, the deadlin
 A pot claims water only when its map wilt flag is set and its stage is below ripe. Ripe pots broadcast a nonzero flag while the game offers no watering verb.
 _Avoid_: pot wilt byte (the raw field), indoor wilt check
 
+**Wilt sighting**:
+The last instant this install's live map read showed a pot wilting under the pot wilt rule, kept on the pot's record so its card can say "pot wilting (seen 2h ago)" away from the room. A sighting in the map-read sense, but local only: it never travels, and the relay's pot-wilt kind is never applied. Cleared by a read showing the pot not wilting, a watering newer than it, or a reset.
+_Avoid_: wilt flag (the raw byte), wilt state, saved wilt
+
 **Tend sweep**:
 A run across many beds (Tend All, Water Patch): it skips only what the live map confirmed ripe or empty and fails open on map silence. A deliberate single press is never a sweep and is never filtered.
 _Avoid_: tend all (the button), batch tend, mass water
@@ -424,7 +428,7 @@ Stage four: harvestable, the payoff signal, its own wire kind. A ripe plant cann
 _Avoid_: mature, done, ready, grown
 
 **Wilt**:
-The game's visible thirst state, reached a crop-specific number of hours after the last tend. Published indoors (a pot's wilt flag), never published outdoors: outside, the clock and the game's prose are the only channels, by receipt. The Garden tab calls a bed "wilting" once its wilt clock passes the crop's wilt hours (the colour map, purple): a derived claim from the clock, never a reading; a pot is "wilting" only on its flag.
+The game's visible thirst state, reached a crop-specific number of hours after the last tend. Published indoors (a pot's wilt flag), never published outdoors: outside, the clock and the game's prose are the only channels, by receipt. The Garden tab calls a bed "wilting" once its wilt clock passes the crop's wilt hours (the colour map, purple): a derived claim from the clock, never a reading; a pot is "wilting" only on its flag: the live read in its room, or elsewhere the last time this install saw the flag up, kept until a watering, a read without it, or a reset answers it ("pot wilting (seen 2h ago)").
 _Avoid_: thirsty (the dashboard's pre-wilt warning, a different line), drooping, dehydrated
 
 **Wither**:

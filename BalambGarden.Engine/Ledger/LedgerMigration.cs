@@ -190,6 +190,7 @@ public static class LedgerMigration
             Latest = bed.Latest,
             PlantedAt = bed.PlantedAt, PlantedBy = bed.PlantedBy, PlantedSpecies = bed.PlantedSpecies,
             LastTended = bed.LastTended, LastTendedBy = bed.LastTendedBy, LastTendedSpecies = bed.LastTendedSpecies,
+            WiltSeenAt = bed.WiltSeenAt,
             PlantingResetAt = bed.PlantingResetAt, PlantingResetReason = bed.PlantingResetReason,
             LegacyRing = bed.LegacyRing,
         };
@@ -202,7 +203,8 @@ public static class LedgerMigration
     /// value (the hand and species ride with the instant that won), the fence takes the later
     /// reset, and then the merged record is TRIMMED at that fence - a twin's memory of a plant
     /// the other record already saw leave does not come back (pass-2 #9). WireEntity is kept
-    /// from whichever side minted one.</summary>
+    /// from whichever side minted one. A pot's wilt sighting takes the newer one, unless the
+    /// merged watering is newer still (it answered the sighting).</summary>
     private static ClaimedBed Combine(ClaimedBed keep, ClaimedBed other, EstateKey canonical)
     {
         var newerPlant = Newer(keep.PlantedAt, other.PlantedAt) == other.PlantedAt && other.PlantedAt is not null ? other : keep;
@@ -219,6 +221,7 @@ public static class LedgerMigration
             Latest = newerLatest,
             PlantedAt = newerPlant.PlantedAt, PlantedBy = newerPlant.PlantedBy, PlantedSpecies = newerPlant.PlantedSpecies,
             LastTended = newerTend.LastTended, LastTendedBy = newerTend.LastTendedBy, LastTendedSpecies = newerTend.LastTendedSpecies,
+            WiltSeenAt = Newer(keep.WiltSeenAt, other.WiltSeenAt) is { } wilt && !(newerTend.LastTended > wilt) ? wilt : null,
             PlantingResetAt = newerReset.PlantingResetAt, PlantingResetReason = newerReset.PlantingResetReason,
         };
         foreach (var (stage, seen) in keep.StageSeen.Concat(other.StageSeen))
@@ -242,6 +245,7 @@ public static class LedgerMigration
             else if (seen.FirstSeen <= fence) bed.StageSeen[stage] = seen with { FirstSeen = seen.LastSeen };
         }
         if (bed.LastTended is { } t && t <= fence) { bed.LastTended = null; bed.LastTendedBy = null; bed.LastTendedSpecies = 0; }
+        if (bed.WiltSeenAt is { } w && w <= fence) bed.WiltSeenAt = null;
     }
 
     private static DateTimeOffset? Newer(DateTimeOffset? a, DateTimeOffset? b)
