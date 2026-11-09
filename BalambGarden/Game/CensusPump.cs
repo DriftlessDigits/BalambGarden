@@ -289,7 +289,7 @@ internal static class CensusPump
             foreach (var (key, pot) in LastIndoor)
             {
                 landed += Plugin.Garden.Census.OnMapSighting(estate, key,
-                    [new BedReading(0, pot.SpeciesIndex, pot.Stage, pot.Extra, pot.Occupied, pot.Wilt)], now,
+                    [new BedReading(0, pot.SpeciesIndex, pot.Stage, pot.Extra, pot.Occupied) { Wilt = pot.Wilt }], now,
                     isPot: true, mayRecord: CoveredHere, changes: changes, rebases: rebases);
             }
             if (MintSightingReceipts(estate, isPot: true, changes, now) > 0)

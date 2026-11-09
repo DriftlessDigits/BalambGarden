@@ -29,7 +29,7 @@ public class PotWiltSightingTests
 
     /// <summary>One live read of the room's pot at map key <paramref name="key"/>.</summary>
     private void Read(int key, DateTimeOffset at, byte stage, byte wilt, ushort species = Krakka, bool occupied = true)
-        => census.OnMapSighting(Room, key, [new BedReading(0, species, stage, 0, occupied, wilt)], at,
+        => census.OnMapSighting(Room, key, [new BedReading(0, species, stage, 0, occupied) { Wilt = wilt }], at,
             isPot: true, mayRecord: true);
 
     private ClaimedBed PotAt(int key) => store.Beds.Single(b => b.IsPot && b.MapKey == key);
