@@ -8,19 +8,21 @@ namespace BalambGarden.Engine.Derivations;
 /// <summary>What one container in the garden picture is saying. <see cref="Unclaimed"/> is a bed
 /// slot the ledger has nothing for; <see cref="Unread"/> a record whose contents were never read
 /// (a watering heard before any read); <see cref="Empty"/> a container the plugin knows was
-/// emptied (a harvest witnessed or an empty read). <see cref="WaterSoon"/> is a bed past three
-/// quarters of its wilt hours, <see cref="PastDeadline"/> one past its water deadline.
-/// <see cref="Wilting"/> is a pot the live map shows wilting where the player stands - observed,
-/// never clocked.</summary>
-public enum ContainerLook { Unclaimed, Unread, Empty, Growing, WaterSoon, PastDeadline, Wilting, Ripe }
+/// emptied (a harvest witnessed or an empty read). The water looks follow the colour map (ruling
+/// 22): <see cref="WaterSoon"/> is a bed past three quarters of its wilt hours (the clock's Due);
+/// <see cref="Wilting"/> a bed past its wilt hours (Overdue), or a pot the live map shows wilting
+/// where the player stands - observed, never clocked; <see cref="Dying"/> a bed past halfway from
+/// its wilt hours to withering (Danger).</summary>
+public enum ContainerLook { Unclaimed, Unread, Empty, Growing, WaterSoon, Wilting, Dying, Ripe }
 
 /// <summary>One container of the garden picture, with what its hover needs. <see cref="Position"/>
 /// is the bed's slot (0-7) in a patch, or the pot's map key among the pots. <see cref="WaterBy"/>
-/// is null wherever the wilt clock makes no claim; <see cref="TendUnheard"/> marks a growing bed
-/// whose deadline (if any) rests on its sowing, not on a heard tend.</summary>
+/// and <see cref="DiesAt"/> (when the plant withers if nobody waters) are null wherever the wilt
+/// clock makes no claim; <see cref="TendUnheard"/> marks a growing bed whose deadline (if any)
+/// rests on its sowing, not on a heard tend.</summary>
 public sealed record ContainerCell(
     int Position, ContainerLook Look, ushort Species, byte Stage, bool TendUnheard,
-    DateTimeOffset? WaterBy, EtaWindow? Ripe, ClaimedBed? Bed)
+    DateTimeOffset? WaterBy, EtaWindow? Ripe, ClaimedBed? Bed, DateTimeOffset? DiesAt = null)
 {
     public static ContainerCell Unclaimed(int slot) => new(slot, ContainerLook.Unclaimed,
         Species: 0, Stage: 0, TendUnheard: false, WaterBy: null, Ripe: null, Bed: null);
@@ -49,8 +51,8 @@ public sealed record Standing(EstateKey Estate, bool Inside, IReadOnlyDictionary
 
 /// <summary>One planted estate's next visit: when it is needed by and what waits there.
 /// <see cref="WaterBy"/> is the estate's water deadline (its earliest bed's), null when no bed
-/// carries a clock, and <see cref="Thirst"/> the worst bed's look (past its deadline, water soon,
-/// or growing). <see cref="TendUnheard"/> counts the growing beds whose tend was never heard. The
+/// carries a clock, and <see cref="Thirst"/> the worst bed's look (dying, wilting, water soon,
+/// or growing; beds only, as it colours the beds' deadline). <see cref="TendUnheard"/> counts the growing beds whose tend was never heard. The
 /// chips: <see cref="Water"/> beds due within <see cref="GardenBoard.ChipSpan"/> of the deadline
 /// (or of now, once it has passed), <see cref="Harvest"/> containers ripe now or whose ripe
 /// window opens within the span (<see cref="RipeNow"/> of them seen ripe), <see cref="Replant"/>
@@ -197,9 +199,8 @@ public static class GardenBoard
         var cells = patches.SelectMany(p => p.Cells).Where(c => c.Bed is not null).ToList();
         var bedCells = cells.Where(c => !c.Bed!.IsPot).ToList();
         var waterBy = bedCells.Select(c => c.WaterBy).Where(t => t is not null).Min();
-        var thirst = bedCells.Any(c => c.Look == ContainerLook.PastDeadline) ? ContainerLook.PastDeadline
-            : bedCells.Any(c => c.Look == ContainerLook.WaterSoon) ? ContainerLook.WaterSoon
-            : ContainerLook.Growing;
+        // The worst bed's water look; pots stay out: the thirst colours the beds' water deadline.
+        var thirst = Thirsts.FirstOrDefault(look => bedCells.Any(c => c.Look == look), ContainerLook.Growing);
 
         // A deadline already behind us is no reason to leave out the beds due in the next hours:
         // the visit happens now at the earliest.
@@ -217,7 +218,7 @@ public static class GardenBoard
             TendUnheard: bedCells.Count(c => c.TendUnheard),
             water, harvest, ripeNow,
             Replant: cells.Count(c => c.Look == ContainerLook.Empty),
-            PotsWilting: cells.Count(c => c.Look == ContainerLook.Wilting),
+            PotsWilting: cells.Count(c => c.Bed!.IsPot && c.Look == ContainerLook.Wilting),
             ripe, patches, new TimelineLane(WaterFrom(bedCells, waterBy),
                 RipeNowMarks(LaneRow.Beds, bedCells, now)
                     .Concat(RipeNowMarks(LaneRow.Pots, cells.Where(c => c.Bed!.IsPot), now))
@@ -225,6 +226,9 @@ public static class GardenBoard
                     .Where(m => m.From <= Span(now).To)
                     .ToList()));
     }
+
+    /// <summary>The water looks a card's thirst can take, worst first.</summary>
+    private static readonly ContainerLook[] Thirsts = [ContainerLook.Dying, ContainerLook.Wilting, ContainerLook.WaterSoon];
 
     /// <summary>Where the water bar starts: the clock start of the bed whose deadline is the card's.</summary>
     private static DateTimeOffset? WaterFrom(List<ContainerCell> bedCells, DateTimeOffset? waterBy) => waterBy is null
@@ -304,10 +308,13 @@ public static class GardenBoard
         var crop = tables.CropBySpeciesIndex(latest.SpeciesIndex);
         var ripe = latest.Stage >= GardenStage.Ripe;
         var water = crop is null ? WaterState.Unknown : Clock.StateFor(bed, crop, now);
-        var grown = ripe ? ContainerLook.Ripe
-            : water == WaterState.Due ? ContainerLook.WaterSoon
-            : water is WaterState.Overdue or WaterState.Danger ? ContainerLook.PastDeadline
-            : ContainerLook.Growing;
+        var grown = ripe ? ContainerLook.Ripe : water switch
+        {
+            WaterState.Due => ContainerLook.WaterSoon,
+            WaterState.Overdue => ContainerLook.Wilting,
+            WaterState.Danger => ContainerLook.Dying,
+            _ => ContainerLook.Growing,
+        };
 
         var window = !ripe && tables.GrowHours(latest.SpeciesIndex) is { } growHours
             ? StageModel.RipeWindow(bed, growHours)?.Window
@@ -316,6 +323,7 @@ public static class GardenBoard
         return new ContainerCell(position, grown, latest.SpeciesIndex, latest.Stage,
             TendUnheard: !ripe && ClockWiltSource.TendUnheard(bed),
             WaterBy: crop is null ? null : ClockWiltSource.WaterBy(bed, crop),
-            window, bed);
+            window, bed,
+            DiesAt: crop is null ? null : ClockWiltSource.DiesAt(bed, crop));
     }
 }

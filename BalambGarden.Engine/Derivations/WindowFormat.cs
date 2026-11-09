@@ -175,4 +175,29 @@ public static class WindowFormat
         WaterState.NotApplicable => "-",
         _ => "?",
     };
+
+    /// <summary>A card's thirst as the Garden tab's hovers name it ("worst bed here: wilting"):
+    /// the colour map's words, so the colour is never the only channel. Null where the beds ask
+    /// nothing.</summary>
+    public static string? Thirst(ContainerLook thirst) => thirst switch
+    {
+        ContainerLook.WaterSoon => "water soon",
+        ContainerLook.Wilting => "wilting",
+        ContainerLook.Dying => "dying",
+        _ => null,
+    };
+
+    /// <summary>A bed's water state in its hover, said with what it means: water soon, wilting, or
+    /// dying with when it withers (<paramref name="diesAt"/>; once that has passed, that it may
+    /// already be lost). Null where the bed asks nothing. Caller converts both instants to local
+    /// time.</summary>
+    public static string? ThirstLine(ContainerLook look, DateTimeOffset? diesAt, DateTimeOffset now) => look switch
+    {
+        ContainerLook.WaterSoon => "water soon: past three quarters of its wilt hours",
+        ContainerLook.Wilting => "wilting: past its wilt hours",
+        ContainerLook.Dying => diesAt is { } dies && dies > now
+            ? $"dying: withers ~{Clock(dies, withDay: true)} unless watered"
+            : "dying: past its wither hours - it may already be lost",
+        _ => null,
+    };
 }

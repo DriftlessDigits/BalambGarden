@@ -202,6 +202,27 @@ public class WindowFormatTests
         Assert.Equal("now", WindowFormat.Countdown(Now.AddSeconds(20), Now));
     }
 
+    [Fact] // ruling 22: colour is never the only channel - a bed's hover says its water state in words
+    public void ABedsHoverSaysItsWaterStateInWords()
+    {
+        var sun = DateTimeOffset.Parse("2026-11-08T10:35:00-06:00");
+        var dies = DateTimeOffset.Parse("2026-11-10T14:00:00-06:00");
+        Assert.Equal("water soon: past three quarters of its wilt hours", WindowFormat.ThirstLine(ContainerLook.WaterSoon, dies, sun));
+        Assert.Equal("wilting: past its wilt hours", WindowFormat.ThirstLine(ContainerLook.Wilting, dies, sun));
+        Assert.Equal("dying: withers ~Tue 14:00 unless watered", WindowFormat.ThirstLine(ContainerLook.Dying, dies, sun));
+        Assert.Equal("dying: past its wither hours - it may already be lost", WindowFormat.ThirstLine(ContainerLook.Dying, sun.AddHours(-1), sun));
+        Assert.Null(WindowFormat.ThirstLine(ContainerLook.Growing, dies, sun));
+    }
+
+    [Fact] // the headline and the lane's drop name the card's thirst in a word
+    public void ACardsThirstHasAWord()
+    {
+        Assert.Equal("water soon", WindowFormat.Thirst(ContainerLook.WaterSoon));
+        Assert.Equal("wilting", WindowFormat.Thirst(ContainerLook.Wilting));
+        Assert.Equal("dying", WindowFormat.Thirst(ContainerLook.Dying));
+        Assert.Null(WindowFormat.Thirst(ContainerLook.Growing));
+    }
+
     [Fact] // the lanes' day heads read the same on every machine, whatever its culture
     public void DayHeadIsTheWeekdayAndTheDayOfTheMonth()
         => Assert.Equal("Mon 9", WindowFormat.DayHead(DateTimeOffset.Parse("2026-11-09T00:00:00-06:00")));

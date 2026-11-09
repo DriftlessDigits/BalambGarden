@@ -139,8 +139,14 @@ internal static class GardenTab
         if (ImGui.IsItemHovered())
             ImGui.SetTooltip($"{WindowFormat.WaterBy(by.ToLocalTime(), now.ToLocalTime())} ({WindowFormat.Countdown(by, now)})\n"
                              + "the bar is the first bed here to reach its crop's wilt hours, from its last watering\n"
-                             + $"(or its sowing, when no watering was heard) {WindowFormat.Ago(from, now)}");
+                             + $"(or its sowing, when no watering was heard) {WindowFormat.Ago(from, now)}"
+                             + WorstBedLine(card));
     }
+
+    /// <summary>The card's thirst in words for the headline and drop hovers, on a line of its own;
+    /// empty while the beds ask nothing.</summary>
+    private static string WorstBedLine(VisitCard card)
+        => WindowFormat.Thirst(card.Thirst) is { } word ? $"\nworst bed here: {word}" : "";
 
     /// <summary>A ripe mark: a tick for an anchored window, a band as wide as its window (striped when
     /// estimated), a dot at the now line for what is seen ripe; its crops and glyph beside it.
@@ -249,7 +255,8 @@ internal static class GardenTab
             ImGui.SameLine();
             ImGui.TextDisabled(WindowFormat.Countdown(by, now));
             if (ImGui.IsItemHovered())
-                ImGui.SetTooltip($"the first bed here reaches its crop's wilt hours at {WindowFormat.Exact(by.ToLocalTime())}");
+                ImGui.SetTooltip($"the first bed here reaches its crop's wilt hours at {WindowFormat.Exact(by.ToLocalTime())}"
+                                 + WorstBedLine(card));
             return;
         }
 
@@ -261,19 +268,22 @@ internal static class GardenTab
     }
 
     /// <summary>The card's thirst as a colour, shared by the headline and the lane's water bar so
-    /// the two cannot disagree: red past the deadline, amber water soon, null for plain.</summary>
+    /// the two cannot disagree: red dying, purple wilting, amber water soon, null for plain.</summary>
     private static Vector4? ThirstColour(ContainerLook thirst) => thirst switch
     {
-        ContainerLook.PastDeadline => Palette.DyingInk,
+        ContainerLook.Dying => Palette.DyingInk,
+        ContainerLook.Wilting => Palette.WiltingInk,
         ContainerLook.WaterSoon => Palette.WaterSoonInk,
         _ => null,
     };
 
+    /// <summary>The card's notes: the no-watering-heard count in plain words (a caution is a word,
+    /// not a colour), and a pot the live map shows wilting where the player stands, purple.</summary>
     private static void DrawNotes(VisitCard card)
     {
         if (card.TendUnheard > 0)
         {
-            ImGui.TextColored(Palette.WaterSoonInk, card.TendUnheard == 1
+            ImGui.Text(card.TendUnheard == 1
                 ? "1 bed with no watering heard"
                 : $"{card.TendUnheard} beds with no watering heard");
             if (ImGui.IsItemHovered())
@@ -281,7 +291,7 @@ internal static class GardenTab
         }
 
         if (card.PotsWilting > 0)
-            ImGui.TextColored(Palette.DyingInk, card.PotsWilting == 1 ? "pot wilting - water now" : $"{card.PotsWilting} pots wilting - water now");
+            ImGui.TextColored(Palette.WiltingInk, card.PotsWilting == 1 ? "pot wilting - water now" : $"{card.PotsWilting} pots wilting - water now");
     }
 
     private static void DrawChips(VisitCard card)
@@ -340,8 +350,8 @@ internal static class GardenTab
     // ------------------------------------------------------------------ the garden picture
 
     /// <summary>Each patch as the game lays its beds out (<see cref="GardenBoard.RingPosition"/>),
-    /// side by side, then the pots in map-key order. A dashed amber outline marks a bed whose tend
-    /// was never heard.</summary>
+    /// side by side, then the pots in map-key order. A dashed outline marks a bed whose tend was
+    /// never heard.</summary>
     private static void DrawPictures(VisitCard card, DateTimeOffset now)
     {
         var side = ImGui.GetTextLineHeight() * 1.2f;
@@ -391,7 +401,7 @@ internal static class GardenTab
         var max = ImGui.GetItemRectMax();
         draw.AddRectFilled(min, max, ImGui.ColorConvertFloat4ToU32(Fill(cell)), 3f);
         if (cell.TendUnheard)
-            DashedRect(draw, min, max, ImGui.ColorConvertFloat4ToU32(Palette.WaterSoonInk));
+            DashedRect(draw, min, max, ImGui.ColorConvertFloat4ToU32(Palette.Dashed));
         else
             draw.AddRect(min, max, ImGui.ColorConvertFloat4ToU32(cell.Look == ContainerLook.Ripe
                 ? Palette.RipeInk
@@ -401,8 +411,8 @@ internal static class GardenTab
             ImGui.SetTooltip(CellTooltip(patch, cell, now));
     }
 
-    /// <summary>State colours: green ramp by stage while growing, amber water soon, red past the
-    /// deadline or wilting, blue ripe (the 2026-08-18 ruling: ripe is a payoff, kept off the
+    /// <summary>State colours (the colour map): green ramp by stage while growing, amber water soon,
+    /// purple wilting, red dying, blue ripe (the 2026-08-18 ruling: ripe is a payoff, kept off the
     /// health gradient), earth for a known-empty container, grey for one never read, near-black
     /// for an unclaimed slot.</summary>
     private static Vector4 Fill(ContainerCell cell) => cell.Look switch
@@ -411,7 +421,8 @@ internal static class GardenTab
         ContainerLook.Unread => Palette.Unread,
         ContainerLook.Empty => Palette.Empty,
         ContainerLook.WaterSoon => Palette.WaterSoon,
-        ContainerLook.PastDeadline or ContainerLook.Wilting => Palette.Dying,
+        ContainerLook.Wilting => Palette.Wilting,
+        ContainerLook.Dying => Palette.Dying,
         ContainerLook.Ripe => Palette.Ripe,
         _ => Palette.Growing(cell.Stage),
     };
@@ -455,6 +466,8 @@ internal static class GardenTab
             lines.Add(cell.Look == ContainerLook.Wilting ? "wilting - water now" : "pots are watched, not clocked");
         else if (cell.WaterBy is { } by)
         {
+            if (WindowFormat.ThirstLine(cell.Look, cell.DiesAt?.ToLocalTime(), now.ToLocalTime()) is { } thirst)
+                lines.Add(thirst);
             lines.Add($"{WindowFormat.WaterBy(by.ToLocalTime(), now.ToLocalTime())} ({WindowFormat.Countdown(by, now)})");
             lines.Add(cell.Bed?.LastTended is { } tended
                 ? $"watered {WindowFormat.Ago(tended, now)}"
