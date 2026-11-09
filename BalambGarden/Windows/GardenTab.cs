@@ -225,7 +225,7 @@ internal static class GardenTab
         {
             ImGui.Text(card.Estate.DisplayName);
             DrawHeadline(card, now);
-            DrawNotes(card);
+            DrawNotes(card, now);
             DrawChips(card);
             DrawRipe(card, now);
             ImGui.Dummy(new Vector2(0, 2));
@@ -263,8 +263,7 @@ internal static class GardenTab
         ImGui.TextDisabled("no water clock here");
         ImGui.SetWindowFontScale(1f);
         if (ImGui.IsItemHovered())
-            ImGui.SetTooltip("no bed here carries a clock: pots are watched, not clocked - Balamb only knows\n"
-                             + "a pot is wilting while you stand in its room");
+            ImGui.SetTooltip("no bed here carries a clock: pots are watched, not clocked");
     }
 
     /// <summary>The card's thirst as a colour, shared by the headline and the lane's water bar so
@@ -278,8 +277,9 @@ internal static class GardenTab
     };
 
     /// <summary>The card's notes: the no-watering-heard count in plain words (a caution is a word,
-    /// not a colour), and a pot the live map shows wilting where the player stands, purple.</summary>
-    private static void DrawNotes(VisitCard card)
+    /// not a colour), and the pots wilting, purple: the live map's where the player stands, the
+    /// last sighting's elsewhere, with its age.</summary>
+    private static void DrawNotes(VisitCard card, DateTimeOffset now)
     {
         if (card.TendUnheard > 0)
         {
@@ -291,7 +291,7 @@ internal static class GardenTab
         }
 
         if (card.PotsWilting > 0)
-            ImGui.TextColored(Palette.WiltingInk, card.PotsWilting == 1 ? "pot wilting - water now" : $"{card.PotsWilting} pots wilting - water now");
+            ImGui.TextColored(Palette.WiltingInk, WindowFormat.PotsWilting(card.PotsWilting, card.PotsWiltingSeenAt, now));
     }
 
     private static void DrawChips(VisitCard card)

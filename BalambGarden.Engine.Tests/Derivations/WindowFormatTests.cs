@@ -223,6 +223,15 @@ public class WindowFormatTests
         Assert.Null(WindowFormat.Thirst(ContainerLook.Growing));
     }
 
+    [Fact] // spec ruling 4: "pot wilting (seen 2h ago)" away from the room; in the room the note reads as before slice 19
+    public void ThePotWiltNoteSaysWhenItWasSeenAwayFromTheRoom()
+    {
+        Assert.Equal("pot wilting (seen 2h ago)", WindowFormat.PotsWilting(1, Now.AddHours(-2), Now));
+        Assert.Equal("4 pots wilting (seen 12m ago)", WindowFormat.PotsWilting(4, Now.AddMinutes(-12), Now));
+        Assert.Equal("pot wilting - water now", WindowFormat.PotsWilting(1, seenAt: null, Now));
+        Assert.Equal("4 pots wilting - water now", WindowFormat.PotsWilting(4, seenAt: null, Now));
+    }
+
     [Fact] // the lanes' day heads read the same on every machine, whatever its culture
     public void DayHeadIsTheWeekdayAndTheDayOfTheMonth()
         => Assert.Equal("Mon 9", WindowFormat.DayHead(DateTimeOffset.Parse("2026-11-09T00:00:00-06:00")));

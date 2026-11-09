@@ -1,3 +1,4 @@
+using BalambGarden.Engine.Derivations;
 using BalambGarden.Engine.Ledger;
 
 namespace BalambGarden.Engine.Census;
@@ -152,6 +153,8 @@ public sealed class CensusEngine(LedgerStore ledger)
             }
 
             bed.Sight(at, reading.SpeciesIndex, reading.Stage, ObservationSource.MapSighting);
+            if (isPot)
+                bed.SightWilt(at, PotWiltRule.Claims(reading.Wilt, reading.Stage));
             count++;
         }
         return count;

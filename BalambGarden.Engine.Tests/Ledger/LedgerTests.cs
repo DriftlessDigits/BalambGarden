@@ -80,6 +80,92 @@ public class LedgerTests
         Assert.False(rb.LastTendedIsExternal);
     }
 
+    [Fact] // rethink slice 19: a pot seen wilting is still wilting after a plugin reload
+    public void APotWiltSightingSurvivesTheFile()
+    {
+        var store = new LedgerStore();
+        var pot = new ClaimedBed { Estate = Gardener, MapKey = 4, PatchOrdinal = 4, BedSlot = 0, IsPot = true, FirstRecorded = T0 };
+        Seed.Sight(pot, T0, 0x41, 2);
+        pot.SightWilt(T0, wilting: true);
+        store.Beds.Add(pot);
+
+        var restored = Assert.Single(LedgerStore.FromJson(store.ToJson()).Beds);
+
+        Assert.Equal(T0, restored.WiltSeenAt);
+    }
+
+    /// <summary>A v4 ledger exactly as the plugin wrote it before slice 19: the bytes main at
+    /// e34f316 serialized for a pot sown, read at stage 2 and watered (captured by running that
+    /// commit's <see cref="LedgerStore.ToJson"/>, not typed by hand).</summary>
+    private const string PreSightingLedger = """
+        {
+          "Version": 4,
+          "Beds": [
+            {
+              "Estate": {
+                "TerritoryId": 340,
+                "Ward": 11,
+                "Plot": 32,
+                "Room": -1,
+                "IsApartment": false,
+                "ApartmentDivision": -1,
+                "IsIndoorOnly": false
+              },
+              "MapKey": 4,
+              "PatchOrdinal": 4,
+              "BedSlot": 0,
+              "IsPot": true,
+              "ClaimedAt": "2026-08-13T19:10:00+00:00",
+              "Latest": {
+                "At": "2026-08-13T20:10:00+00:00",
+                "SpeciesIndex": 65,
+                "Stage": 2,
+                "Source": "MapSighting"
+              },
+              "PlantedAt": "2026-08-13T19:10:00+00:00",
+              "PlantedBy": "own",
+              "PlantedSpecies": 65,
+              "StageSeen": {
+                "2": {
+                  "FirstSeen": "2026-08-13T20:10:00+00:00",
+                  "LastSeen": "2026-08-13T20:10:00+00:00"
+                }
+              },
+              "LastTended": "2026-08-13T21:10:00+00:00",
+              "LastTendedBy": "own",
+              "LastTendedSpecies": 65,
+              "PlantingResetAt": "2026-08-13T19:10:00+00:00",
+              "PlantingResetReason": "PlantReceipt"
+            }
+          ],
+          "Bindings": {},
+          "Estates": [],
+          "RelayCursor": "0",
+          "ForeignHold": []
+        }
+        """;
+
+    [Fact] // the diffable load: no version bump, no migration - an older file reads as "no sighting" and writes back unchanged
+    public void ALedgerFromBeforeTheSightingLoadsWithNoneAndNoOtherChange()
+    {
+        var store = LedgerStore.FromJson(PreSightingLedger);
+
+        Assert.Equal(LedgerStore.CurrentVersion, store.Version);
+        Assert.Null(Assert.Single(store.Beds).WiltSeenAt);
+        Assert.Equal(PreSightingLedger.ReplaceLineEndings("\n"), store.ToJson().ReplaceLineEndings("\n"));
+    }
+
+    [Fact] // an older plugin build reading a file this one wrote skips the field (rolling back loses only the sighting)
+    public void AnUnknownFieldIsSkippedNotRefused()
+    {
+        var newer = PreSightingLedger.Replace("\"PlantingResetReason\": \"PlantReceipt\"",
+            "\"PlantingResetReason\": \"PlantReceipt\",\n      \"SomeLaterField\": \"2026-11-08T19:00:00+00:00\"");
+
+        var store = LedgerStore.FromJson(newer);
+
+        Assert.Single(store.Beds);
+    }
+
     [Fact] // a v2 file's ring reads into the seam and nothing else breaks
     public void VersionTwoRingReadsIntoTheLegacySeam()
     {

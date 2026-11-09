@@ -424,7 +424,7 @@ Stage four: harvestable, the payoff signal, its own wire kind. A ripe plant cann
 _Avoid_: mature, done, ready, grown
 
 **Wilt**:
-The game's visible thirst state, reached a crop-specific number of hours after the last tend. Published indoors (a pot's wilt flag), never published outdoors: outside, the clock and the game's prose are the only channels, by receipt. The Garden tab calls a bed "wilting" once its wilt clock passes the crop's wilt hours (the colour map, purple): a derived claim from the clock, never a reading; a pot is "wilting" only on its flag.
+The game's visible thirst state, reached a crop-specific number of hours after the last tend. Published indoors (a pot's wilt flag), never published outdoors: outside, the clock and the game's prose are the only channels, by receipt. The Garden tab calls a bed "wilting" once its wilt clock passes the crop's wilt hours (the colour map, purple): a derived claim from the clock, never a reading; a pot is "wilting" only on its flag: the live read in its room, or elsewhere the last time this install saw the flag up, kept until a watering, a read without it, or a reset answers it ("pot wilting (seen 2h ago)").
 _Avoid_: thirsty (the dashboard's pre-wilt warning, a different line), drooping, dehydrated
 
 **Wither**:

@@ -200,4 +200,13 @@ public static class WindowFormat
             : "dying: past its wither hours - it may already be lost",
         _ => null,
     };
+
+    /// <summary>A card's pot-wilting note (spec ruling 4, rethink slice 19). On the live read in the
+    /// room (<paramref name="seenAt"/> null) it says "water now"; away it says when the game last
+    /// showed one wilting: "pot wilting (seen 2h ago)", "4 pots wilting (seen 12m ago)".</summary>
+    public static string PotsWilting(int count, DateTimeOffset? seenAt, DateTimeOffset now)
+    {
+        var pots = count == 1 ? "pot wilting" : $"{count} pots wilting";
+        return seenAt is { } seen ? $"{pots} (seen {Ago(seen, now)})" : $"{pots} - water now";
+    }
 }

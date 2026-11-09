@@ -238,7 +238,7 @@ public class GardenBoardTests
         Assert.Equal(["Yard", "Room", "Cottage", "Plot"], cards.Select(c => c.Estate.DisplayName));
     }
 
-    [Fact] // ruling 4 as narrowed at slice 3: pot wilt speaks only where the player stands, from the live read
+    [Fact] // in the room the live read speaks for its pots and no other card's; away, only a kept sighting speaks (PotWiltSightingTests)
     public void APotWiltsOnlyOnTheCardOfTheRoomThePlayerStandsIn()
     {
         var room = new EstateKey(342, 1, 1);

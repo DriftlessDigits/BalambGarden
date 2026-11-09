@@ -124,6 +124,54 @@ public class EstateNormalizationTests
         Assert.Equal(T0.AddHours(3), bed.Latest!.At);        // newest reading wins
     }
 
+    [Fact] // rethink slice 19: the repair runs at every load, so a pot's wilt sighting must ride it
+    public void APotWiltSightingRidesTheMove()
+    {
+        var store = new LedgerStore();
+        store.Estates.Add(Record(Outside, T0));
+        store.Estates.Add(Record(Inside, T0));
+        var pot = Bed(Inside, ordinal: 2, slot: 0, isPot: true, mapKey: 2);
+        Seed.Sight(pot, T0, 44, 2);
+        pot.SightWilt(T0, wilting: true);
+        store.Beds.Add(pot);
+
+        LedgerMigration.NormalizeEstates(store);
+
+        Assert.Equal(T0, Assert.Single(store.Beds).WiltSeenAt);
+    }
+
+    [Fact] // two records of one pot: the newest sighting stands unless a watering heard after it answered it
+    public void TwinPotsMergeTheirWiltSightings()
+    {
+        var store = new LedgerStore();
+        store.Estates.Add(Record(Outside, T0));
+        store.Estates.Add(Record(Inside, T0));
+        var kept = Bed(Outside, ordinal: 2, slot: 0, isPot: true, mapKey: 2);
+        Seed.Sight(kept, T0.AddHours(1), 44, 2);
+        kept.SightWilt(T0.AddHours(1), wilting: true);
+        var twin = Bed(Inside, ordinal: 2, slot: 0, isPot: true, mapKey: 2);
+        Seed.Sight(twin, T0, 44, 2);
+        store.Beds.Add(kept);
+        store.Beds.Add(twin);
+
+        LedgerMigration.NormalizeEstates(store);
+        Assert.Equal(T0.AddHours(1), Assert.Single(store.Beds).WiltSeenAt);
+
+        var watered = new LedgerStore();
+        watered.Estates.Add(Record(Outside, T0));
+        watered.Estates.Add(Record(Inside, T0));
+        var seen = Bed(Outside, ordinal: 2, slot: 0, isPot: true, mapKey: 2);
+        Seed.Sight(seen, T0.AddHours(1), 44, 2);
+        seen.SightWilt(T0.AddHours(1), wilting: true);
+        var tended = Bed(Inside, ordinal: 2, slot: 0, isPot: true, mapKey: 2);
+        Seed.Tend(tended, T0.AddHours(2), 44);
+        watered.Beds.Add(seen);
+        watered.Beds.Add(tended);
+
+        LedgerMigration.NormalizeEstates(watered);
+        Assert.Null(Assert.Single(watered.Beds).WiltSeenAt);
+    }
+
     [Fact] // only the interior record carries a nickname: it comes along
     public void NicknameSurvivesFromEitherSide()
     {
