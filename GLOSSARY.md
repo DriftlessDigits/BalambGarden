@@ -284,7 +284,7 @@ The per-patch summary the dashboard rows carry: counts of claimed, ripe, due, ov
 _Avoid_: aggregate, summary row, stats
 
 **Garden picture**:
-The Garden tab's small picture of an estate: each patch with its eight beds where the game puts them (the ring, see Bed), then the pots, every container coloured by its state (growing by stage, water soon, past its deadline, ripe, empty, never read), a dashed outline on a bed whose tend was never heard. The patch strip's successor.
+The Garden tab's small picture of an estate: each patch with its eight beds where the game puts them (the ring, see Bed), then the pots, every container coloured by its state (growing by stage, water soon, wilting, dying, ripe, empty, never read), a dashed outline on a bed whose tend was never heard. The patch strip's successor.
 _Avoid_: map, mini-map, heatmap, grid
 
 **Palette**:
@@ -424,12 +424,12 @@ Stage four: harvestable, the payoff signal, its own wire kind. A ripe plant cann
 _Avoid_: mature, done, ready, grown
 
 **Wilt**:
-The game's visible thirst state, reached a crop-specific number of hours after the last tend. Published indoors (a pot's wilt flag), never published outdoors: outside, the clock and the game's prose are the only channels, by receipt.
+The game's visible thirst state, reached a crop-specific number of hours after the last tend. Published indoors (a pot's wilt flag), never published outdoors: outside, the clock and the game's prose are the only channels, by receipt. The Garden tab calls a bed "wilting" once its wilt clock passes the crop's wilt hours (the colour map, purple): a derived claim from the clock, never a reading; a pot is "wilting" only on its flag.
 _Avoid_: thirsty (the dashboard's pre-wilt warning, a different line), drooping, dehydrated
 
 **Wither**:
-Death: twenty-four hours of continuous wilt. Mature plants never wither.
-_Avoid_: die, dead, expire
+Death: twenty-four hours of continuous wilt. Mature plants never wither. "Dying" is the colour map's word for the danger window before it (past halfway from wilt to wither, red), never for the withering itself.
+_Avoid_: die, dead, expire (for the withering)
 
 **Grow hours**:
 A crop's total time from sowing to ripe, from the frozen table; the number every ripe window is cut from.

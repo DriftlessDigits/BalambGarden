@@ -133,7 +133,7 @@ public class GardenBoardTests
     }
 
     [Fact] // a deadline already past is no reason to drop the beds due in the next hours
-    public void ThePastDeadlineChipWindowStartsFromNow()
+    public void OnceTheDeadlineHasPassedTheWaterChipWindowStartsFromNow()
     {
         var beds = new List<ClaimedBed>
         {
@@ -145,7 +145,47 @@ public class GardenBoardTests
 
         Assert.Equal(Now.AddHours(-6), card.WaterBy);
         Assert.Equal(2, card.Water);
-        Assert.Equal(ContainerLook.PastDeadline, card.Patches[0].Cells[0].Look);
+        Assert.Equal(ContainerLook.Wilting, card.Patches[0].Cells[0].Look);
+    }
+
+    [Fact] // ruling 22: past the wilt hours is wilting (purple), past halfway to withering is dying (red)
+    public void ABedPastItsWiltHoursIsWiltingAndOneInItsDangerWindowIsDying()
+    {
+        // Krakka: wilt 24h, wither 48h, so the danger window opens at 36h.
+        var beds = new List<ClaimedBed>
+        {
+            Seed.Plant(Bed(Yard, 0, 0), Now.AddHours(-20), Krakka, stage: 1),   // 20h: water soon
+            Seed.Plant(Bed(Yard, 0, 1), Now.AddHours(-30), Krakka, stage: 1),   // 30h: wilting
+            Seed.Plant(Bed(Yard, 0, 2), Now.AddHours(-40), Krakka, stage: 1),   // 40h: dying
+        };
+
+        var cells = Assert.Single(Board([Estate(Yard, "Yard")], beds)).Patches[0].Cells;
+
+        Assert.Equal([ContainerLook.WaterSoon, ContainerLook.Wilting, ContainerLook.Dying],
+            cells.Take(3).Select(c => c.Look));
+        Assert.Equal(Now.AddHours(8), cells[2].DiesAt);   // sown 40h ago, withers at 48h
+        Assert.Equal(Now.AddHours(18), cells[1].DiesAt);
+    }
+
+    [Fact] // the pot note is the live read's alone: a bed wilting on its clock is no wilting pot
+    public void AWiltingBedIsNoWiltingPot()
+    {
+        var room = new EstateKey(342, 1, 1);
+        var beds = new List<ClaimedBed>
+        {
+            Seed.Plant(Bed(room, 0, 0), Now.AddHours(-30), Krakka, stage: 1),   // wilting on its clock
+            Seed.Plant(Pot(room, 1), Now.AddHours(-10), Krakka, stage: 1),
+        };
+        var live = new Dictionary<int, PotReading>
+        {
+            [1] = new(Krakka, Stage: 1, Color: 0, Extra: 0, Occupied: true, Recognized: true, Wilt: 0),
+        };
+
+        var card = Assert.Single(GardenBoard.Cards(
+            [Estate(room, "Room")], beds, Roster(room), T, Now, standing: new Standing(room, Inside: true, live)));
+
+        Assert.Equal(ContainerLook.Wilting, card.Patches[0].Cells[0].Look);
+        Assert.Equal(0, card.PotsWilting);
     }
 
     [Fact] // user story 11: crops that ripen together share one ripe time; pots are their own group
@@ -302,17 +342,44 @@ public class GardenBoardTests
         Assert.Equal(0, card.PotsWilting);
     }
 
-    [Fact] // the card's thirst is its worst bed's: the window colours the headline from it
+    [Fact] // the card's thirst is its worst bed's - dying, then wilting, then water soon: the window colours the headline from it
     public void ThirstIsTheWorstBed()
     {
-        var soon = Seed.Plant(Bed(Yard, 0, 0), Now.AddHours(-20), Krakka, stage: 1);   // 20h of 24: water soon
-        var past = Seed.Plant(Bed(Cottage, 0, 0), Now.AddHours(-30), Krakka, stage: 1); // past its deadline
-        var fine = Seed.Plant(Bed(Cottage, 0, 1), Now.AddHours(-1), Krakka, stage: 1);
+        var farm = new EstateKey(343, 2, 9);
+        ClaimedBed Sown(EstateKey estate, int slot, int hoursAgo) => Seed.Plant(Bed(estate, 0, slot), Now.AddHours(-hoursAgo), Krakka, stage: 1);
+        var beds = new List<ClaimedBed>
+        {
+            Sown(Yard, 0, 20), Sown(Yard, 1, 1),                          // water soon, fine
+            Sown(Cottage, 0, 20), Sown(Cottage, 1, 30), Sown(Cottage, 2, 1),   // water soon, wilting, fine
+            Sown(farm, 0, 30), Sown(farm, 1, 40), Sown(farm, 2, 20),          // wilting, dying, water soon
+        };
 
-        var cards = Board([Estate(Yard, "Yard"), Estate(Cottage, "Cottage")], [soon, past, fine]);
+        var cards = Board([Estate(Yard, "Yard"), Estate(Cottage, "Cottage"), Estate(farm, "Farm")], beds);
 
-        Assert.Equal(ContainerLook.PastDeadline, cards.Single(c => c.Estate.Key == Cottage).Thirst);
         Assert.Equal(ContainerLook.WaterSoon, cards.Single(c => c.Estate.Key == Yard).Thirst);
+        Assert.Equal(ContainerLook.Wilting, cards.Single(c => c.Estate.Key == Cottage).Thirst);
+        Assert.Equal(ContainerLook.Dying, cards.Single(c => c.Estate.Key == farm).Thirst);
+    }
+
+    [Fact] // the thirst colours the beds' water deadline: a pot wilting speaks in its own cell and note, not there
+    public void APotWiltingLeavesTheBedsThirstAlone()
+    {
+        var room = new EstateKey(342, 1, 1);
+        var beds = new List<ClaimedBed>
+        {
+            Seed.Plant(Bed(room, 0, 0), Now.AddHours(-1), Krakka, stage: 1),
+            Seed.Plant(Pot(room, 1), Now.AddHours(-10), Krakka, stage: 1),
+        };
+        var live = new Dictionary<int, PotReading>
+        {
+            [1] = new(Krakka, Stage: 1, Color: 0, Extra: 0, Occupied: true, Recognized: true, Wilt: 1),
+        };
+
+        var card = Assert.Single(GardenBoard.Cards(
+            [Estate(room, "Room")], beds, Roster(room), T, Now, standing: new Standing(room, Inside: true, live)));
+
+        Assert.Equal(1, card.PotsWilting);
+        Assert.Equal(ContainerLook.Growing, card.Thirst);
     }
 
     [Fact] // GLOSSARY "Bed": 1 2 3 across the top, 4 and 5 down the right, 6 and 7 back along the bottom, 8 on the left

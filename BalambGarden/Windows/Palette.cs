@@ -7,9 +7,9 @@ namespace BalambGarden.Windows;
 /// The plugin's colours, each named by the one thing it means (the colour map ruling: one colour,
 /// one meaning, on every surface). A meaning has a fill (cells, bands, bars) and, where text or a
 /// thin mark carries it, a brighter ink. The Garden tab and its lanes take every colour value from
-/// here; the estate tabs still hold their own. Two double uses stand in the Garden tab as drawn:
-/// past the deadline (overdue and danger alike) and a pot wilting both draw <see cref="Dying"/>,
-/// and the no-watering-heard line and dashed outline draw <see cref="WaterSoonInk"/>.
+/// here, and each draws only its one meaning; the estate tabs still hold their own values. What
+/// colour does not carry is said by line style, glyphs and words: the no-watering-heard line is
+/// plain text, the unheard bed's outline is <see cref="Dashed"/>, a lit chip is a structure grey.
 /// </summary>
 internal static class Palette
 {
@@ -66,8 +66,11 @@ internal static class Palette
     /// <summary>A container's outline.</summary>
     public static readonly Vector4 Outline = new(0.40f, 0.40f, 0.40f, 1f);
 
-    /// <summary>A chip's fill with a count above zero, and at zero.</summary>
-    public static readonly Vector4 ChipLit = new(0.22f, 0.30f, 0.40f, 1f);
+    /// <summary>A dashed outline: not heard or not confirmed. The dashes carry it, not the colour.</summary>
+    public static readonly Vector4 Dashed = new(0.55f, 0.55f, 0.55f, 1f);
+
+    /// <summary>A chip's fill with a count above zero, and at zero: neutral, brightness only.</summary>
+    public static readonly Vector4 ChipLit = new(0.28f, 0.28f, 0.28f, 1f);
     public static readonly Vector4 ChipUnlit = new(0.16f, 0.16f, 0.16f, 1f);
 
     /// <summary>The lanes' day lines and lane rules, and the line at now.</summary>
