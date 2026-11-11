@@ -183,7 +183,9 @@ public static partial class GardenBoard
 
         public YieldRow Row(ushort species, bool isPot)
         {
-            var byPartner = !isPot && Compared(p => p.Partner.Kind == PartnerKind.Beside, p => p.Partner);
+            // A pot sowing's partner is always not recorded (pots have no patch and never cross),
+            // so a pot crop never splits by partner and lists none.
+            var byPartner = Compared(p => p.Partner.Kind == PartnerKind.Beside, p => p.Partner);
             var bySoil = Compared(p => p.Soil.Item is not null, p => p.Soil);
 
             // Recorded rows first, most planted first; "no partner" after the partners; a not-recorded
@@ -203,7 +205,7 @@ public static partial class GardenBoard
             return whole.Row(species, isPot) with
             {
                 Splits = splits,
-                Partners = isPot || byPartner
+                Partners = byPartner
                     ? []
                     : PlantedBy(p => p.Partner.Kind != PartnerKind.NotRecorded, p => p.Partner)
                         .OrderBy(c => c.Key.Kind == PartnerKind.NoPartner)
