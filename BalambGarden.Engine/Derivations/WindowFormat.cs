@@ -209,4 +209,47 @@ public static class WindowFormat
         var pots = count == 1 ? "pot wilting" : $"{count} pots wilting";
         return seenAt is { } seen ? $"{pots} (seen {Ago(seen, now)})" : $"{pots} - water now";
     }
+
+    /// <summary>What a card line is about, by kind and place, never by number (spec ruling 23,
+    /// ruled 2026-11-10: "I don't really care about which pot, just where that pot is"): "a pot", "a bed
+    /// in patch 2"; more than one, the counts: "4 pots", "2 beds, 1 pot".</summary>
+    public static string Containers(ContainerCount count) => count.Total == 1
+        ? count.Pots == 1 ? "a pot" : $"a bed in patch {count.Patch + 1}"
+        : Counts(count);
+
+    /// <summary>The deadline's hover: "A pot wilts at Sun 2026-11-08 18:14". Caller converts
+    /// <paramref name="at"/> to local time.</summary>
+    public static string FirstToWilt(ContainerCount count, DateTimeOffset at)
+        => $"{Capital(Containers(count))} {(count.Total == 1 ? "wilts" : "wilt")} at {Exact(at)}";
+
+    /// <summary>The card's worst look and what wears it: "worst: 4 pots, wilting". Null while
+    /// nothing asks for water.</summary>
+    public static string? Worst(ContainerCount count, ContainerLook thirst)
+        => Thirst(thirst) is { } word && count.Total > 0 ? $"worst: {Containers(count)}, {word}" : null;
+
+    /// <summary>The water bar's hover: whose clock it is and where it starts. "A pot: sown 1d ago, no
+    /// watering recorded", "A bed in patch 1: watered 20h ago".</summary>
+    public static string WaterFrom(ContainerCount count, bool fromSowing, DateTimeOffset from, DateTimeOffset now)
+        => $"{Capital(Containers(count))}: "
+           + (fromSowing ? $"sown {Ago(from, now)}, no watering recorded" : $"watered {Ago(from, now)}");
+
+    /// <summary>The water chip's hover: "4 pots due within 24h of the deadline".</summary>
+    public static string WaterDue(ContainerCount count, string span)
+        => $"{(count.Total == 0 ? "nothing" : Containers(count))} due within {span} of the deadline";
+
+    /// <summary>The card's note for beds and pots whose deadline rests on the sowing: "3 pots with
+    /// no watering recorded", "2 beds, 3 pots with no watering recorded".</summary>
+    public static string NoWatering(ContainerCount count) => $"{Counts(count)} with no watering recorded";
+
+    private static string Counts(ContainerCount count)
+        => string.Join(", ", new[] { Plural(count.Beds, "bed"), Plural(count.Pots, "pot") }.OfType<string>());
+
+    private static string? Plural(int n, string word) => n switch
+    {
+        0 => null,
+        1 => $"1 {word}",
+        _ => $"{n} {word}s",
+    };
+
+    private static string Capital(string text) => text.Length == 0 ? text : char.ToUpperInvariant(text[0]) + text[1..];
 }

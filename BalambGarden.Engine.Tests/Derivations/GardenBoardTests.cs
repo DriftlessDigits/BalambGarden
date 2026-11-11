@@ -17,6 +17,7 @@ public class GardenBoardTests
     // Species indexes from Data/SpeciesIndex.json. Krakka: grow 72h, wilt 24h. Fig: grow 120h, wilt 48h.
     private const ushort Krakka = 49;
     private const ushort Fig = 65;
+    private const ushort Sunflowers = 103;   // a flowerpot flower: grow 24h, no crop row, no wilt
 
     private static readonly EstateKey Yard = new(340, 11, 32);
     private static readonly EstateKey Cottage = new(341, 4, 7);
@@ -71,7 +72,7 @@ public class GardenBoardTests
         Assert.True(cells[2].TendUnheard);
 
         Assert.Equal(Now.AddHours(14), card.WaterBy);       // the earliest bed's deadline wins
-        Assert.Equal(2, card.TendUnheard);
+        Assert.Equal(2, card.TendUnheard.Total);
     }
 
     [Fact] // ruling 5: nothing planted, no card - emptied containers and no containers alike
@@ -102,8 +103,8 @@ public class GardenBoardTests
         var pots = Assert.Single(card.Patches);
         Assert.True(pots.IsPots);
         Assert.Equal(3, Assert.Single(pots.Cells).Position);
-        Assert.Null(card.WaterBy);          // pots are observed, never clocked
-        Assert.Equal(0, card.TendUnheard);
+        Assert.Equal(Now.AddHours(-6), card.WaterBy);   // spec ruling 23: sown 30h ago, Krakka's 24h
+        Assert.Equal(new ContainerCount(Beds: 0, Pots: 1, Patch: null), card.TendUnheard);
     }
 
     [Fact]
@@ -125,7 +126,7 @@ public class GardenBoardTests
         var card = Assert.Single(Board([Estate(Yard, "Yard")], beds));
 
         Assert.Equal(Now.AddHours(4), card.WaterBy);
-        Assert.Equal(3, card.Water);     // slots 0, 2, 4: due within a day of the card's deadline
+        Assert.Equal(3, card.Water.Total);     // slots 0, 2, 4: due within a day of the card's deadline
         Assert.Equal(2, card.Harvest);   // slot 3 ripe now, slot 4 ripening within a day
         Assert.Equal(1, card.RipeNow);
         Assert.Equal(1, card.Replant);   // slot 6
@@ -144,7 +145,7 @@ public class GardenBoardTests
         var card = Assert.Single(Board([Estate(Yard, "Yard")], beds));
 
         Assert.Equal(Now.AddHours(-6), card.WaterBy);
-        Assert.Equal(2, card.Water);
+        Assert.Equal(2, card.Water.Total);
         Assert.Equal(ContainerLook.Wilting, card.Patches[0].Cells[0].Look);
     }
 
@@ -226,7 +227,7 @@ public class GardenBoardTests
         var plot = new EstateKey(343, 2, 2);
         var beds = new List<ClaimedBed>
         {
-            Seed.Plant(Pot(Cottage, 1), Now.AddHours(-67), Krakka, stage: 3),            // pots ripe +5h
+            Seed.Plant(Pot(Cottage, 1), Now.AddHours(-19), Sunflowers, stage: 3),        // pots ripe +5h; flowers never wilt
             Seed.Ripe(Seed.Plant(Pot(room, 1), Now.AddHours(-80), Krakka, stage: 3), Now.AddHours(-1), Krakka), // ripe now
             Seed.Sight(Pot(plot, 1), Now.AddHours(-1), 0, stage: 0),                     // contents unidentified: no window
             Seed.Tend(Seed.Plant(Bed(Yard, 0, 0), Now.AddHours(-30), Fig, stage: 1), Now.AddHours(-18), Fig), // water by +30h
@@ -361,8 +362,8 @@ public class GardenBoardTests
         Assert.Equal(ContainerLook.Dying, cards.Single(c => c.Estate.Key == farm).Thirst);
     }
 
-    [Fact] // the thirst colours the beds' water deadline: a pot wilting speaks in its own cell and note, not there
-    public void APotWiltingLeavesTheBedsThirstAlone()
+    [Fact] // spec ruling 23: the pots join the deadline, so a pot wilting colours it too
+    public void APotWiltingColoursTheCardsThirst()
     {
         var room = new EstateKey(342, 1, 1);
         var beds = new List<ClaimedBed>
@@ -379,7 +380,8 @@ public class GardenBoardTests
             [Estate(room, "Room")], beds, Roster(room), T, Now, standing: new Standing(room, Inside: true, live)));
 
         Assert.Equal(1, card.PotsWilting);
-        Assert.Equal(ContainerLook.Growing, card.Thirst);
+        Assert.Equal(ContainerLook.Wilting, card.Thirst);
+        Assert.Equal(new ContainerCount(Beds: 0, Pots: 1, Patch: null), card.Worst);
     }
 
     [Fact] // GLOSSARY "Bed": 1 2 3 across the top, 4 and 5 down the right, 6 and 7 back along the bottom, 8 on the left
@@ -421,7 +423,7 @@ public class GardenBoardTests
 
         Assert.Equal(Now.AddHours(-20), cards.Single(c => c.Estate.Key == Yard).Lane.WaterFrom);    // never watered: the sowing
         Assert.Equal(Now.AddHours(-10), cards.Single(c => c.Estate.Key == Cottage).Lane.WaterFrom); // the watering
-        Assert.Null(cards.Single(c => c.Estate.Key == room).Lane.WaterFrom);                        // pots are never clocked
+        Assert.Equal(Now.AddHours(-10), cards.Single(c => c.Estate.Key == room).Lane.WaterFrom);    // spec ruling 23: a pot's sowing
     }
 
     [Fact] // orient scope call 2026-11-08: on a mixed card the bar is the deadline bed's own clock, not the oldest watering's

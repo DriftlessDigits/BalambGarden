@@ -64,16 +64,17 @@ public class WiltTests
         Assert.Equal(T0.AddHours(24), ClockWiltSource.WaterBy(Sown(T0), Krakka));
         Assert.Equal(T0.AddHours(44), ClockWiltSource.WaterBy(Seed.Tend(Sown(T0), T0.AddHours(20), 0x31), Krakka));
         Assert.Null(ClockWiltSource.WaterBy(Bed(null), Krakka));
-        Assert.Null(ClockWiltSource.WaterBy(Pot(T0), Krakka));
+        Assert.Equal(T0.AddHours(24), ClockWiltSource.WaterBy(Pot(T0), Krakka));
     }
 
-    [Fact] // the sowing start is a deadline resting on no heard watering - say so
+    [Fact] // the sowing start is a deadline resting on no recorded watering - say so, beds and pots alike
     public void TendUnheardOnlyWithoutATend()
     {
         Assert.True(ClockWiltSource.TendUnheard(Sown(T0)));
         Assert.True(ClockWiltSource.TendUnheard(Bed(null)));
         Assert.False(ClockWiltSource.TendUnheard(Bed(T0)));
-        Assert.False(ClockWiltSource.TendUnheard(Pot(null)));
+        Assert.True(ClockWiltSource.TendUnheard(Pot(null)));
+        Assert.False(ClockWiltSource.TendUnheard(Pot(T0)));
     }
 
     private static ClaimedBed Pot(DateTimeOffset? tended) => new()
@@ -82,17 +83,17 @@ public class WiltTests
         IsPot = true, LastTended = tended,
     };
 
-    [Theory] // flowerpots cannot wilt - no age of tend clock ever makes one thirsty
-    [InlineData(0)]
-    [InlineData(37)]
-    [InlineData(10_000)]
-    public void PotsNeverWilt(int hoursSinceTend)
-        => Assert.Equal(WaterState.NotApplicable,
-            Source.StateFor(Pot(T0), Krakka, T0.AddHours(hoursSinceTend)));
+    [Theory] // spec ruling 23 (2026-11-10): a crop in a pot runs the same clock as one in a bed
+    [InlineData(0, WaterState.Watered)]
+    [InlineData(19, WaterState.Due)]
+    [InlineData(25, WaterState.Overdue)]
+    [InlineData(37, WaterState.Danger)]
+    public void PotsRunTheSameClock(int hoursSinceTend, WaterState expected)
+        => Assert.Equal(expected, Source.StateFor(Pot(T0), Krakka, T0.AddHours(hoursSinceTend)));
 
-    [Fact] // ...and an untended pot is Not Applicable too, never a hedged Unknown
-    public void UntendedPotIsNotApplicable()
-        => Assert.Equal(WaterState.NotApplicable, Source.StateFor(Pot(null), Krakka, T0));
+    [Fact] // a pot with neither a watering nor a sowing recorded has no clock, as a bed
+    public void APotWithNoClockStartIsUnknown()
+        => Assert.Equal(WaterState.Unknown, Source.StateFor(Pot(null), Krakka, T0));
 
     // ------------------------------------------------------------- ripe suppression
     // 2026-08-18 (Drift's screenshot: "DANGER - water now · ripe now" on the same row).
@@ -133,9 +134,9 @@ public class WiltTests
     public void DiesAtUnknownWithoutTend()
         => Assert.Null(ClockWiltSource.DiesAt(Bed(null), Krakka));
 
-    [Fact] // pot wilt is observed, never clocked - a pot claims no deadline either
-    public void DiesAtNotApplicableForPots()
-        => Assert.Null(ClockWiltSource.DiesAt(Pot(T0), Krakka));
+    [Fact] // spec ruling 23: a pot's death time counts like a bed's
+    public void DiesAtCountsForPots()
+        => Assert.Equal(T0.AddHours(48), ClockWiltSource.DiesAt(Pot(T0), Krakka));
 
     [Fact] // a ripe bed cannot die - the deadline claim retires with the wilt claim
     public void DiesAtNullOnRipeBed()
