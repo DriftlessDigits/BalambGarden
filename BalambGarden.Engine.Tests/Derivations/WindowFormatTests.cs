@@ -557,7 +557,7 @@ public class WindowFormatTests
             WindowFormat.NoForeignHands);
         Assert.Equal("A nickname for this hand. Left empty, it reads \"household\".\n"
             + "Kept in your settings only, never sent.\n"
-            + "Changing the household phrase clears every name.", WindowFormat.AliasHover);
+            + "Changing the household phrase clears every nickname.", WindowFormat.AliasHover);
         Assert.Equal("The tag its receipts carry: a random code, never a name.", WindowFormat.SlugHover);
     }
 }
