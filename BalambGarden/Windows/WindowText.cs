@@ -29,9 +29,6 @@ internal static class WindowText
     /// <summary>A cross seed by its crop's name, or by its id when the crop table does not know it.</summary>
     public static string SeedName(uint seed) => WindowFormat.SeedName(Plugin.Tables.CropBySeedId(seed)?.Name, seed);
 
-    /// <summary>A crop by its species number.</summary>
-    public static string CropName(ushort species) => Plugin.Tables.SpeciesName(species);
-
     /// <summary>Text at full brightness, or in <see cref="Palette.TextDim"/>.</summary>
     public static void Text(string text, bool dim)
     {

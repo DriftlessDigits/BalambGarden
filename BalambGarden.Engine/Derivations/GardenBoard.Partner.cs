@@ -24,7 +24,7 @@ public static partial class GardenBoard
     /// <summary>The crossbreed walk's order from the sown bed, on the patch's grid
     /// (<see cref="RingPosition"/>): right, down, up, left; the first valid partner wins. Community
     /// knowledge (glossary Crossbreed pair), unreceipted by our own captures.</summary>
-    private static readonly (int Column, int Row)[] WalkOrder = [(1, 0), (0, 1), (0, -1), (-1, 0)];
+    private static readonly (int StepColumn, int StepRow)[] WalkOrder = [(1, 0), (0, 1), (0, -1), (-1, 0)];
 
     /// <summary>The partner a bed sowing could cross with: the walk over its patch at sow skips a
     /// bed the map read empty, the same crop, a dead plant (withered plants never cross) and a crop
@@ -37,9 +37,9 @@ public static partial class GardenBoard
 
         var sown = tables.SeedIdBySpeciesIndex(sowing.Species);
         var (column, row) = RingPosition(sowing.BedSlot);
-        foreach (var (right, down) in WalkOrder)
+        foreach (var (stepColumn, stepRow) in WalkOrder)
         {
-            var slot = Array.IndexOf(Ring, (column + right, row + down));
+            var slot = Array.IndexOf(Ring, (column + stepColumn, row + stepRow));
             if (slot < 0 || patch.FirstOrDefault(b => b.Slot == slot) is not { Occupied: true } bed)
                 continue;
             if (bed.Species == sowing.Species || bed.Stage == GardenStage.Dead)

@@ -60,7 +60,7 @@ internal static class YieldsTab
         // split row's name sits indented under its crop.
         var rows = book.Beds.Concat(book.Pots).ToList();
         var cropWidth = rows
-            .Select(r => ImGui.CalcTextSize(WindowText.CropName(r.Species)).X)
+            .Select(r => ImGui.CalcTextSize(Plugin.Tables.SpeciesName(r.Species)).X)
             .Concat(rows.SelectMany(r => r.Splits)
                 .Select(s => SplitIndent + ImGui.CalcTextSize(SplitLabel(s)).X))
             .Append(ImGui.CalcTextSize(BedColumns[0]).X)
@@ -109,7 +109,7 @@ internal static class YieldsTab
     /// <summary>How far a split row's name sits in from its crop's.</summary>
     private const float SplitIndent = 14f;
 
-    private static string SplitLabel(YieldRow split) => WindowFormat.PartnerLabel(split.Partner!.Value, WindowText.CropName);
+    private static string SplitLabel(YieldRow split) => WindowFormat.PartnerLabel(split.Partner!.Value, Plugin.Tables.SpeciesName);
 
     /// <summary>A crop's row, or with <paramref name="split"/> one of its split rows (rethink slice 8):
     /// its name dim and indented under the crop, the same columns after it.</summary>
@@ -120,8 +120,8 @@ internal static class YieldsTab
         ImGui.TableNextColumn();
         if (split is null)
         {
-            ImGui.TextUnformatted(WindowText.CropName(row.Species));
-            if (ImGui.IsItemHovered() && WindowFormat.PartnerHover(row, WindowText.CropName) is { } hover)
+            ImGui.TextUnformatted(Plugin.Tables.SpeciesName(row.Species));
+            if (ImGui.IsItemHovered() && WindowFormat.PartnerHover(row, Plugin.Tables.SpeciesName) is { } hover)
                 ImGui.SetTooltip(hover);
         }
         else

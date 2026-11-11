@@ -43,9 +43,9 @@ public class YieldSplitTests
         => new($"hhbbaa:eraaaa:{++seq}", at, HistoryKind.Harvest, species, Yard, pot, patch, pot ? 0 : slot,
             "hhbbaa", SyncSource.Chain, [new SyncYield(1, 12)], seedQty, seedItem);
 
-    /// <summary>A bed sown with its patch at sow and soil, then harvested with the cross seed as given.</summary>
-    private static HistoryEntry[] Grown(ushort crop, int patch, int slot, SyncPatchBed[]? beside, uint? soil,
-        int? seedQty = 1, uint? seedItem = KukuruSeeds)
+    /// <summary>A bed sown with its patch at sow (and a soil when given), then harvested with the cross seed as given.</summary>
+    private static HistoryEntry[] Grown(ushort crop, int patch, int slot, SyncPatchBed[]? beside,
+        int? seedQty = 1, uint? seedItem = KukuruSeeds, uint? soil = null)
         => [Plant(T0, crop, patch, slot, beside, soil), Harvest(T0.AddDays(3), crop, patch, slot, seedQty, seedItem)];
 
     private static GardenHistory History(params HistoryEntry[][] rows)
@@ -70,9 +70,9 @@ public class YieldSplitTests
         // The spec's example: Mirror Apple beside Krakka Root at one estate, beside Old World Fig at
         // another. Each partner's row carries its own counts, rate and seeds.
         var mirror = Bed(History(
-                Grown(Mirror, 0, 1, BesideKrakka, Thanalan3, 1, SunLemonSeeds),
-                Grown(Mirror, 1, 1, BesideKrakka, Thanalan3, 0, null),
-                Grown(Mirror, 2, 1, BesideFig, Thanalan3, 1, KukuruSeeds)),
+                Grown(Mirror, 0, 1, BesideKrakka, 1, SunLemonSeeds),
+                Grown(Mirror, 1, 1, BesideKrakka, 0, null),
+                Grown(Mirror, 2, 1, BesideFig, 1, KukuruSeeds)),
             Mirror);
 
         Assert.Equal((3, 3), (mirror.Planted, mirror.Harvested));
@@ -89,9 +89,9 @@ public class YieldSplitTests
     public void ACropWithOnePartnerStaysOneRowAndThePartnerRidesTheHover()
     {
         var mirror = Bed(History(
-                Grown(Mirror, 0, 1, BesideKrakka, Thanalan3),
-                Grown(Mirror, 1, 1, BesideKrakka, Thanalan3),
-                Grown(Mirror, 2, 1, null, null)),
+                Grown(Mirror, 0, 1, BesideKrakka),
+                Grown(Mirror, 1, 1, BesideKrakka),
+                Grown(Mirror, 2, 1, null)),
             Mirror);
 
         Assert.Empty(mirror.Splits);
@@ -105,10 +105,10 @@ public class YieldSplitTests
         // with no sowing on record at all both land in the not-recorded row, never guessed.
         // The not-recorded row is the most planted and met first, and still comes last.
         var mirror = Bed(History(
-                Grown(Mirror, 2, 1, null, null, 1, SunLemonSeeds),
-                Grown(Mirror, 3, 1, null, null, 0, null),
-                Grown(Mirror, 0, 1, BesideKrakka, Thanalan3),
-                Grown(Mirror, 1, 1, BesideFig, Thanalan3),
+                Grown(Mirror, 2, 1, null, 1, SunLemonSeeds),
+                Grown(Mirror, 3, 1, null, 0, null),
+                Grown(Mirror, 0, 1, BesideKrakka),
+                Grown(Mirror, 1, 1, BesideFig),
                 [Harvest(T0.AddDays(1), Mirror, 2, 5, 0)]),
             Mirror);
 
@@ -124,8 +124,8 @@ public class YieldSplitTests
         // The split waits for harvests from both partners: until the fig-side Mirror Apple is
         // harvested there is nothing to compare.
         var mirror = Bed(History(
-                Grown(Mirror, 0, 1, BesideKrakka, Thanalan3),
-                [Plant(T0, Mirror, 1, 1, BesideFig, Thanalan3)]),
+                Grown(Mirror, 0, 1, BesideKrakka),
+                [Plant(T0, Mirror, 1, 1, BesideFig)]),
             Mirror);
 
         Assert.Empty(mirror.Splits);
@@ -151,7 +151,7 @@ public class YieldSplitTests
     public void TheWalkTakesTheFirstPartnerRightDownUpLeft(int slot, int[] beds, int partner)
     {
         var patch = Patch([.. beds.Chunk(2).Select(b => (b[0], (ushort)b[1], (byte)2)), (slot, Mirror, 1)]);
-        var mirror = Bed(History([Plant(T0, Mirror, 0, slot, patch, Thanalan3)]), Mirror);
+        var mirror = Bed(History([Plant(T0, Mirror, 0, slot, patch)]), Mirror);
 
         Assert.Equal(Partner.Beside((ushort)partner), Assert.Single(mirror.Partners).Partner);
     }
@@ -172,12 +172,12 @@ public class YieldSplitTests
         ];
         foreach (var patch in none)
         {
-            var mirror = Bed(History([Plant(T0, Mirror, 0, 0, patch, Thanalan3)]), Mirror);
+            var mirror = Bed(History([Plant(T0, Mirror, 0, 0, patch)]), Mirror);
             Assert.Equal([new PartnerCount(Partner.NoPartner, 1)], mirror.Partners);
         }
 
         // A seedling counts: neighbours need only be there at the sow.
-        var seedling = Bed(History([Plant(T0, Mirror, 0, 0, Patch((0, Mirror, 1), (1, Krakka, 0)), Thanalan3)]), Mirror);
+        var seedling = Bed(History([Plant(T0, Mirror, 0, 0, Patch((0, Mirror, 1), (1, Krakka, 0)))]), Mirror);
         Assert.Equal([new PartnerCount(Partner.Beside(Krakka), 1)], seedling.Partners);
     }
 
@@ -186,8 +186,8 @@ public class YieldSplitTests
     {
         // Harvests beside Krakka Root and with nothing to cross with: one partner, so one row.
         var mirror = Bed(History(
-                Grown(Mirror, 0, 1, BesideKrakka, Thanalan3),
-                Grown(Mirror, 1, 1, Patch((1, Mirror, 1)), Thanalan3, 0, null)),
+                Grown(Mirror, 0, 1, BesideKrakka),
+                Grown(Mirror, 1, 1, Patch((1, Mirror, 1)), 0, null)),
             Mirror);
 
         Assert.Empty(mirror.Splits);
@@ -202,12 +202,12 @@ public class YieldSplitTests
         // "no partner" is the most planted and met first, and still comes after the partners; the
         // partners run most planted first.
         var mirror = Bed(History(
-                Grown(Mirror, 2, 1, Patch((1, Mirror, 1)), Thanalan3, 0, null),
-                Grown(Mirror, 3, 1, Patch((1, Mirror, 1)), Thanalan3, 0, null),
-                Grown(Mirror, 4, 1, Patch((1, Mirror, 1)), Thanalan3, 0, null),
-                Grown(Mirror, 0, 1, BesideKrakka, Thanalan3),
-                Grown(Mirror, 1, 1, BesideFig, Thanalan3),
-                Grown(Mirror, 5, 1, BesideFig, Thanalan3)),
+                Grown(Mirror, 2, 1, Patch((1, Mirror, 1)), 0, null),
+                Grown(Mirror, 3, 1, Patch((1, Mirror, 1)), 0, null),
+                Grown(Mirror, 4, 1, Patch((1, Mirror, 1)), 0, null),
+                Grown(Mirror, 0, 1, BesideKrakka),
+                Grown(Mirror, 1, 1, BesideFig),
+                Grown(Mirror, 5, 1, BesideFig)),
             Mirror);
 
         Assert.Equal(
@@ -221,9 +221,9 @@ public class YieldSplitTests
     {
         // Harvests from two soils and one with none recorded: still one Krakka Root row, and no hover.
         var krakka = Bed(History(
-                Grown(Krakka, 0, 1, null, Thanalan3),
-                Grown(Krakka, 1, 1, null, Shroud3),
-                Grown(Krakka, 2, 1, null, null)),
+                Grown(Krakka, 0, 1, null, soil: Thanalan3),
+                Grown(Krakka, 1, 1, null, soil: Shroud3),
+                Grown(Krakka, 2, 1, null)),
             Krakka);
 
         Assert.Equal((3, 3), (krakka.Planted, krakka.Harvested));
@@ -248,10 +248,10 @@ public class YieldSplitTests
     public void SplitRowsAddUpToTheCropRow()
     {
         var mirror = Bed(History(
-                Grown(Mirror, 0, 1, BesideKrakka, Thanalan3),
-                Grown(Mirror, 1, 1, BesideFig, Thanalan3),
-                [Plant(T0, Mirror, 2, 1, BesideFig, Thanalan3)],
-                [Plant(T0, Mirror, 3, 1, null, null), Plant(T0.AddDays(1), Mirror, 3, 1, null, null)],
+                Grown(Mirror, 0, 1, BesideKrakka),
+                Grown(Mirror, 1, 1, BesideFig),
+                [Plant(T0, Mirror, 2, 1, BesideFig)],
+                [Plant(T0, Mirror, 3, 1, null), Plant(T0.AddDays(1), Mirror, 3, 1, null)],
                 [Harvest(T0.AddDays(1), Mirror, 4, 5, 1, SunLemonSeeds)]),
             Mirror,
             Seed.Sight(new ClaimedBed { Estate = Yard, MapKey = 102, PatchOrdinal = 2, BedSlot = 1 }, T0.AddDays(1), Mirror, 1));
