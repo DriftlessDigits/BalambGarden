@@ -284,8 +284,12 @@ The Yields tab's content: per crop, beds and pots apart, every sowing in the his
 _Avoid_: tips (retired), stats, scoreboard, pipeline view
 
 **Cross rate**:
-The harvests that gave a cross seed over the harvests whose cross was heard either way; a harvest not heard never counts as a miss. Shown as a percentage with its count on hover, dim when it rests on fewer than ten harvests.
+The harvests that gave a cross seed over the harvests whose cross was heard either way; a harvest not heard never counts as a miss. Shown as a percentage with its count on hover, dim when it rests on fewer than ten harvests. Beside it, the **seed shares**: each cross seed's part of the crossing harvests, rounded to add to 100.
 _Avoid_: crossbreed chance (the game's hidden roll), success rate, proc rate
+
+**Unmatched harvest**:
+A harvest in the history with no sowing on record in the same container: sown before the history began, or a pot whose key moved. Never counted as harvested (so harvested never tops planted); its items and cross seed still count in the yield book.
+_Avoid_: orphan harvest, unpaired, phantom harvest (that is a harvest that never happened)
 
 **Pipeline**:
 A chain of crossbreed recipes whose outputs feed the next recipe's inputs across estates. The household's onion pipeline (figs and mirrors to kukuru, krakka and mirrors to curiel, kukuru and curiel to onion, pots as grow-out) is user story one.

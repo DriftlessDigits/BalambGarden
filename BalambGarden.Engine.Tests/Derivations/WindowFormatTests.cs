@@ -349,8 +349,8 @@ public class WindowFormatTests
     }
 
     // ------------------------------------------------------------------ the Yields tab (rethink slice 7)
-    // Each expected line is the plan mock's text (2026-11-11, out/rethink7/yields-plan-mock.png),
-    // typed here, never rebuilt with the code's own formatter.
+    // Each expected line is the plan mock's text (2026-11-11), typed here, never rebuilt with the
+    // code's own formatter.
 
     [Fact]
     public void TheYieldsHeaderSaysWhenTheRecordBegins()
@@ -372,9 +372,27 @@ public class WindowFormatTests
     {
         var since = DateTimeOffset.Parse("2026-10-16T16:30:00-05:00");
         Assert.Equal("25 more harvests have no sowing on record (sown before Oct 16);\ntheir items and cross seeds still count",
-            WindowFormat.UnmatchedHover(25, since));
+            WindowFormat.UnmatchedHover(25, since, isPot: false));
         Assert.Equal("1 more harvest has no sowing on record (sown before Oct 16);\nits items and cross seed still count",
-            WindowFormat.UnmatchedHover(1, since));
+            WindowFormat.UnmatchedHover(1, since, isPot: false));
+    }
+
+    [Fact] // review 2026-11-11: a pot's key can move, so its reason is not known; and pots never cross
+    public void APotsUnmatchedHarvestsClaimNoReasonAndNoCrossSeed()
+    {
+        var since = DateTimeOffset.Parse("2026-10-16T16:30:00-05:00");
+        Assert.Equal("1 more harvest has no sowing on record;\nits items still count",
+            WindowFormat.UnmatchedHover(1, since, isPot: true));
+        Assert.Equal("3 more harvests have no sowing on record;\ntheir items still count",
+            WindowFormat.UnmatchedHover(3, since, isPot: true));
+    }
+
+    [Fact]
+    public void ACropWithNoCrossHeardAndAnUnknownSeedSayLittle()
+    {
+        Assert.Equal("-", WindowFormat.NoCrossHeard);
+        Assert.Equal("seed 7728", WindowFormat.SeedName(null, 7728));
+        Assert.Equal("Sun Lemon", WindowFormat.SeedName("Sun Lemon", 7728));
     }
 
     [Fact]

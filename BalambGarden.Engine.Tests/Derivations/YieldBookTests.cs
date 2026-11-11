@@ -164,11 +164,22 @@ public class YieldBookTests
         Assert.Equal((6, 0, 2, 4), (onion.Planted, onion.Harvested, onion.Growing, onion.Lost));
     }
 
+    [Fact] // the board draws every frame: a ledger holding two records for one container must not throw
+    public void TwoLedgerRecordsForOneContainerGrowIfEitherHoldsTheCrop()
+    {
+        var book = Book(History(Plant(T0, Fig, 0, 0)),
+            Bed(0, 0),
+            Seed.Sight(Bed(0, 0), T0.AddDays(1), Fig, 1));
+
+        var fig = Assert.Single(book.Beds);
+        Assert.Equal((1, 1, 0), (fig.Planted, fig.Growing, fig.Lost));
+    }
+
     [Fact]
     public void AHarvestWithNoSowingOnRecordStillCountsItsItemsAndCrossSeed()
     {
-        // Plan pick A (2026-11-11, the words await the maintainer's look): the items and the seed really came
-        // out of the ground, so they count; the harvest still is not "harvested".
+        // Ruled 2026-11-11 ("those were actually harvested, so why not count them"): the items and
+        // the seed came out of the ground, so they count; the harvest still is not "harvested".
         var book = Book(History(
             Plant(T0, Krakka, 0, 0),
             Harvest(T0.AddDays(3), Krakka, 0, 0, qty: 9, seedQty: 1, seedItem: SunLemonSeeds),

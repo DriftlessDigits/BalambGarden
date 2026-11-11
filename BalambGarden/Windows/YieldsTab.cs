@@ -12,14 +12,24 @@ namespace BalambGarden.Windows;
 /// The Yields tab (rethink slice 7, rulings 6-9): per crop, beds and pots in their own sections,
 /// what was planted, harvested, still growing and lost, what was gathered, and for beds how often
 /// the cross took and which seed it gave. Everything on it is <see cref="GardenBoard.Yields"/>'s;
-/// every sentence is <see cref="WindowFormat"/>'s; this file only places them. Brightness is the
-/// only colour it uses: a zero count, and a rate resting on too few harvests, draw in
-/// <see cref="Palette.TextDim"/>.
+/// every sentence and cell word is <see cref="WindowFormat"/>'s (the headings are this file's);
+/// this file only places them. Brightness is the only colour it uses: labels, a zero count and a
+/// rate resting on too few harvests draw in <see cref="Palette.TextDim"/>.
 /// </summary>
 internal static class YieldsTab
 {
     private static readonly string[] BedColumns = ["Crop", "Planted", "Harvested", "Growing", "Lost", "Gathered", "Crossed", "Cross seeds"];
-    private const int PotColumns = 6;   // the bed columns up to Gathered: pots never cross
+
+    /// <summary>Pots never cross: their table stops before the cross columns.</summary>
+    private static readonly int PotColumns = Array.IndexOf(BedColumns, "Crossed");
+
+    /// <summary>The history grows forever, so the book is not rebuilt every frame: once a second,
+    /// or at once when a row lands. A ledger change (a plant seen dead) shows within the second.</summary>
+    private static readonly TimeSpan Refresh = TimeSpan.FromSeconds(1);
+
+    private static YieldBook? book;
+    private static int bookRows = -1;
+    private static DateTime bookAt;
 
     public static void Draw()
     {
@@ -27,17 +37,23 @@ internal static class YieldsTab
         if (!tab.Success)
             return;
 
-        var book = GardenBoard.Yields(Plugin.Garden.History, Plugin.Garden.Census.LedgerBeds, Plugin.Tables);
+        var history = Plugin.Garden.History;
+        if (book is null || bookRows != history.Entries.Count || DateTime.UtcNow - bookAt > Refresh)
+        {
+            book = GardenBoard.Yields(history, Plugin.Garden.Census.LedgerBeds, Plugin.Tables);
+            bookRows = history.Entries.Count;
+            bookAt = DateTime.UtcNow;
+        }
 
         ImGui.Spacing();
         if (book.Since is not { } since)
         {
-            ImGui.TextDisabled(WindowFormat.NoYields);
+            ImGui.TextColored(Palette.TextDim, WindowFormat.NoYields);
             return;
         }
 
         var local = since.ToLocalTime();
-        ImGui.TextDisabled(WindowFormat.YieldsSince(local));
+        ImGui.TextColored(Palette.TextDim, WindowFormat.YieldsSince(local));
         ImGui.Spacing();
 
         // One crop column width for both sections, so the numbers line up from beds to pots.
@@ -75,7 +91,7 @@ internal static class YieldsTab
         for (var c = 0; c < columns; c++)
         {
             ImGui.TableNextColumn();
-            ImGui.TextDisabled(BedColumns[c]);
+            ImGui.TextColored(Palette.TextDim, BedColumns[c]);
         }
 
         foreach (var row in rows)
@@ -92,7 +108,7 @@ internal static class YieldsTab
         Count(row.Planted);
         Count(row.Harvested);
         if (row.Unmatched > 0 && ImGui.IsItemHovered())
-            ImGui.SetTooltip(WindowFormat.UnmatchedHover(row.Unmatched, since));
+            ImGui.SetTooltip(WindowFormat.UnmatchedHover(row.Unmatched, since, row.IsPot));
         Count(row.Growing);
         Count(row.Lost);
         Count(row.Gathered);
@@ -111,7 +127,7 @@ internal static class YieldsTab
         }
         else
         {
-            Text("-", dim: true);
+            Text(WindowFormat.NoCrossHeard, dim: true);
         }
 
         ImGui.TableNextColumn();
@@ -123,7 +139,7 @@ internal static class YieldsTab
         }
     }
 
-    private static string SeedName(uint seed) => Plugin.Tables.CropBySeedId(seed)?.Name ?? $"seed {seed}";
+    private static string SeedName(uint seed) => WindowFormat.SeedName(Plugin.Tables.CropBySeedId(seed)?.Name, seed);
 
     /// <summary>A count in the next cell, dim at zero.</summary>
     private static void Count(int n)

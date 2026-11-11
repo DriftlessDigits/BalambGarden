@@ -11,9 +11,8 @@ public sealed record YieldBook(DateTimeOffset? Since, IReadOnlyList<YieldRow> Be
 /// <summary>One crop in one section. <see cref="Planted"/> = <see cref="Harvested"/> +
 /// <see cref="Growing"/> + <see cref="Lost"/>, every term a sowing on record: a harvest counts as
 /// harvested only when it pairs with its sowing. <see cref="Unmatched"/> is the harvests that
-/// found no sowing on record (sown before the history began, or a pot whose key moved);
-/// <see cref="GardenBoard.UnmatchedHarvestsCount"/> says whether their items and cross seeds
-/// count. <see cref="Gathered"/> is the items those harvests yielded, from the
+/// found no sowing on record (sown before the history began, or a pot whose key moved); their
+/// items and cross seeds still count (ruled 2026-11-11). <see cref="Gathered"/> is the items those harvests yielded, from the
 /// <see cref="GatheredFrom"/> harvests with a yield recorded. Pots carry no <see cref="Cross"/>
 /// and no <see cref="Seeds"/> (pots never cross).</summary>
 public sealed record YieldRow(
@@ -49,11 +48,6 @@ public static partial class GardenBoard
     /// <summary>A cross rate resting on fewer harvests than this is drawn dim (ruling 8: "75%" from
     /// 3 of 4 must not read as solid). Starts at ten; tunable.</summary>
     public const int FirmRateHarvests = 10;
-
-    /// <summary>Whether a harvest with no sowing on record still counts its items and cross seeds
-    /// (it never counts as harvested). True = plan pick A (2026-11-11, the words await the maintainer's look);
-    /// false = B, they count nowhere. The one switch between the two.</summary>
-    public static readonly bool UnmatchedHarvestsCount = true;
 
     /// <summary>The yield book: every sowing and harvest in <paramref name="history"/>, per crop,
     /// beds and pots apart. A harvest pairs with the newest unpaired sowing of the same crop in the
@@ -92,14 +86,15 @@ public static partial class GardenBoard
                 tally.Unmatched++;
             }
 
-            if (matched || UnmatchedHarvestsCount)
-                tally.Count(entry);
+            // A harvest with no sowing on record is never "harvested", but what it gave came out
+            // of the ground, so it counts (ruled 2026-11-11).
+            tally.AddHarvest(entry);
         }
 
-        var records = ledger.ToDictionary(Container.Of);
+        var records = ledger.ToLookup(Container.Of);
         foreach (var (at, sowing) in open)
         {
-            if (records.TryGetValue(at, out var record) && HoldsAlive(record, sowing.Species))
+            if (records[at].Any(record => HoldsAlive(record, sowing.Species)))
                 TallyOf(sowing).Growing++;
         }
 
@@ -119,7 +114,8 @@ public static partial class GardenBoard
     private static bool HoldsAlive(ClaimedBed record, ushort species)
         => record.Latest is { } latest && latest.SpeciesIndex == species && !record.ReadsDead;
 
-    /// <summary>A bed or pot as both the history and the ledger name it (<see cref="HistoryQuery.LastAt"/>'s match).</summary>
+    /// <summary>A bed or pot as both the history and the ledger name it (<see cref="HistoryQuery.LastAt"/>'s match).
+    /// The ledger may hold more than one record for a container; the book never assumes one.</summary>
     private readonly record struct Container(EstateKey Estate, bool IsPot, int Ordinal, int Slot)
     {
         public static Container Of(HistoryEntry e) => new(e.Estate, e.IsPot, e.PatchOrdinal, e.BedSlot);
@@ -132,8 +128,8 @@ public static partial class GardenBoard
         public int Planted, Harvested, Growing, Unmatched, Gathered, GatheredFrom, Crossed, Heard;
         private readonly Dictionary<uint, int> seeds = [];
 
-        /// <summary>A harvest whose items and cross seed count.</summary>
-        public void Count(HistoryEntry harvest)
+        /// <summary>Adds a harvest's items and its cross seed (heard or not).</summary>
+        public void AddHarvest(HistoryEntry harvest)
         {
             if (harvest.Yields is { Count: > 0 })
             {
