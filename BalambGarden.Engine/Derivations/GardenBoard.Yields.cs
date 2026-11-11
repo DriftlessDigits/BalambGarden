@@ -53,7 +53,7 @@ public static partial class GardenBoard
     /// <summary>Whether a harvest with no sowing on record still counts its items and cross seeds
     /// (it never counts as harvested). True = plan pick A (2026-11-11, the words await the maintainer's look);
     /// false = B, they count nowhere. The one switch between the two.</summary>
-    public const bool UnmatchedHarvestsCount = true;
+    public static readonly bool UnmatchedHarvestsCount = true;
 
     /// <summary>The yield book: every sowing and harvest in <paramref name="history"/>, per crop,
     /// beds and pots apart. A harvest pairs with the newest unpaired sowing of the same crop in the

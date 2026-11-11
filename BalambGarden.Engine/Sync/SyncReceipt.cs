@@ -29,11 +29,9 @@ public enum SyncSource { Chain, Chat, Sighting, ChainUnconfirmed }
 /// location - the pseudonymity rulings guard WHOSE garden.</summary>
 public enum SyncEntityType { Bed, Pot }
 
-/// <summary>One harvest outcome line (schema: `harvest.yields[]`). RESERVED PENDING
-/// RECEIPT - the field exists by ruling (pipeline tips need fed-vs-starved), but its
-/// exact semantics wait on the harvest capture: whether obtain lines carry quantity,
-/// whether crossbreed seeds print their own line, whether an ItemPayload id rides the
-/// SeString. Item is the game item id when the line gave one.</summary>
+/// <summary>One harvest outcome line (schema: `harvest.yields[]`): the item and quantity the
+/// harvest's obtain line gave, parsed at close (the cross seed rides its own fields,
+/// <c>seedQty</c>/<c>seedItem</c>). Item is the game item id when the line gave one.</summary>
 public sealed record SyncYield(
     [property: JsonPropertyName("item")] uint Item,
     [property: JsonPropertyName("qty")] int Qty);

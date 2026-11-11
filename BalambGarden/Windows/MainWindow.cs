@@ -163,7 +163,7 @@ public class MainWindow : Window, IDisposable
                              .ThenByDescending(e => e.LastVisited))
                     DrawEstateTab(record, here, now);
 
-                DrawTipsTab(now);
+                YieldsTab.Draw();
 #if DEBUG
                 DrawReconTab();
 #endif
@@ -1557,55 +1557,6 @@ public class MainWindow : Window, IDisposable
                 continue;
             if (ImGui.Selectable($"{crop.SeedName} ({have})", crop.SeedId == chosen))
                 plan.Seeds[slot] = crop.SeedId;
-        }
-    }
-
-    // ------------------------------------------------------------------ tips
-
-    private static readonly Game.BagInventory BagReader = new();
-
-    /// <summary>The pipeline reader's advisory lines, in their own tab. "(!)" only
-    /// appears when a line wants reading - permanent decoration on a tab label is
-    /// filler, and filler trains people to stop reading the panel that matters.</summary>
-    private static void DrawTipsTab(DateTimeOffset now)
-    {
-        // Tips speak the names the tabs wear - a renamed estate is "Drift's Place" in
-        // every sentence, never its ward-plot serial number.
-        var tips = PipelineReader.Tips(Plugin.Garden.Census.LedgerBeds, Plugin.Tables, now,
-            key => Plugin.Garden.Ledger.Estates.FirstOrDefault(e => e.Key == key)?.DisplayName
-                   ?? key.DisplayLabel(),
-            BagReader,
-            (lo, hi) => WindowFormat.Coarse(lo.ToLocalTime(), hi.ToLocalTime(), now.ToLocalTime()));
-
-        // The label stays plain (ruling 2026-08-16 rev: no badge at all - the tab is a
-        // place you go, not a place that calls you). Attention still colors the tags
-        // inside so the line worth reading is findable at a glance.
-        const string label = "Tips###tips";
-        using var tab = ImRaii.TabItem(label);
-        if (!tab.Success)
-            return;
-
-        ImGui.Spacing();
-        if (tips.Count == 0)
-        {
-            ImGui.TextDisabled("Nothing to flag right now.");
-            return;
-        }
-
-        foreach (var tip in tips)
-        {
-            var tag = tip.Kind switch
-            {
-                TipKind.Stock => "[stock]",
-                TipKind.Bottleneck => "[bottleneck]",
-                _ => "[anomaly]",
-            };
-            if (tip.Attention)
-                ImGui.TextColored(Amber, tag);
-            else
-                ImGui.TextDisabled(tag);
-            ImGui.SameLine();
-            ImGui.TextWrapped(tip.Text);
         }
     }
 

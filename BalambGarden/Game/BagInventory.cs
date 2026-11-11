@@ -10,7 +10,7 @@ namespace BalambGarden.Game;
 /// <summary>The live bag read (ruling 2026-08-16: current character's bags, live, honest
 /// about scope). Runs on the draw thread, asks the game directly, caches nothing - a supply
 /// claim is exactly as fresh as the frame it renders. The instance is the engine's
-/// <see cref="IInventorySource"/> (tips, the pot cycle planner); the static reads are what the
+/// <see cref="IInventorySource"/> (the pot cycle planner); the static reads are what the
 /// verbs and their pickers ask.</summary>
 internal sealed unsafe class BagInventory : IInventorySource
 {
