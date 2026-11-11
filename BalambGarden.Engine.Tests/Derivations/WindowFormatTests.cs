@@ -642,4 +642,44 @@ public class WindowFormatTests
             + "Changing the household phrase clears every nickname.", WindowFormat.AliasHover);
         Assert.Equal("The tag its receipts carry: a random code, never a name.", WindowFormat.SlugHover);
     }
+
+    // ------------------------------------------------------------------ the Recon tab's parked count
+
+    private static readonly DateTimeOffset ParkedAt = DateTimeOffset.Parse("2026-11-11T12:00:00Z");
+
+    private static SyncReceipt ForeignTend(string entity, int counter)
+        => new($"hhbbaa:eraaaa:{counter}", entity, SyncEntityType.Bed, SyncKind.Tend, ParkedAt,
+            SyncSource.Chain, new SyncData(Species: 50));
+
+    [Fact] // an empty hold reads as zero, never as a missing line
+    public void TheParkedCountReadsZeroOnAnEmptyHold()
+        => Assert.Equal("parked receipts: 0", WindowFormat.ParkedReceipts(new LedgerStore()));
+
+    [Fact] // the count is the ledger's parked list, each receipt once however often its page re-arrives
+    public void TheParkedCountCountsEachParkedReceiptOnce()
+    {
+        var ledger = new LedgerStore();   // no bed minted: every foreign receipt parks
+        ForeignApply.ApplyPage(ledger, [ForeignTend("entity-a", 1), ForeignTend("entity-b", 2)], "k7f3qx", ParkedAt);
+        ForeignApply.ApplyPage(ledger, [ForeignTend("entity-a", 1)], "k7f3qx", ParkedAt);   // the same page again
+
+        Assert.Equal("parked receipts: 2", WindowFormat.ParkedReceipts(ledger));
+    }
+
+    [Fact] // a parked receipt that lands leaves the count
+    public void TheParkedCountDropsWhenAReceiptLands()
+    {
+        var ledger = new LedgerStore();
+        ledger.Beds.Add(new ClaimedBed
+        {
+            Estate = new EstateKey(340, 11, 32), MapKey = 2, PatchOrdinal = 0, BedSlot = 3,
+            FirstRecorded = ParkedAt.AddDays(-1), WireEntity = null,
+        });
+        ForeignApply.ApplyPage(ledger, [ForeignTend("entity-a", 1), ForeignTend("entity-b", 2)], "k7f3qx", ParkedAt);
+        Assert.Equal("parked receipts: 2", WindowFormat.ParkedReceipts(ledger));
+
+        ledger.Beds[0].WireEntity = "entity-a";   // a census visit minted the bed
+        ForeignApply.RetryParked(ledger, ParkedAt.AddMinutes(5), new GardenHistory(), () => true);
+
+        Assert.Equal("parked receipts: 1", WindowFormat.ParkedReceipts(ledger));
+    }
 }

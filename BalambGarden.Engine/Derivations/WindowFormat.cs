@@ -557,4 +557,11 @@ public static class WindowFormat
         return $"{count} {HistoryAct(last.Entry.Kind)} {speciesName(last.Entry.Species)} at {last.EstateName}, "
                + $"{ShortDay(last.LocalAt)} {Clock(last.LocalAt, withDay: false)}.";
     }
+
+    /// <summary>The Recon tab's instrument line (Debug builds only): how many household receipts the
+    /// ledger holds parked, waiting for their bed or pot to be minted here, "parked receipts: 3". Zero
+    /// reads "parked receipts: 0", never a missing line, so a growing hold shows as a number that
+    /// climbs. The number form needs no singular.</summary>
+    public static string ParkedReceipts(LedgerStore ledger)
+        => $"parked receipts: {ledger.ForeignHold.Count}";
 }

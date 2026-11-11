@@ -1698,6 +1698,10 @@ public class MainWindow : Window, IDisposable
             // "Am I on the current build?" is the hot-load question this tab keeps
             // getting asked during field laps - the stamp answers it without a log dive.
             ImGui.TextUnformatted($"build {BuildStamp.Line}");
+            // Household receipts waiting for their bed or pot to be minted here (a census visit
+            // lands them; 30 days prunes them): a number that keeps climbing is a hold that is
+            // not draining.
+            ImGui.TextUnformatted(WindowFormat.ParkedReceipts(Plugin.Garden.Ledger));
         }
 
         // The sensor filters to beds by DataId, so the old "beds only" toggle is gone -
