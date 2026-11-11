@@ -21,13 +21,18 @@ public readonly record struct Hand(string Slug)
     public override string ToString() => Slug;
 }
 
-/// <summary>The one write rule for the player's LOCAL aliases (slug -> what this player calls that
-/// hand; the map itself lives in plugin config, spec ruling 15). It sits beside <see cref="Hand"/>
-/// because it is the hand's display rule, not ledger state. An alias is kept as typed without the
-/// spaces round it; an empty or blank box removes it, so the hand reads "household" again; the own
-/// hand never takes one, it reads "you".</summary>
+/// <summary>The one write rule and the one read rule for the player's LOCAL aliases (slug -> what
+/// this player calls that hand; the map itself lives in plugin config, spec ruling 15). It sits
+/// beside <see cref="Hand"/> because it is the hand's display rule, not ledger state. An alias is
+/// kept as typed without the spaces round it; an empty or blank box removes it, so the hand reads
+/// "household" again; the own hand never takes one, it reads "you".</summary>
 public static class Aliases
 {
+    /// <summary>The alias <paramref name="hand"/> reads by, or null: the own hand never has one, and
+    /// a blank entry (a hand-edited config) counts as none.</summary>
+    public static string? Of(IReadOnlyDictionary<string, string> aliases, Hand hand)
+        => !hand.IsOwn && aliases.TryGetValue(hand.Slug, out var alias) && !string.IsNullOrWhiteSpace(alias) ? alias : null;
+
     /// <summary>Puts <paramref name="typed"/> on <paramref name="hand"/>. True when the map changed,
     /// so the caller saves only then.</summary>
     public static bool Set(IDictionary<string, string> aliases, Hand hand, string typed)

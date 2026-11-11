@@ -438,6 +438,23 @@ public class GardenBoardTests
         Assert.Equal(Now.AddHours(-20), card.Lane.WaterFrom);   // the Krakka's watering, not the fig's older one
     }
 
+    [Fact] // rethink slice 11: the water bar's hover names whose watering starts it - the deadline bed's, never another's
+    public void TheWaterBarCarriesTheHandOfTheWateringThatStartsIt()
+    {
+        var household = new Hand("jw9cdj");
+        var fig = Seed.Tend(Seed.Plant(Bed(Yard, 0, 0), Now.AddHours(-50), Fig, stage: 1), Now.AddHours(-40), Fig);                    // yours, water by +8h
+        var krakka = Seed.Tend(Seed.Plant(Bed(Yard, 0, 1), Now.AddHours(-30), Krakka, stage: 1), Now.AddHours(-20), Krakka, household); // water by +4h
+        var sown = Seed.Plant(Bed(Cottage, 0, 0), Now.AddHours(-20), Krakka, stage: 1);
+
+        var cards = Board([Estate(Yard, "Yard"), Estate(Cottage, "Cottage")], [fig, krakka, sown]);
+
+        Assert.Equal(household, cards.Single(c => c.Estate.Key == Yard).Lane.WateredBy);
+        Assert.Null(cards.Single(c => c.Estate.Key == Cottage).Lane.WateredBy); // never watered: the sowing starts it
+
+        var mine = Assert.Single(Board([Estate(Yard, "Yard")], [fig]));
+        Assert.Equal(Hand.Own, mine.Lane.WateredBy);
+    }
+
     [Fact] // user story 17: an anchored ripe window is a tick; a bracketed one a band its own width, an estimated one striped
     public void EachRipeGroupIsATickOrABandOnItsRow()
     {

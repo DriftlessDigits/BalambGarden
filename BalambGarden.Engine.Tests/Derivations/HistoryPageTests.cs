@@ -44,8 +44,11 @@ public class HistoryPageTests
         return history;
     }
 
-    private static HistoryPage Page(GardenHistory history, HistoryFilter? filter = null)
-        => GardenBoard.History(history, filter ?? new HistoryFilter(), Estates, T, Cst);
+    private static readonly Dictionary<string, string> NoNicknames = [];
+
+    private static HistoryPage Page(GardenHistory history, HistoryFilter? filter = null, HandPick? hand = null,
+        Dictionary<string, string>? nicknames = null)
+        => GardenBoard.History(history, filter ?? new HistoryFilter(), hand, nicknames ?? NoNicknames, Estates, T, Cst);
 
     private static string[] Ids(HistoryPage page)
         => page.Lines.OfType<HistoryRowLine>().Select(l => l.Entry.Id).ToArray();
@@ -95,7 +98,7 @@ public class HistoryPageTests
         var central = TimeZoneInfo.FindSystemTimeZoneById("Central Standard Time"); // daylight time ends Sun 2026-11-01 2am
         var sat = Row("2026-10-31T23:00:00Z", HistoryKind.Plant); // Sat Oct 31, 6:00 pm daylight time
         var sun = Row("2026-11-01T23:00:00Z", HistoryKind.Plant); // Sun Nov 1, 5:00 pm standard time
-        var page = GardenBoard.History(History(sat, sun), new HistoryFilter(), Estates, T, central);
+        var page = GardenBoard.History(History(sat, sun), new HistoryFilter(), null, NoNicknames, Estates, T, central);
 
         Assert.Equal(["2026-11-01T00:00-05:00", "2026-11-01T17:00-06:00", "2026-10-31T00:00-05:00", "2026-10-31T18:00-05:00"],
             page.Lines.Select(l => l switch
@@ -163,5 +166,49 @@ public class HistoryPageTests
         Assert.Equal(["FC Estate", "Mama's Place", "Ward 4 Plot 51"], page.Estates.Select(e => e.Name).ToArray());
         Assert.Equal([Fc, Mama, Unnamed], page.Estates.Select(e => e.Key).ToArray());
         Assert.Equal([Krakka, Mirror, Onion], page.Species.ToArray()); // Krakka Root, Mirror Apple, Thavnairian Onion
+    }
+
+    // ---- hands by nickname (rethink slice 11, spec ruling 15)
+
+    [Fact] // the hand filter: You, then each nickname on record by name, then Household while an unnamed household hand is on record
+    public void TheHandListIsYouThenEachNicknameThenHousehold()
+    {
+        // Met in the opposite of the list's order, so the order is the rule's, not the record's.
+        var history = History(
+            Row("2026-11-07T09:00:00Z", HistoryKind.Plant, by: "q8m2zz"),
+            Row("2026-11-07T10:00:00Z", HistoryKind.Plant, by: "zz11aa"),
+            Row("2026-11-07T11:00:00Z", HistoryKind.Plant, by: "jw9cdj"),
+            Row("2026-11-07T12:00:00Z", HistoryKind.Plant, by: Hand.OwnSlug));
+        var nicknames = new Dictionary<string, string> { ["zz11aa"] = "Mog", ["jw9cdj"] = "Kupo" };
+
+        Assert.Equal([HandPick.You, HandPick.Named("Kupo"), HandPick.Named("Mog"), HandPick.Household],
+            Page(history, nicknames: nicknames).Hands.ToArray());
+
+        nicknames["q8m2zz"] = "Kupo"; // two hands, one nickname: one line; nobody left unnamed: no Household
+        Assert.Equal([HandPick.You, HandPick.Named("Kupo"), HandPick.Named("Mog")], Page(history, nicknames: nicknames).Hands.ToArray());
+
+        Assert.Equal([HandPick.You, HandPick.Household], Page(history).Hands.ToArray());
+        Assert.Equal([HandPick.You], Page(History(Row("2026-11-07T12:00:00Z", HistoryKind.Plant, by: Hand.OwnSlug))).Hands.ToArray());
+    }
+
+    [Fact] // each line of the hand filter shows exactly the rows whose Hand cell reads it
+    public void TheHandFilterShowsTheRowsThatReadItsWord()
+    {
+        var mine = Row("2026-11-07T09:00:00Z", HistoryKind.Plant, by: Hand.OwnSlug);
+        var kupo = Row("2026-11-07T10:00:00Z", HistoryKind.Plant, by: "jw9cdj");
+        var unnamed = Row("2026-11-07T11:00:00Z", HistoryKind.Plant, by: "q8m2zz");
+        var kupoHarvest = Row("2026-11-07T12:00:00Z", HistoryKind.Harvest, by: "jw9cdj");
+        var history = History(mine, kupo, unnamed, kupoHarvest);
+        var nicknames = new Dictionary<string, string> { ["jw9cdj"] = "Kupo" };
+
+        Assert.Equal([kupoHarvest.Id, kupo.Id], Ids(Page(history, hand: HandPick.Named("Kupo"), nicknames: nicknames)));
+        Assert.Equal([unnamed.Id], Ids(Page(history, hand: HandPick.Household, nicknames: nicknames)));
+        Assert.Equal([mine.Id], Ids(Page(history, hand: HandPick.You, nicknames: nicknames)));
+        Assert.Equal([kupoHarvest.Id], Ids(Page(history, new HistoryFilter(Kind: HistoryKind.Harvest), HandPick.Named("Kupo"), nicknames)));
+
+        var page = Page(history, hand: HandPick.Household, nicknames: nicknames);
+        Assert.True(page.Filtered);
+        Assert.Equal(4, page.Total);
+        Assert.Equal(1, page.Shown);
     }
 }
