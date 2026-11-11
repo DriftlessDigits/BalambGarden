@@ -86,7 +86,7 @@ public class LedgerTests
         var store = new LedgerStore();
         var pot = new ClaimedBed { Estate = Gardener, MapKey = 4, PatchOrdinal = 4, BedSlot = 0, IsPot = true, FirstRecorded = T0 };
         Seed.Sight(pot, T0, 0x41, 2);
-        pot.SightWilt(T0, wilting: true);
+        pot.SightWilt(T0, wilting: true, stage: 2);
         store.Beds.Add(pot);
 
         var restored = Assert.Single(LedgerStore.FromJson(store.ToJson()).Beds);
@@ -153,6 +153,81 @@ public class LedgerTests
         Assert.Equal(LedgerStore.CurrentVersion, store.Version);
         Assert.Null(Assert.Single(store.Beds).WiltSeenAt);
         Assert.Equal(PreSightingLedger.ReplaceLineEndings("\n"), store.ToJson().ReplaceLineEndings("\n"));
+    }
+
+    [Fact] // rethink slice 21: a pot seen fine keeps its floor through a plugin reload
+    public void APotSeenFineSurvivesTheFile()
+    {
+        var store = new LedgerStore();
+        var pot = new ClaimedBed { Estate = Gardener, MapKey = 4, PatchOrdinal = 4, BedSlot = 0, IsPot = true, FirstRecorded = T0 };
+        Seed.Sight(pot, T0, 0x41, 2);
+        pot.SightWilt(T0, wilting: false, stage: 2);
+        store.Beds.Add(pot);
+
+        var restored = Assert.Single(LedgerStore.FromJson(store.ToJson()).Beds);
+
+        Assert.Equal(T0, restored.SeenFineAt);
+    }
+
+    /// <summary>A v4 ledger exactly as the plugin wrote it before slice 21: the bytes main at
+    /// 8d9c9f6 serialized for a pot sown, watered, then read fine at stage 2 (captured by running
+    /// that commit's <see cref="LedgerStore.ToJson"/>, not typed by hand).</summary>
+    private const string PreFloorLedger = """
+        {
+          "Version": 4,
+          "Beds": [
+            {
+              "Estate": {
+                "TerritoryId": 342,
+                "Ward": 1,
+                "Plot": 1,
+                "Room": -1,
+                "IsApartment": false,
+                "ApartmentDivision": -1,
+                "IsIndoorOnly": false
+              },
+              "MapKey": 3,
+              "PatchOrdinal": 3,
+              "BedSlot": 0,
+              "IsPot": true,
+              "ClaimedAt": "2026-11-10T13:10:00+00:00",
+              "Latest": {
+                "At": "2026-11-11T09:10:00+00:00",
+                "SpeciesIndex": 49,
+                "Stage": 2,
+                "Source": "MapSighting"
+              },
+              "PlantedAt": "2026-11-10T13:10:00+00:00",
+              "PlantedBy": "own",
+              "PlantedSpecies": 49,
+              "StageSeen": {
+                "2": {
+                  "FirstSeen": "2026-11-11T09:10:00+00:00",
+                  "LastSeen": "2026-11-11T09:10:00+00:00"
+                }
+              },
+              "LastTended": "2026-11-10T15:10:00+00:00",
+              "LastTendedBy": "own",
+              "LastTendedSpecies": 49,
+              "PlantingResetAt": "2026-11-10T13:10:00+00:00",
+              "PlantingResetReason": "PlantReceipt"
+            }
+          ],
+          "Bindings": {},
+          "Estates": [],
+          "RelayCursor": "0",
+          "ForeignHold": []
+        }
+        """;
+
+    [Fact] // the diffable load: no version bump, no migration - an older file reads as "no floor" and writes back unchanged
+    public void ALedgerFromBeforeTheFloorLoadsWithNoneAndNoOtherChange()
+    {
+        var store = LedgerStore.FromJson(PreFloorLedger);
+
+        Assert.Equal(LedgerStore.CurrentVersion, store.Version);
+        Assert.Null(Assert.Single(store.Beds).SeenFineAt);
+        Assert.Equal(PreFloorLedger.ReplaceLineEndings("\n"), store.ToJson().ReplaceLineEndings("\n"));
     }
 
     [Fact] // an older plugin build reading a file this one wrote skips the field (rolling back loses only the sighting)

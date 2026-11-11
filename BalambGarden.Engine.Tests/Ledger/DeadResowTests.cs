@@ -55,7 +55,7 @@ public class DeadResowTests
         Assert.True(reset.RemovedAnything);
         Assert.Null(Pot.PlantedAt);              // the dead plant's sowing time is gone
         Assert.Null(Pot.LastTended);             // and its watering
-        Assert.Null(ClockWiltSource.ClockStart(Pot));
+        Assert.Null(ClockWiltSource.RecordedStart(Pot));
         Assert.Equal((byte)1, Pot.Latest!.Stage);
         Assert.Equal(Later, Pot.Latest.At);
     }

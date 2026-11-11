@@ -138,8 +138,8 @@ internal static class GardenTab
         ImGui.SetCursorScreenPos(drop - new Vector2(r, r * 1.6f));
         ImGui.InvisibleButton("drop", new Vector2(r * 2, r * 3));
         if (ImGui.IsItemHovered())
-            ImGui.SetTooltip($"{WindowFormat.WaterBy(by.ToLocalTime(), now.ToLocalTime())} ({WindowFormat.Countdown(by, now)})\n"
-                             + WindowFormat.WaterFrom(card.FirstToWilt, card.Lane.FromSowing, from, now)
+            ImGui.SetTooltip(WindowFormat.DropHead(by.ToLocalTime(), card.DeadlineSeenFine, now.ToLocalTime())
+                             + "\n" + WindowFormat.WaterFrom(card.FirstToWilt, card.Lane.FromSowing, from, now, card.Lane.SeenFine)
                              + WorstLine(card));
     }
 
@@ -247,16 +247,16 @@ internal static class GardenTab
         ImGui.SetWindowFontScale(HeadlineScale);
         if (card.WaterBy is { } by)
         {
-            var text = WindowFormat.WaterBy(by.ToLocalTime(), now.ToLocalTime());
+            var (text, aside) = WindowFormat.Headline(by.ToLocalTime(), card.DeadlineSeenFine, now.ToLocalTime());
             if (ThirstColour(card.Thirst) is { } colour)
                 ImGui.TextColored(colour, text);
             else
                 ImGui.Text(text);
             ImGui.SetWindowFontScale(1f);
             ImGui.SameLine();
-            ImGui.TextDisabled(WindowFormat.Countdown(by, now));
+            ImGui.TextDisabled(aside);
             if (ImGui.IsItemHovered())
-                ImGui.SetTooltip(WindowFormat.FirstToWilt(card.FirstToWilt, by.ToLocalTime()) + WorstLine(card));
+                ImGui.SetTooltip(WindowFormat.HeadlineHover(card.FirstToWilt, by.ToLocalTime(), card.DeadlineSeenFine) + WorstLine(card));
             return;
         }
 
@@ -414,6 +414,14 @@ internal static class GardenTab
             draw.AddLine(new Vector2(max.X - inset.X, min.Y + inset.Y), new Vector2(min.X + inset.X, max.Y - inset.Y), ink, 2f);
         }
 
+        // A pot whose clock rests on the seen-fine floor alone wears a "?": no watering recorded
+        // under its clock (ruled 2026-11-10 at slice 21's plan call; an uncoloured mark).
+        if (cell.SeenFineAt is not null)
+        {
+            var size = ImGui.CalcTextSize("?");
+            draw.AddText((min + max - size) * 0.5f, ImGui.ColorConvertFloat4ToU32(Palette.Text), "?");
+        }
+
         if (ImGui.IsItemHovered())
             ImGui.SetTooltip(CellTooltip(patch, cell, now));
     }
@@ -476,6 +484,13 @@ internal static class GardenTab
         var shown = cell.WiltShown ? WindowFormat.ShownWilt(cell.WiltSeenAt, now) : null;
         if (shown is not null && cell.Look == ContainerLook.Wilting)
             lines.Add($"{shown} - water now");
+        else if (cell.SeenFineAt is { } seenFine)
+        {
+            // The seen-fine floor (slice 21): the deadline is the look itself, so no deadline line.
+            lines.Add(WindowFormat.SeenFineThirstLine(cell.Look));
+            lines.Add(WindowFormat.SeenFineClock(seenFine, cell.Bed?.LastTended, now));
+            return string.Join("\n", lines);
+        }
         else
         {
             if (WindowFormat.ThirstLine(cell.Look, cell.DiesAt?.ToLocalTime(), now.ToLocalTime()) is { } thirst)

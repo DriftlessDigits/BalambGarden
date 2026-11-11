@@ -132,7 +132,7 @@ public class EstateNormalizationTests
         store.Estates.Add(Record(Inside, T0));
         var pot = Bed(Inside, ordinal: 2, slot: 0, isPot: true, mapKey: 2);
         Seed.Sight(pot, T0, 44, 2);
-        pot.SightWilt(T0, wilting: true);
+        pot.SightWilt(T0, wilting: true, stage: 2);
         store.Beds.Add(pot);
 
         LedgerMigration.NormalizeEstates(store);
@@ -148,7 +148,7 @@ public class EstateNormalizationTests
         store.Estates.Add(Record(Inside, T0));
         var kept = Bed(Outside, ordinal: 2, slot: 0, isPot: true, mapKey: 2);
         Seed.Sight(kept, T0.AddHours(1), 44, 2);
-        kept.SightWilt(T0.AddHours(1), wilting: true);
+        kept.SightWilt(T0.AddHours(1), wilting: true, stage: 2);
         var twin = Bed(Inside, ordinal: 2, slot: 0, isPot: true, mapKey: 2);
         Seed.Sight(twin, T0, 44, 2);
         store.Beds.Add(kept);
@@ -162,7 +162,7 @@ public class EstateNormalizationTests
         watered.Estates.Add(Record(Inside, T0));
         var seen = Bed(Outside, ordinal: 2, slot: 0, isPot: true, mapKey: 2);
         Seed.Sight(seen, T0.AddHours(1), 44, 2);
-        seen.SightWilt(T0.AddHours(1), wilting: true);
+        seen.SightWilt(T0.AddHours(1), wilting: true, stage: 2);
         var tended = Bed(Inside, ordinal: 2, slot: 0, isPot: true, mapKey: 2);
         Seed.Tend(tended, T0.AddHours(2), 44);
         watered.Beds.Add(seen);
@@ -170,6 +170,55 @@ public class EstateNormalizationTests
 
         LedgerMigration.NormalizeEstates(watered);
         Assert.Null(Assert.Single(watered.Beds).WiltSeenAt);
+    }
+
+    [Fact] // rethink slice 21: a pot's seen-fine floor rides the move, and twins keep the newer one
+    public void APotsSeenFineFloorRidesTheMoveAndTheMerge()
+    {
+        var store = new LedgerStore();
+        store.Estates.Add(Record(Outside, T0));
+        store.Estates.Add(Record(Inside, T0));
+        var pot = Bed(Inside, ordinal: 2, slot: 0, isPot: true, mapKey: 2);
+        Seed.Sight(pot, T0, 44, 2);
+        pot.SightWilt(T0, wilting: false, stage: 2);
+        store.Beds.Add(pot);
+
+        LedgerMigration.NormalizeEstates(store);
+        Assert.Equal(T0, Assert.Single(store.Beds).SeenFineAt);
+
+        var twins = new LedgerStore();
+        twins.Estates.Add(Record(Outside, T0));
+        twins.Estates.Add(Record(Inside, T0));
+        var kept = Bed(Outside, ordinal: 2, slot: 0, isPot: true, mapKey: 2);
+        Seed.Sight(kept, T0, 44, 2);
+        kept.SightWilt(T0, wilting: false, stage: 2);
+        var twin = Bed(Inside, ordinal: 2, slot: 0, isPot: true, mapKey: 2);
+        Seed.Sight(twin, T0.AddHours(1), 44, 2);
+        twin.SightWilt(T0.AddHours(1), wilting: false, stage: 2);
+        twins.Beds.Add(kept);
+        twins.Beds.Add(twin);
+
+        LedgerMigration.NormalizeEstates(twins);
+        Assert.Equal(T0.AddHours(1), Assert.Single(twins.Beds).SeenFineAt);
+    }
+
+    [Fact] // a merged fence that reaches the floor takes it with the plant it was about
+    public void AMergedFenceTrimsTheFloor()
+    {
+        var store = new LedgerStore();
+        store.Estates.Add(Record(Outside, T0));
+        store.Estates.Add(Record(Inside, T0));
+        var kept = Bed(Outside, ordinal: 2, slot: 0, isPot: true, mapKey: 2);
+        Seed.Sight(kept, T0, 44, 2);
+        kept.SightWilt(T0, wilting: false, stage: 2);
+        var twin = Bed(Inside, ordinal: 2, slot: 0, isPot: true, mapKey: 2);
+        twin.Rebase(RebaseReason.ReadsEmpty, T0.AddHours(1));
+        store.Beds.Add(kept);
+        store.Beds.Add(twin);
+
+        LedgerMigration.NormalizeEstates(store);
+
+        Assert.Null(Assert.Single(store.Beds).SeenFineAt);
     }
 
     [Fact] // only the interior record carries a nickname: it comes along
