@@ -5,8 +5,17 @@ using BalambGarden.Engine.Ledger;
 namespace BalambGarden.Engine.Derivations;
 
 /// <summary>The Yields tab's whole content (rethink slice 7, rulings 6-9): per crop, beds and pots
-/// apart, all time from <see cref="Since"/>. Null <see cref="Since"/> = no history yet.</summary>
-public sealed record YieldBook(DateTimeOffset? Since, IReadOnlyList<YieldRow> Beds, IReadOnlyList<YieldRow> Pots);
+/// apart, all time from <see cref="Since"/>. Null <see cref="Since"/> = no history yet.
+/// <see cref="Onions"/> is the trophy line's count over the tables (rethink slice 12, ruling 14).</summary>
+public sealed record YieldBook(DateTimeOffset? Since, IReadOnlyList<YieldRow> Beds, IReadOnlyList<YieldRow> Pots)
+{
+    public OnionTally Onions { get; init; } = new(0, 0);
+}
+
+/// <summary>The goal crop's tally, all time: <see cref="Onions"/> = the onions every onion harvest
+/// gathered (its items, beds and pots, its sowing on record or not), <see cref="Seeds"/> = the onion
+/// seeds every cross gave (each harvest's seed quantity).</summary>
+public sealed record OnionTally(int Onions, int Seeds);
 
 /// <summary>One crop in one section. <see cref="Planted"/> = <see cref="Harvested"/> +
 /// <see cref="Growing"/> + <see cref="Lost"/>, every term a sowing on record: a harvest counts as
@@ -23,8 +32,8 @@ public sealed record YieldBook(DateTimeOffset? Since, IReadOnlyList<YieldRow> Be
 /// crop splits, the partners its sowings recorded ride <see cref="Partners"/> for the hover; once
 /// it splits, that list is empty. Soil splits nothing (ruled 2026-11-11: "Off the table").</para>
 ///
-/// <para><see cref="GoalCrop"/> = the goal crop's row, which wears the onion mark (rethink slice 12,
-/// ruling 14); its split rows do not.</para></summary>
+/// <para><see cref="OnionMark"/> = the goal crop's row once it has gathered something: it wears the
+/// onion mark (rethink slice 12, ruling 14); its split rows do not.</para></summary>
 public sealed record YieldRow(
     ushort Species,
     bool IsPot,
@@ -40,7 +49,7 @@ public sealed record YieldRow(
 {
     public Partner? Partner { get; init; }
 
-    public bool GoalCrop { get; init; }
+    public bool OnionMark { get; init; }
 
     public IReadOnlyList<YieldRow> Splits { get; init; } = [];
 
@@ -138,7 +147,16 @@ public static partial class GardenBoard
             .ThenBy(r => tables.SpeciesName(r.Species), StringComparer.CurrentCulture)
             .ToList();
 
-        return new YieldBook(ordered.Count > 0 ? ordered[0].At : null, Section(pots: false), Section(pots: true));
+        var beds = Section(pots: false);
+        var pots = Section(pots: true);
+        var onionSeed = tables.SeedIdBySpeciesIndex(GoalCrop);
+        return new YieldBook(ordered.Count > 0 ? ordered[0].At : null, beds, pots)
+        {
+            Onions = new OnionTally(
+                Onions: beds.Concat(pots).Where(r => IsGoalCrop(r.Species)).Sum(r => r.Gathered),
+                Seeds: ordered.Where(e => e.Kind == HistoryKind.Harvest && e.SeedItem is { } seed && seed == onionSeed)
+                    .Sum(e => e.SeedQty ?? 0)),
+        };
     }
 
     /// <summary>The record still holds this crop alive: its newest contents (a read, or the sowing
@@ -178,7 +196,7 @@ public static partial class GardenBoard
 
             return whole.Row(species, isPot) with
             {
-                GoalCrop = IsGoalCrop(species),
+                OnionMark = IsGoalCrop(species) && whole.Gathered > 0,
                 Splits = splits
                     ? Ordered(parts).Select(p => p.Value.Row(species, isPot) with { Partner = p.Key }).ToList()
                     : [],

@@ -72,20 +72,34 @@ public class OnionMarkTests
         Assert.False(GardenBoard.IsGoalCropHarvest(Row(HistoryKind.Harvest, Krakka, qty: 3)));
     }
 
-    [Fact] // the Yields tab's onion rows carry the mark, beds and pots alike; no other crop's row does
-    public void TheYieldsOnionRowsAreMarkedAndNoOthers()
+    [Fact] // the Yields tab's onion rows carry the mark once they have gathered something, beds and pots alike; no other crop's row does
+    public void TheYieldsOnionRowsAreMarkedOnceTheyGatherAndNoOthers()
     {
         var book = GardenBoard.Yields(History(
             Row(HistoryKind.Plant, GardenBoard.GoalCrop, patch: 7),
             Row(HistoryKind.Harvest, GardenBoard.GoalCrop, patch: 7, qty: 1, at: T0.AddDays(10)),
             Row(HistoryKind.Plant, Krakka, patch: 8),
+            Row(HistoryKind.Harvest, Krakka, patch: 8, qty: 2, at: T0.AddDays(10)),
             Row(HistoryKind.Plant, GardenBoard.GoalCrop, pot: false, patch: 0, slot: 1),
+            Row(HistoryKind.Harvest, GardenBoard.GoalCrop, pot: false, patch: 0, slot: 1, qty: 1, at: T0.AddDays(10)),
             Row(HistoryKind.Plant, Krakka, pot: false, patch: 0, slot: 3)), [], T);
 
-        Assert.True(book.Pots.Single(r => r.Species == GardenBoard.GoalCrop).GoalCrop);
-        Assert.False(book.Pots.Single(r => r.Species == Krakka).GoalCrop);
-        Assert.True(book.Beds.Single(r => r.Species == GardenBoard.GoalCrop).GoalCrop);
-        Assert.False(book.Beds.Single(r => r.Species == Krakka).GoalCrop);
+        Assert.True(book.Pots.Single(r => r.Species == GardenBoard.GoalCrop).OnionMark);
+        Assert.False(book.Pots.Single(r => r.Species == Krakka).OnionMark);
+        Assert.True(book.Beds.Single(r => r.Species == GardenBoard.GoalCrop).OnionMark);
+        Assert.False(book.Beds.Single(r => r.Species == Krakka).OnionMark);
+    }
+
+    [Fact] // an onion row with nothing gathered yet (only sowings, or no yield heard) takes no mark
+    public void AnOnionRowWithNothingGatheredIsNotMarked()
+    {
+        var book = GardenBoard.Yields(History(
+            Row(HistoryKind.Plant, GardenBoard.GoalCrop, patch: 7),
+            Row(HistoryKind.Plant, GardenBoard.GoalCrop, pot: false, patch: 0, slot: 1),
+            Row(HistoryKind.Harvest, GardenBoard.GoalCrop, pot: false, patch: 0, slot: 1, at: T0.AddDays(10))), [], T);
+
+        Assert.False(book.Pots.Single().OnionMark);
+        Assert.False(book.Beds.Single().OnionMark);
     }
 
     [Fact] // an onion bed row split by partner keeps the mark on the crop row, not on its dim split rows
@@ -98,8 +112,47 @@ public class OnionMarkTests
                 Row(HistoryKind.Harvest, GardenBoard.GoalCrop, pot: false, patch: 1, slot: 1, qty: 1, at: T0.AddDays(10))), [], T)
             .Beds.Single(r => r.Species == GardenBoard.GoalCrop);
 
-        Assert.True(onion.GoalCrop);
+        Assert.True(onion.OnionMark);
         Assert.Equal(2, onion.Splits.Count);
-        Assert.All(onion.Splits, split => Assert.False(split.GoalCrop));
+        Assert.All(onion.Splits, split => Assert.False(split.OnionMark));
+    }
+
+    [Fact] // the trophy's onions are every onion gathered, beds and pots, sowing on record or not; another crop's never count
+    public void TheTallyCountsEveryOnionGathered()
+    {
+        var book = GardenBoard.Yields(History(
+            Row(HistoryKind.Plant, GardenBoard.GoalCrop, patch: 7),
+            Row(HistoryKind.Harvest, GardenBoard.GoalCrop, patch: 7, qty: 2, at: T0.AddDays(10)),
+            Row(HistoryKind.Harvest, GardenBoard.GoalCrop, patch: 9, qty: 1, at: T0.AddDays(10)),  // no sowing on record
+            Row(HistoryKind.Harvest, GardenBoard.GoalCrop, patch: 11, at: T0.AddDays(10)),         // yield not heard
+            Row(HistoryKind.Plant, GardenBoard.GoalCrop, pot: false, patch: 0, slot: 1),
+            Row(HistoryKind.Harvest, GardenBoard.GoalCrop, pot: false, patch: 0, slot: 1, qty: 4, at: T0.AddDays(10)),
+            Row(HistoryKind.Plant, Krakka, patch: 8),
+            Row(HistoryKind.Harvest, Krakka, patch: 8, qty: 9, at: T0.AddDays(10))), [], T);
+
+        Assert.Equal(7, book.Onions.Onions);
+    }
+
+    [Fact] // the trophy's seeds are the onion seeds every cross gave, by quantity; another seed never counts
+    public void TheTallyCountsOnionSeedsByQuantity()
+    {
+        var onionSeed = T.SeedIdBySpeciesIndex(GardenBoard.GoalCrop)!.Value;
+        var otherSeed = T.SeedIdBySpeciesIndex(Krakka)!.Value;
+        var book = GardenBoard.Yields(History(
+            Cross(onionSeed, 2), Cross(onionSeed, 1), Cross(otherSeed, 5), Cross(null, 0)), [], T);
+
+        Assert.Equal(new OnionTally(0, 3), book.Onions);
+    }
+
+    /// <summary>A Royal Kukuru bed harvest (no sowing on record) whose cross gave <paramref name="qty"/> of <paramref name="seed"/>.</summary>
+    private static HistoryEntry Cross(uint? seed, int qty)
+        => Row(HistoryKind.Harvest, T.SpeciesIndexByName("Royal Kukuru")!.Value, pot: false, patch: ++seq % 8, slot: 1, qty: 5)
+            with { SeedItem = seed, SeedQty = qty };
+
+    [Fact] // nothing gathered and no seed: an empty tally
+    public void ATallyWithNoOnionsIsEmpty()
+    {
+        var book = GardenBoard.Yields(History(Row(HistoryKind.Plant, GardenBoard.GoalCrop, patch: 7)), [], T);
+        Assert.Equal(new OnionTally(0, 0), book.Onions);
     }
 }

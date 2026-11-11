@@ -358,6 +358,28 @@ public class WindowFormatTests
     public void TheYieldsHeaderSaysWhenTheRecordBegins()
         => Assert.Equal("SINCE OCT 16", WindowFormat.YieldsSince(DateTimeOffset.Parse("2026-10-16T16:30:00-05:00")));
 
+    // The trophy line (rethink slice 12): the first line is the ruled wording, typed as ruled
+    // 2026-11-11; the singulars and the one-part lines follow its pattern.
+
+    [Fact]
+    public void TheTrophyLineReadsAsRuled()
+        => Assert.Equal("6 onions harvested, 3 seeds gathered", WindowFormat.OnionTrophy(new OnionTally(6, 3)));
+
+    [Fact]
+    public void TheTrophyLineSaysOneInTheSingular()
+        => Assert.Equal("1 onion harvested, 1 seed gathered", WindowFormat.OnionTrophy(new OnionTally(1, 1)));
+
+    [Fact]
+    public void TheTrophyLineLeavesOutAPartAtZero()
+    {
+        Assert.Equal("6 onions harvested", WindowFormat.OnionTrophy(new OnionTally(6, 0)));
+        Assert.Equal("3 seeds gathered", WindowFormat.OnionTrophy(new OnionTally(0, 3)));
+    }
+
+    [Fact]
+    public void ThereIsNoTrophyLineWithNothingToShow()
+        => Assert.Null(WindowFormat.OnionTrophy(new OnionTally(0, 0)));
+
     [Fact]
     public void TheCrossRateReadsAsAPercentWithItsCountOnHover()
     {

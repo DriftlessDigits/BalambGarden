@@ -14,8 +14,9 @@ namespace BalambGarden.Windows;
 /// the cross took and which seed it gave. Everything on it is <see cref="GardenBoard.Yields"/>'s;
 /// every sentence and cell word is <see cref="WindowFormat"/>'s (the headings are this file's);
 /// this file only places them. Besides brightness (labels, a zero count and a rate resting on too few
-/// harvests draw in <see cref="Palette.TextDim"/>) it uses one colour: the onion row's name and its
-/// gathered count in <see cref="Palette.OnionInk"/> (rethink slice 12, spec ruling 14).
+/// harvests draw in <see cref="Palette.TextDim"/>) it uses one colour, the onion ink (rethink slice
+/// 12, spec ruling 14): the trophy line over the tables, and the onion row's name and gathered count
+/// once it has gathered something (<see cref="YieldRow.OnionMark"/>).
 /// </summary>
 internal static class YieldsTab
 {
@@ -52,6 +53,9 @@ internal static class YieldsTab
             ImGui.TextColored(Palette.TextDim, WindowFormat.NoYields);
             return;
         }
+
+        if (WindowFormat.OnionTrophy(book.Onions) is { } trophy)
+            Trophy(trophy);
 
         var local = since.ToLocalTime();
         ImGui.TextColored(Palette.TextDim, WindowFormat.YieldsSince(local));
@@ -107,6 +111,19 @@ internal static class YieldsTab
         }
     }
 
+    /// <summary>How much larger the trophy line draws than the tab's text.</summary>
+    private const float TrophyScale = 1.4f;
+
+    /// <summary>The trophy line (rethink slice 12): the onion tally over the tables, in the onion
+    /// ink and larger than a row. It lives on this tab only; nothing announces it.</summary>
+    private static void Trophy(string line)
+    {
+        ImGui.SetWindowFontScale(TrophyScale);
+        ImGui.TextColored(Palette.OnionInk, line);
+        ImGui.SetWindowFontScale(1f);
+        ImGui.Spacing();
+    }
+
     /// <summary>How far a split row's name sits in from its crop's.</summary>
     private const float SplitIndent = 14f;
 
@@ -119,7 +136,7 @@ internal static class YieldsTab
         ImGui.TableNextRow();
 
         ImGui.TableNextColumn();
-        var onion = row.GoalCrop;
+        var onion = row.OnionMark;
         if (split is null)
         {
             WindowText.Text(Plugin.Tables.SpeciesName(row.Species), dim: false, onion);
