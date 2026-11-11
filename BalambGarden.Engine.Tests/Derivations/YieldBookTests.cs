@@ -127,6 +127,20 @@ public class YieldBookTests
     }
 
     [Fact]
+    public void ABedResownWithAnotherCropGrowsTheNewCrop()
+    {
+        var book = Book(History(
+                Plant(T0, Fig, 0, 0),
+                Plant(T0.AddDays(2), Mirror, 0, 0)),
+            Seed.Sight(Bed(0, 0), T0.AddDays(3), Mirror, 1));
+
+        var fig = book.Beds.Single(r => r.Species == Fig);
+        var mirror = book.Beds.Single(r => r.Species == Mirror);
+        Assert.Equal((1, 0, 1), (fig.Planted, fig.Growing, fig.Lost));
+        Assert.Equal((1, 1, 0), (mirror.Planted, mirror.Growing, mirror.Lost));
+    }
+
+    [Fact]
     public void GrowingCountsOnlyThePlantingsTheLedgerStillHoldsAlive()
     {
         // Six onion pots sown, none harvested. Growing: the pot read growing, and the pot only just
