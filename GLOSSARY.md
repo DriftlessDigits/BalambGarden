@@ -252,7 +252,7 @@ The model's slice of grow time each stage occupies (equal thirds for stages one 
 _Avoid_: stage fraction (the ratio), growth curve, timing table
 
 **Wilt clock**:
-The derived water status of a bed or pot from where its clock starts (the last heard watering, else the witnessed sowing) plus the crop's wilt and wither hours: watered, due, overdue, danger. A crop wilts wherever it grows; the flowerpot flowers never wilt and get no clock. Where the game shows a pot's wilt (its live read in the room, a kept wilt sighting away), the game's word wins the look. A plant seen ripe makes no water claim.
+The derived water status of a bed or pot from where its clock starts (the last heard watering, else the witnessed sowing, raised for a pot by its seen-fine floor) plus the crop's wilt and wither hours: watered, due, overdue, danger. A crop wilts wherever it grows; the flowerpot flowers never wilt and get no clock. Where the game shows a pot's wilt (its live read in the room, a kept wilt sighting away), the game's word wins the look. A plant seen ripe makes no water claim.
 _Avoid_: wilt timer, thirst meter, water ETA, wilt model (the design word for the same thing)
 
 **Water state**:
@@ -271,6 +271,10 @@ _Avoid_: pot wilt byte (the raw field), indoor wilt check
 The last instant this install's live map read showed a pot wilting under the pot wilt rule, kept on the pot's record so its card can say "pot wilting (seen 2h ago)" away from the room. A sighting in the map-read sense, but local only: it never travels, and the relay's pot-wilt kind is never applied. Cleared by a read showing the pot not wilting, a watering newer than it, or a reset.
 _Avoid_: wilt flag (the raw byte), wilt state, saved wilt
 
+**Seen fine**:
+The last instant this install's live map read showed a growing pot (below ripe) not wilting. A crop not wilting was watered within its wilt hours, so it floors the pot's wilt clock at that instant minus them: a bound, never a receipt. A pot whose clock rests on the floor alone has its deadline at the look itself, so it reads water soon with a "?" ("may wilt any time - water to be safe"), never wilting, and dying from the floor's dying point. Said "seen fine 10m ago". Local only, like the wilt sighting; cleared by a reset.
+_Avoid_: watered (nothing was recorded), last checked, fine sighting
+
 **Tend sweep**:
 A run across many beds (Tend All, Water Patch): it skips only what the live map confirmed ripe or empty and fails open on map silence. A deliberate single press is never a sweep and is never filtered.
 _Avoid_: tend all (the button), batch tend, mass water
@@ -288,7 +292,7 @@ The per-patch summary the dashboard rows carry: counts of claimed, ripe, due, ov
 _Avoid_: aggregate, summary row, stats
 
 **Garden picture**:
-The Garden tab's small picture of an estate: each patch with its eight beds where the game puts them (the ring, see Bed), then the pots, every container coloured by its state (growing by stage, water soon, wilting, dying, ripe, empty, dead under a cross, never read), a dashed outline on a bed or pot with no watering recorded. The patch strip's successor.
+The Garden tab's small picture of an estate: each patch with its eight beds where the game puts them (the ring, see Bed), then the pots, every container coloured by its state (growing by stage, water soon, wilting, dying, ripe, empty, dead under a cross, never read), a dashed outline on a bed or pot with no watering recorded, a "?" on a pot whose clock rests on its seen-fine floor alone. The patch strip's successor.
 _Avoid_: map, mini-map, heatmap, grid
 
 **Palette**:
