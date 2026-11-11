@@ -343,7 +343,10 @@ public static class WindowFormat
     public static string Percent(int percent) => $"{percent}%";
 
     /// <summary>The Crossed cell of a bed crop whose cross was never heard either way.</summary>
-    public const string NoCrossHeard = "-";
+    public const string NoCrossHeard = NotHeard;
+
+    /// <summary>A value the plugin never heard either way: a harvest's yield, its cross seed.</summary>
+    public const string NotHeard = "-";
 
     /// <summary>A cross seed by its crop's name; an item the crop table does not know by its id.</summary>
     public static string SeedName(string? cropName, uint seedItem) => cropName ?? $"seed {seedItem}";
@@ -419,7 +422,7 @@ public static class WindowFormat
     /// the harvest's yield was heard, else "-" (not heard).</summary>
     public static (string Text, bool Dim) HistoryYield(HistoryEntry row)
         => row.Kind == HistoryKind.Plant ? ("", false)
-            : row.Yields is not { Count: > 0 } ? (NoCrossHeard, true)
+            : row.Yields is not { Count: > 0 } ? (NotHeard, true)
             : (row.YieldQty.ToString(CultureInfo.InvariantCulture), false);
 
     /// <summary>The Cross seed cell and whether it draws dim: blank on a plant and on a pot (pots
@@ -430,11 +433,11 @@ public static class WindowFormat
         if (row.Kind == HistoryKind.Plant || row.IsPot)
             return ("", false);
         if (row.SeedQty is not { } qty)
-            return (NoCrossHeard, true);
+            return (NotHeard, true);
         if (qty == 0)
             return ("no cross", true);
         if (row.SeedItem is not { } seed)
-            return (NoCrossHeard, true);
+            return (NotHeard, true);
         return (qty == 1 ? seedName(seed) : $"{seedName(seed)} x{qty}", false);
     }
 

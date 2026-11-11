@@ -6,16 +6,18 @@ namespace BalambGarden.Engine.Derivations;
 
 /// <summary>The History tab's whole content (rethink slice 9, spec ruling 13): the rows the filter
 /// lets through, newest first, under a heading for each of the reader's days; how many there are
-/// of the whole record (<see cref="Shown"/> of <see cref="Total"/>), and when the record begins
-/// (<see cref="Since"/>, null = nothing on record yet); and the estate and crop lists the filters
-/// offer, taken from the whole record whatever the filter.</summary>
+/// of the whole record (<see cref="Shown"/> of <see cref="Total"/>, <see cref="Filtered"/> when any
+/// filter is set), and when the record begins (<see cref="Since"/>, null = nothing on record yet);
+/// and the estate and species lists the filters offer, taken from the whole record whatever the
+/// filter.</summary>
 public sealed record HistoryPage(
     DateTimeOffset? Since,
     int Total,
     int Shown,
+    bool Filtered,
     IReadOnlyList<HistoryLine> Lines,
     IReadOnlyList<HistoryEstate> Estates,
-    IReadOnlyList<ushort> Crops);
+    IReadOnlyList<ushort> Species);
 
 /// <summary>An estate as the History tab names it: its nickname, else its label.</summary>
 public sealed record HistoryEstate(EstateKey Key, string Name);
@@ -26,8 +28,9 @@ public abstract record HistoryLine;
 /// <summary>The heading over a day's rows: that day's midnight in the reader's zone.</summary>
 public sealed record HistoryDayLine(DateTimeOffset Day) : HistoryLine;
 
-/// <summary>One plant or harvest, with the name of the estate it happened at.</summary>
-public sealed record HistoryRowLine(HistoryEntry Entry, string Estate) : HistoryLine;
+/// <summary>One plant or harvest: the row, the name of the estate it happened at, and its instant in
+/// the reader's zone.</summary>
+public sealed record HistoryRowLine(HistoryEntry Entry, string EstateName, DateTimeOffset LocalAt) : HistoryLine;
 
 public static partial class GardenBoard
 {
@@ -53,21 +56,22 @@ public static partial class GardenBoard
             if (local.Date != day)
             {
                 day = local.Date;
-                lines.Add(new HistoryDayLine(new DateTimeOffset(local.Date, zone.GetUtcOffset(local.Date))));
+                lines.Add(new HistoryDayLine(TimelineSpan.AtMidnight(local.Date, zone)));
             }
-            lines.Add(new HistoryRowLine(row, Name(row.Estate)));
+            lines.Add(new HistoryRowLine(row, Name(row.Estate), local));
         }
 
         return new HistoryPage(
             Since: history.Entries.Count == 0 ? null : history.Entries.Min(e => e.At),
             Total: history.Entries.Count,
             Shown: rows.Count,
+            Filtered: filter != new HistoryFilter(),
             Lines: lines,
             Estates: history.Entries.Select(e => e.Estate).Distinct()
                 .Select(key => new HistoryEstate(key, Name(key)))
                 .OrderBy(e => e.Name, StringComparer.CurrentCulture)
                 .ToList(),
-            Crops: history.Entries.Select(e => e.Species).Distinct()
+            Species: history.Entries.Select(e => e.Species).Distinct()
                 .OrderBy(tables.SpeciesName, StringComparer.CurrentCulture)
                 .ToList());
     }

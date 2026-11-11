@@ -152,7 +152,7 @@ public sealed record HistoryFilter(
     bool? IsPot = null,
     bool? Own = null);
 
-/// <summary>The read side: the History tab reads it through <see cref="Derivations.GardenBoard.History"/>.
+/// <summary>The read side the screens use (the History tab, through the garden board).
 /// Newest first everywhere.</summary>
 public static class HistoryQuery
 {

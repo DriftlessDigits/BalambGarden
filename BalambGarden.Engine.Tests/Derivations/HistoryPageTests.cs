@@ -59,7 +59,7 @@ public class HistoryPageTests
         Assert.Equal(0, page.Shown);
         Assert.Empty(page.Lines);
         Assert.Empty(page.Estates);
-        Assert.Empty(page.Crops);
+        Assert.Empty(page.Species);
     }
 
     [Fact] // newest first, a day heading wherever the reader's own date changes
@@ -89,6 +89,23 @@ public class HistoryPageTests
         ], lines);
     }
 
+    [Fact] // across the clock change each heading keeps its own day's offset, and each row its own time
+    public void DayHeadingsAndRowTimesFollowTheClockChange()
+    {
+        var central = TimeZoneInfo.FindSystemTimeZoneById("Central Standard Time"); // daylight time ends Sun 2026-11-01 2am
+        var sat = Row("2026-10-31T23:00:00Z", HistoryKind.Plant); // Sat Oct 31, 6:00 pm daylight time
+        var sun = Row("2026-11-01T23:00:00Z", HistoryKind.Plant); // Sun Nov 1, 5:00 pm standard time
+        var page = GardenBoard.History(History(sat, sun), new HistoryFilter(), Estates, T, central);
+
+        Assert.Equal(["2026-11-01T00:00-05:00", "2026-11-01T17:00-06:00", "2026-10-31T00:00-05:00", "2026-10-31T18:00-05:00"],
+            page.Lines.Select(l => l switch
+            {
+                HistoryDayLine d => d.Day.ToString("yyyy-MM-ddTHH:mmzzz"),
+                HistoryRowLine r => r.LocalAt.ToString("yyyy-MM-ddTHH:mmzzz"),
+                _ => "?",
+            }).ToArray());
+    }
+
     [Fact] // each row carries its estate's name; an estate with no name set, or none in the ledger, reads its label
     public void RowsNameTheirEstate()
     {
@@ -97,7 +114,7 @@ public class HistoryPageTests
             Row("2026-11-07T11:00:00Z", HistoryKind.Plant, estate: Unnamed),
             Row("2026-11-07T12:00:00Z", HistoryKind.Plant, estate: Unknown)));
 
-        Assert.Equal(["Ward 4 Plot 50", "Ward 4 Plot 51", "Mama's Place"], page.Lines.OfType<HistoryRowLine>().Select(l => l.Estate).ToArray());
+        Assert.Equal(["Ward 4 Plot 50", "Ward 4 Plot 51", "Mama's Place"], page.Lines.OfType<HistoryRowLine>().Select(l => l.EstateName).ToArray());
     }
 
     [Fact] // the four filters through the existing history filter; the count is over the whole record
@@ -114,6 +131,8 @@ public class HistoryPageTests
         Assert.Equal([a.Id], Ids(page));
         Assert.Equal(1, page.Shown);
         Assert.Equal(5, page.Total);
+        Assert.True(page.Filtered);
+        Assert.False(Page(history).Filtered);
 
         Assert.Equal([e.Id, d.Id, b.Id, a.Id], Ids(Page(history, new HistoryFilter(Kind: HistoryKind.Harvest))));
         Assert.Equal([b.Id], Ids(Page(history, new HistoryFilter(Own: true))));
@@ -143,6 +162,6 @@ public class HistoryPageTests
 
         Assert.Equal(["FC Estate", "Mama's Place", "Ward 4 Plot 51"], page.Estates.Select(e => e.Name).ToArray());
         Assert.Equal([Fc, Mama, Unnamed], page.Estates.Select(e => e.Key).ToArray());
-        Assert.Equal([Krakka, Mirror, Onion], page.Crops.ToArray()); // Krakka Root, Mirror Apple, Thavnairian Onion
+        Assert.Equal([Krakka, Mirror, Onion], page.Species.ToArray()); // Krakka Root, Mirror Apple, Thavnairian Onion
     }
 }

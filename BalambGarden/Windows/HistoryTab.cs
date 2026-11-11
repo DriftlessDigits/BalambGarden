@@ -25,23 +25,22 @@ internal static class HistoryTab
 
     private const float FilterWidth = 170f;
 
-    /// <summary>The history grows forever, so the page is not rebuilt every frame: once a second (an
-    /// estate renamed shows within it), or at once when a row lands or a filter changes.</summary>
-    private static readonly TimeSpan Refresh = TimeSpan.FromSeconds(1);
-
     private static HistoryFilter filter = new();
 
+    /// <summary>The history grows forever, so the page is rebuilt only when what it shows changed: a
+    /// row landed, a filter changed, or an estate was named (<see cref="EstateNames"/>).</summary>
     private static HistoryPage? page;
     private static HistoryFilter? pageFilter;
     private static int pageRows = -1;
-    private static DateTime pageAt;
+    private static int pageNames;
 
     /// <summary>The page as the table draws it: each line's words, and each column's width over every
     /// line (measured once per rebuild, so the columns hold still while the list scrolls).</summary>
     private static List<Line> lines = [];
     private static float[] widths = [];
 
-    private sealed record Line(string? Day, string[] Cells, bool[] Dim);
+    /// <summary>A day heading (<see cref="Day"/>) or a row's cells, each with whether it draws dim.</summary>
+    private sealed record Line(string? Day, (string Text, bool Dim)[] Cells);
 
     public static void Draw()
     {
@@ -50,8 +49,10 @@ internal static class HistoryTab
             return;
 
         var history = Plugin.Garden.History;
-        if (page is null || pageFilter != filter || pageRows != history.Entries.Count || DateTime.UtcNow - pageAt > Refresh)
-            Rebuild(history);
+        var estates = Plugin.Garden.Ledger.Estates;
+        var names = EstateNames(estates);
+        if (page is null || pageFilter != filter || pageRows != history.Entries.Count || pageNames != names)
+            Rebuild(history, estates, names);
 
         ImGui.Spacing();
         if (page!.Since is not { } since)
@@ -62,8 +63,7 @@ internal static class HistoryTab
 
         Filters(page);
         ImGui.Spacing();
-        ImGui.TextColored(Palette.TextDim,
-            WindowFormat.HistoryCount(page.Shown, page.Total, since.ToLocalTime(), filtered: filter != new HistoryFilter()));
+        ImGui.TextColored(Palette.TextDim, WindowFormat.HistoryCount(page.Shown, page.Total, since.ToLocalTime(), page.Filtered));
         ImGui.Spacing();
 
         if (page.Shown == 0)
@@ -75,12 +75,25 @@ internal static class HistoryTab
         Table();
     }
 
-    private static void Rebuild(GardenHistory history)
+    /// <summary>A fingerprint of the estates' names, so a renamed estate rebuilds the page. A handful
+    /// of records, read each frame.</summary>
+    private static int EstateNames(List<EstateRecord> estates)
     {
-        page = GardenBoard.History(history, filter, Plugin.Garden.Ledger.Estates, Plugin.Tables, TimeZoneInfo.Local);
+        var hash = new HashCode();
+        foreach (var estate in estates)
+        {
+            hash.Add(estate.Key);
+            hash.Add(estate.Nickname);
+        }
+        return hash.ToHashCode();
+    }
+
+    private static void Rebuild(GardenHistory history, List<EstateRecord> estates, int names)
+    {
+        page = GardenBoard.History(history, filter, estates, Plugin.Tables, TimeZoneInfo.Local);
         pageFilter = filter;
         pageRows = history.Entries.Count;
-        pageAt = DateTime.UtcNow;
+        pageNames = names;
 
         lines = page.Lines.Select(ToLine).ToList();
         widths = Columns.Select(c => ImGui.CalcTextSize(c).X).ToArray();
@@ -90,33 +103,25 @@ internal static class HistoryTab
                 widths[0] = MathF.Max(widths[0], ImGui.CalcTextSize(day).X);
             else
                 for (var c = 0; c < Columns.Length; c++)
-                    widths[c] = MathF.Max(widths[c], ImGui.CalcTextSize(line.Cells[c]).X);
+                    widths[c] = MathF.Max(widths[c], ImGui.CalcTextSize(line.Cells[c].Text).X);
         }
     }
 
-    private static Line ToLine(HistoryLine line)
+    private static Line ToLine(HistoryLine line) => line switch
     {
-        if (line is HistoryDayLine day)
-            return new Line(WindowFormat.HistoryDay(day.Day), [], []);
-
-        var row = (HistoryRowLine)line;
-        var e = row.Entry;
-        var yield = WindowFormat.HistoryYield(e);
-        var cross = WindowFormat.HistoryCross(e, SeedName);
-        return new Line(null,
-            [
-                WindowFormat.HistoryTime(e.At.ToLocalTime()),
-                WindowFormat.HistoryAct(e.Kind),
-                Plugin.Tables.SpeciesName(e.Species),
-                WindowFormat.HistoryWhere(row.Estate, e),
-                WindowFormat.HistoryHand(e),
-                yield.Text,
-                cross.Text,
-            ],
-            [false, false, false, false, false, yield.Dim, cross.Dim]);
-    }
-
-    private static string SeedName(uint seed) => WindowFormat.SeedName(Plugin.Tables.CropBySeedId(seed)?.Name, seed);
+        HistoryDayLine day => new Line(WindowFormat.HistoryDay(day.Day), []),
+        HistoryRowLine row => new Line(null,
+        [
+            (WindowFormat.HistoryTime(row.LocalAt), false),
+            (WindowFormat.HistoryAct(row.Entry.Kind), false),
+            (Plugin.Tables.SpeciesName(row.Entry.Species), false),
+            (WindowFormat.HistoryWhere(row.EstateName, row.Entry), false),
+            (WindowFormat.HistoryHand(row.Entry), false),
+            WindowFormat.HistoryYield(row.Entry),
+            WindowFormat.HistoryCross(row.Entry, WindowText.SeedName),
+        ]),
+        _ => throw new ArgumentOutOfRangeException(nameof(line)),
+    };
 
     // ------------------------------------------------------------------ the four filters
 
@@ -139,7 +144,7 @@ internal static class HistoryTab
         }
 
         ImGui.SameLine();
-        var cropName = filter.Species is { } species ? Plugin.Tables.SpeciesName(species) : WindowFormat.AllCrops;
+        var cropName = filter.Species is { } chosen ? Plugin.Tables.SpeciesName(chosen) : WindowFormat.AllCrops;
         ImGui.SetNextItemWidth(FilterWidth);
         using (var combo = ImRaii.Combo("##history-crop", cropName))
         {
@@ -147,9 +152,9 @@ internal static class HistoryTab
             {
                 if (ImGui.Selectable(WindowFormat.AllCrops, filter.Species is null))
                     filter = filter with { Species = null };
-                foreach (var crop in current.Crops)
-                    if (ImGui.Selectable(Plugin.Tables.SpeciesName(crop), filter.Species == crop))
-                        filter = filter with { Species = crop };
+                foreach (var species in current.Species)
+                    if (ImGui.Selectable(Plugin.Tables.SpeciesName(species), filter.Species == species))
+                        filter = filter with { Species = species };
             }
         }
 
@@ -196,21 +201,21 @@ internal static class HistoryTab
             ImGui.TextColored(Palette.TextDim, Columns[c]);
         }
 
-        // Only the rows in view are drawn: the history grows forever.
+        // Only the rows in view are drawn: the history grows forever. The clipper is native memory,
+        // so it is released even if a row throws.
         var clipper = ImGui.ImGuiListClipper();
-        clipper.Begin(lines.Count);
-        while (clipper.Step())
+        try
         {
-            for (var i = clipper.DisplayStart; i < clipper.DisplayEnd; i++)
-            {
-                if (i < 0)
-                    continue;
-                Row(lines[i]);
-            }
+            clipper.Begin(lines.Count);
+            while (clipper.Step())
+                for (var i = clipper.DisplayStart; i < clipper.DisplayEnd; i++)
+                    Row(lines[i]);
+            clipper.End();
         }
-
-        clipper.End();
-        clipper.Destroy();
+        finally
+        {
+            clipper.Destroy();
+        }
     }
 
     private static void Row(Line line)
@@ -226,15 +231,12 @@ internal static class HistoryTab
         for (var c = 0; c < Columns.Length; c++)
         {
             ImGui.TableNextColumn();
-            var text = line.Cells[c];
+            var (text, dim) = line.Cells[c];
             if (text.Length == 0)
                 continue;
             if (c == YieldColumn)
                 RightAlign(text, c);
-            if (line.Dim[c])
-                ImGui.TextColored(Palette.TextDim, text);
-            else
-                ImGui.TextUnformatted(text);
+            WindowText.Text(text, dim);
         }
     }
 

@@ -393,6 +393,7 @@ public class WindowFormatTests
     public void ACropWithNoCrossHeardAndAnUnknownSeedSayLittle()
     {
         Assert.Equal("-", WindowFormat.NoCrossHeard);
+        Assert.Equal("-", WindowFormat.NotHeard);
         Assert.Equal("seed 7728", WindowFormat.SeedName(null, 7728));
         Assert.Equal("Sun Lemon", WindowFormat.SeedName("Sun Lemon", 7728));
     }
