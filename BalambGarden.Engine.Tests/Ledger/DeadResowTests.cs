@@ -60,8 +60,9 @@ public class DeadResowTests
         Assert.Equal(Later, Pot.Latest.At);
     }
 
-    [Fact] // a fresh sowing reads stage 0 with its species on the map (2026-11-07's onion sowings)
-    public void AFreshSowingReadAfterADeadReadIsANewPlanting()
+    [Fact] // a stage-0 read replaces the dead read as Latest whatever the rule says, so it must reset:
+           // left alone, the next growing read would find no dead read and the dead plant's clock would stay
+    public void AStageZeroReadAfterADeadReadIsANewPlanting()
     {
         DeadOnionPot();
 
@@ -70,6 +71,10 @@ public class DeadResowTests
         Assert.Equal(RebaseReason.NewPlantingSighted, Assert.Single(rebases).Reason);
         Assert.Null(Pot.PlantedAt);
         Assert.Null(Pot.LastTended);
+
+        Read(Later.AddHours(1), stage: 1);   // the growing read after it is the same new plant
+
+        Assert.Single(rebases);
     }
 
     [Fact] // a different crop was already a new planting; still is

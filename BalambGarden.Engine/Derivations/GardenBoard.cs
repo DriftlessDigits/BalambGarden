@@ -372,7 +372,7 @@ public static class GardenBoard
 
         // The game publishes death as stage 5 (rethink slice 23): dead, never ripe and never
         // growing, no ripe window and no water claim, until a later read replaces it.
-        if (latest.Stage == GardenStage.Dead)
+        if (bed.ReadsDead)
             return new ContainerCell(position, ContainerLook.Dead, latest.SpeciesIndex, latest.Stage,
                 TendUnheard: false, WaterBy: null, Ripe: null, bed, SeenDeadAt: latest.At);
 

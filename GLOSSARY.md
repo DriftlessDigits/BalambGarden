@@ -194,7 +194,7 @@ The one path that resets a record's planting: contents and clocks leave, the row
 _Avoid_: reset (the effect, not the operation), clear, wipe, reconcile (the broader activity)
 
 **Rebase reason**:
-Why a record was reset, one of five: a harvest was witnessed; a live read found the slot empty; a new planting was sighted (species changed or stage regressed); a pot's entry vanished from a settled indoor read; a plant receipt started a new planting.
+Why a record was reset, one of five: a harvest was witnessed; a live read found the slot empty; a new planting was sighted (species changed, stage regressed, or any stage below dead read after a dead read); a pot's entry vanished from a settled indoor read; a plant receipt started a new planting.
 _Avoid_: reset cause, trigger, rebase kind
 
 **Cut**:
@@ -420,7 +420,7 @@ The game's own two-byte index for what grows in a slot, the vocabulary the map a
 _Avoid_: crop id, seed id, plant name
 
 **Stage**:
-How far along a plant is, one to four as the map publishes it; four is ripe, and five is dead (see Dead). A reading of zero is no reading, not a stage.
+How far along a plant is, one to four as the map publishes it; four is ripe, and five is dead (see Dead). A reading of zero is no reading, not a stage; the one exception is a plant read at zero after a dead read, which is a new sowing (the read replaces the dead one either way).
 _Avoid_: growth phase, progress, level
 
 **Ripe**:
