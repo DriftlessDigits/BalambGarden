@@ -459,15 +459,20 @@ public static class WindowFormat
         => HandName(new Hand(row.By), aliases);
 
     /// <summary>A hand as every screen names it (spec ruling 15, rethink slice 11): "you" for this
-    /// install's; a household hand by the nickname the player gave it in the settings
-    /// (<see cref="Aliases.Of"/>), else "household".</summary>
+    /// install's; a household hand by the alias the player gave it in the settings, else "household"
+    /// (<see cref="HandPick.Of"/>).</summary>
     public static string HandName(Hand hand, IReadOnlyDictionary<string, string> aliases)
-        => hand.IsOwn ? You : Aliases.Of(aliases, hand) ?? Household;
+        => HandPick.Of(hand, aliases) switch
+        {
+            { Own: true } => You,
+            { Alias: { } alias } => alias,
+            _ => Household,
+        };
 
     /// <summary>What this install's own hand reads.</summary>
     public const string You = "you";
 
-    /// <summary>What every hand but this install's reads without a nickname.</summary>
+    /// <summary>What every hand but this install's reads without an alias.</summary>
     public const string Household = "household";
 
     /// <summary>The Yield cell and whether it draws dim: blank on a plant; the items gathered when
@@ -499,8 +504,8 @@ public static class WindowFormat
     /// <summary>The crop filter's first line, which clears it.</summary>
     public const string AllCrops = "All crops";
 
-    /// <summary>The hand filter's lines: "All hands", "You" (this install), each nickname as typed
-    /// ("Kupo"), "Household" (every household hand with no nickname).</summary>
+    /// <summary>The hand filter's lines: "All hands", "You" (this install), each alias as typed
+    /// ("Kupo"), "Household" (every household hand with no alias).</summary>
     public static string HandChoice(HandPick? pick) => pick switch
     {
         null => "All hands",

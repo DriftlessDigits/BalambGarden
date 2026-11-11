@@ -11,8 +11,8 @@ namespace BalambGarden.Windows;
 
 /// <summary>
 /// The History tab (rethink slice 9, spec ruling 13): every plant and harvest, newest first, under a
-/// heading for each day, filtered by estate, crop, hand and kind; a hand reads its nickname
-/// (rethink slice 11, spec ruling 15), else "household", and the player's own reads "you". Everything on it is
+/// heading for each day, filtered by estate, crop, hand and kind; a hand reads its alias (rethink
+/// slice 11, spec ruling 15), else "household", and the player's own reads "you". Everything on it is
 /// <see cref="GardenBoard.History"/>'s; every sentence and cell word is <see cref="WindowFormat"/>'s
 /// (the column headings are this file's); this file only places them. Brightness is the only colour
 /// it uses: labels, day headings, a value not heard and a heard harvest that gave no cross seed
@@ -29,11 +29,11 @@ internal static class HistoryTab
 
     private static HistoryFilter filter = new();
 
-    /// <summary>The hand filter's pick (null = All hands): by nickname, so it sits beside the filter.</summary>
+    /// <summary>The hand filter's pick (null = All hands): by alias, so it sits beside the filter.</summary>
     private static HandPick? hand;
 
     /// <summary>The history grows forever, so the page is rebuilt only when what it shows changed: a
-    /// row landed, a filter changed, or an estate or a hand was named (<see cref="Names"/>).</summary>
+    /// row landed, a filter changed, or an estate or a hand was named (<see cref="NamesFingerprint"/>).</summary>
     private static HistoryPage? page;
     private static HistoryFilter? pageFilter;
     private static HandPick? pageHand;
@@ -57,7 +57,7 @@ internal static class HistoryTab
         var history = Plugin.Garden.History;
         var estates = Plugin.Garden.Ledger.Estates;
         var aliases = Plugin.Configuration.HandAliases;
-        var names = Names(estates, aliases);
+        var names = NamesFingerprint(estates, aliases);
         if (page is null || pageFilter != filter || pageHand != hand || pageRows != history.Entries.Count || pageNames != names)
             Rebuild(history, estates, aliases, names);
 
@@ -82,9 +82,9 @@ internal static class HistoryTab
         Table();
     }
 
-    /// <summary>A fingerprint of the estates' names and the hands' nicknames, so a renamed estate or a
+    /// <summary>A fingerprint of the estates' names and the hands' aliases, so a renamed estate or a
     /// hand named in the settings rebuilds the page. A handful of entries, read each frame.</summary>
-    private static int Names(List<EstateRecord> estates, Dictionary<string, string> aliases)
+    private static int NamesFingerprint(List<EstateRecord> estates, Dictionary<string, string> aliases)
     {
         var hash = new HashCode();
         foreach (var estate in estates)
@@ -103,12 +103,7 @@ internal static class HistoryTab
     private static void Rebuild(GardenHistory history, List<EstateRecord> estates, Dictionary<string, string> aliases, int names)
     {
         page = GardenBoard.History(history, filter, hand, aliases, estates, Plugin.Tables, TimeZoneInfo.Local);
-        // A nickname changed away under the pick: its line is gone, so the filter falls back to All hands.
-        if (hand is not null && !page.Hands.Contains(hand))
-        {
-            hand = null;
-            page = GardenBoard.History(history, filter, hand, aliases, estates, Plugin.Tables, TimeZoneInfo.Local);
-        }
+        hand = page.Hand; // the board drops a pick whose line is gone
         pageFilter = filter;
         pageHand = hand;
         pageRows = history.Entries.Count;
@@ -182,9 +177,13 @@ internal static class HistoryTab
         using (var combo = ImRaii.Combo("##history-hand", WindowFormat.HandChoice(hand)))
         {
             if (combo.Success)
+            {
+                // Each line carries its place as its id: an alias may read like another line ("You").
+                var line = 0;
                 foreach (var pick in current.Hands.Prepend(null))
-                    if (ImGui.Selectable(WindowFormat.HandChoice(pick), hand == pick))
+                    if (ImGui.Selectable($"{WindowFormat.HandChoice(pick)}##hand-{line++}", hand == pick))
                         hand = pick;
+            }
         }
 
         ImGui.SameLine();
