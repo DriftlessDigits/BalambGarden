@@ -291,6 +291,10 @@ _Avoid_: crossbreed chance (the game's hidden roll), success rate, proc rate
 A harvest in the history with no sowing on record in the same container: sown before the history began, or a pot whose key moved. Never counted as harvested (so harvested never tops planted); its items and cross seed still count in the yield book.
 _Avoid_: orphan harvest, unpaired, phantom harvest (that is a harvest that never happened)
 
+**Partner**:
+The crop a bed sowing could cross with: the first bed beside it in the crossbreed walk holding another crop that forms a crossbreed pair with it, read from its patch at sow when the yield book is built, never stored. A patch with nothing to cross is "no partner"; a sowing with no patch on record (every one before v0.4.1) is "partner not recorded", and so is a harvest with no sowing on record. A crop whose harvests came from two or more partners splits into a row per partner on the Yields tab ("beside Krakka Root"); until then its partners ride the crop name's hover. Pots never have one.
+_Avoid_: neighbor (the raw bed beside it, partner or not), parent (the pairs table's word), pair (the two crops together)
+
 **Pipeline**:
 A chain of crossbreed recipes whose outputs feed the next recipe's inputs across estates. The household's onion pipeline (figs and mirrors to kukuru, krakka and mirrors to curiel, kukuru and curiel to onion, pots as grow-out) is user story one.
 _Avoid_: chain (that is a run), recipe tree, cross plan
