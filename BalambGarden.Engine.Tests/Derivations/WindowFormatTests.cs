@@ -389,6 +389,44 @@ public class WindowFormatTests
             WindowFormat.UnmatchedHover(3, since, isPot: true));
     }
 
+    private static string SplitCrop(ushort species) => species switch { 49 => "Krakka Root", 65 => "Old World Fig", _ => "?" };
+
+    private static YieldRow Row(int planted) => new(17, false, planted, 0, 0, planted, 0, 0, 0, null, []);
+
+    [Fact] // rethink slice 8: the words of the plan mock
+    public void ASplitRowNamesItsPartner()
+    {
+        Assert.Equal("beside Krakka Root", WindowFormat.PartnerLabel(Partner.Beside(49), SplitCrop));
+        Assert.Equal("no partner", WindowFormat.PartnerLabel(Partner.NoPartner, SplitCrop));
+        Assert.Equal("partner not recorded", WindowFormat.PartnerLabel(Partner.NotRecorded, SplitCrop));
+    }
+
+    [Fact]
+    public void TheCropHoverCountsThePartnersItsSowingsRecorded()
+    {
+        // Mirror Apple at orient: 24 sown since v0.4.1, 12 beside each partner (the plan mock's line).
+        var mirror = Row(95) with
+        {
+            Partners = [new PartnerCount(Partner.Beside(65), 12), new PartnerCount(Partner.Beside(49), 12)],
+        };
+        Assert.Equal("Of 95 planted:\nbeside Old World Fig 12 · beside Krakka Root 12 · partner not recorded 71",
+            WindowFormat.PartnerHover(mirror, SplitCrop));
+
+        // Every sowing recorded, one with nothing to cross with.
+        var whole = Row(3) with
+        {
+            Partners = [new PartnerCount(Partner.Beside(49), 2), new PartnerCount(Partner.NoPartner, 1)],
+        };
+        Assert.Equal("Of 3 planted:\nbeside Krakka Root 2 · no partner 1", WindowFormat.PartnerHover(whole, SplitCrop));
+
+        // The singular.
+        var one = Row(1) with { Partners = [new PartnerCount(Partner.Beside(49), 1)] };
+        Assert.Equal("Of 1 planted:\nbeside Krakka Root 1", WindowFormat.PartnerHover(one, SplitCrop));
+
+        // No partner recorded (every crop before v0.4.1, every pot crop): no hover.
+        Assert.Null(WindowFormat.PartnerHover(Row(48), SplitCrop));
+    }
+
     [Fact]
     public void ACropWithNoCrossHeardAndAnUnknownSeedSayLittle()
     {

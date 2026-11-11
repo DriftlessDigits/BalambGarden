@@ -384,6 +384,31 @@ public static class WindowFormat
     public static string SeedCounts(IEnumerable<SeedShare> seeds, Func<uint, string> name)
         => string.Join(" · ", seeds.Select(s => $"{name(s.SeedItem)} {s.Harvests}"));
 
+    // ------------------------------------------------------------------ the Yields tab's splits (rethink slice 8)
+
+    /// <summary>A split row's name in the Crop column, its partner: "beside Krakka Root", "no partner" (its patch held nothing
+    /// that crosses with it), "partner not recorded" (no patch at sow on record).</summary>
+    public static string PartnerLabel(Partner partner, Func<ushort, string> crop) => partner.Kind switch
+    {
+        PartnerKind.Beside => $"beside {crop(partner.Species)}",
+        PartnerKind.NoPartner => "no partner",
+        _ => "partner not recorded",
+    };
+
+    /// <summary>The crop name's hover until it splits (ruling 12): the partners its sowings
+    /// recorded, by count, and how many recorded none; null when no sowing recorded one.
+    /// "Of 95 planted:\nbeside Old World Fig 12 · beside Krakka Root 12 · partner not recorded 71".</summary>
+    public static string? PartnerHover(YieldRow row, Func<ushort, string> crop)
+    {
+        if (row.Partners.Count == 0)
+            return null;
+        var counts = row.Partners.Select(p => (Label: PartnerLabel(p.Partner, crop), p.Planted)).ToList();
+        var rest = row.Planted - row.Partners.Sum(p => p.Planted);
+        if (rest > 0)
+            counts.Add((PartnerLabel(Partner.NotRecorded, crop), rest));
+        return $"Of {row.Planted} planted:\n" + string.Join(" · ", counts.Select(c => $"{c.Label} {c.Planted}"));
+    }
+
     // ------------------------------------------------------------------ the History tab (rethink slice 9)
 
     /// <summary>The History tab with nothing on record. The history is read at plugin start, before
