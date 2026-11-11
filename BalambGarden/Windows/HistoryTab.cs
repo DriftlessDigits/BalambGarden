@@ -14,7 +14,8 @@ namespace BalambGarden.Windows;
 /// heading for each day, filtered by estate, crop, hand and kind. Everything on it is
 /// <see cref="GardenBoard.History"/>'s; every sentence and cell word is <see cref="WindowFormat"/>'s
 /// (the column headings are this file's); this file only places them. Brightness is the only colour
-/// it uses: labels, day headings and a value not heard draw in <see cref="Palette.TextDim"/>.
+/// it uses: labels, day headings, a value not heard and a heard harvest that gave no cross seed
+/// ("no cross") draw in <see cref="Palette.TextDim"/>.
 /// </summary>
 internal static class HistoryTab
 {
