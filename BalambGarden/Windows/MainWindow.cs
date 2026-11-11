@@ -164,6 +164,7 @@ public class MainWindow : Window, IDisposable
                     DrawEstateTab(record, here, now);
 
                 YieldsTab.Draw();
+                HistoryTab.Draw();
 #if DEBUG
                 DrawReconTab();
 #endif

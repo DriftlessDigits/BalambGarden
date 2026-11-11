@@ -1,10 +1,12 @@
 using System;
 using BalambGarden.Engine.Derivations;
+using Dalamud.Bindings.ImGui;
 
 namespace BalambGarden.Windows;
 
-/// <summary>How a window speaks a ripe window, shared by every tab that shows one: the day-part
-/// phrase on the surface and the exact range behind it on hover, in the reader's local time.</summary>
+/// <summary>What the tabs say the same way: a ripe window (the day-part phrase on the surface and
+/// the exact range behind it on hover, in the reader's local time), a cross seed's name, and text
+/// at full or dim brightness.</summary>
 internal static class WindowText
 {
     /// <summary>The hover behind every day-part window: the exact range the model holds
@@ -22,5 +24,17 @@ internal static class WindowText
         var local = now.ToLocalTime();
         var phrase = WindowFormat.Coarse(w.Earliest.ToLocalTime(), w.Latest.ToLocalTime(), local);
         return approxMark && local < w.Earliest.ToLocalTime() ? "~" + phrase : phrase;
+    }
+
+    /// <summary>A cross seed by its crop's name, or by its id when the crop table does not know it.</summary>
+    public static string SeedName(uint seed) => WindowFormat.SeedName(Plugin.Tables.CropBySeedId(seed)?.Name, seed);
+
+    /// <summary>Text at full brightness, or in <see cref="Palette.TextDim"/>.</summary>
+    public static void Text(string text, bool dim)
+    {
+        if (dim)
+            ImGui.TextColored(Palette.TextDim, text);
+        else
+            ImGui.TextUnformatted(text);
     }
 }

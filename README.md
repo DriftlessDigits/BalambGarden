@@ -15,6 +15,7 @@ A Dalamud gardening companion for FFXIV housing. Stand by your garden and water,
 - **A census ledger** - what's planted where, when you watered it, and when it will be ripe, down to the afternoon ("Tue-Thu afternoon"; exact hours on hover).
 - **Flowerpot flowers first-class** - their seeds, their clocks, and observed wilt warnings.
 - **Yields** - per crop, what was planted, harvested and gathered, how often each cross took and which seed it gave.
+- **History** - every plant and harvest on record, yours and your household's, newest first; filter by estate, crop, hand and kind.
 - **Auto-filled planting** - the picker fills itself with your named soil and seed and confirms; or hands the picker to you and verifies what you chose.
 
 Everything is receipt-driven: the plugin records what the game actually showed it, never what it guessed. `/garden` to open.

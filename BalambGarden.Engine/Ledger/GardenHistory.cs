@@ -141,16 +141,19 @@ public sealed class GardenHistory
            ?? throw new InvalidOperationException("History JSON deserialized to null");
 }
 
-/// <summary>Which rows: every field optional, all given fields must match.</summary>
+/// <summary>Which rows: every field optional, all given fields must match. <see cref="By"/> is one
+/// hand's slug; <see cref="Own"/> is this install's hand (true) or every other hand at once (false),
+/// the History tab's "You" and "Household".</summary>
 public sealed record HistoryFilter(
     EstateKey? Estate = null,
     ushort? Species = null,
     string? By = null,
     HistoryKind? Kind = null,
-    bool? IsPot = null);
+    bool? IsPot = null,
+    bool? Own = null);
 
-/// <summary>The read side (phase 1: the query surface exists; the screens that use it are
-/// phase 2). Newest first everywhere.</summary>
+/// <summary>The read side the screens use (the History tab, through the garden board).
+/// Newest first everywhere.</summary>
 public static class HistoryQuery
 {
     public static IReadOnlyList<HistoryEntry> Find(GardenHistory history, HistoryFilter filter)
@@ -159,7 +162,8 @@ public static class HistoryQuery
                         && (filter.Species is null || e.Species == filter.Species)
                         && (filter.By is null || e.By == filter.By)
                         && (filter.Kind is null || e.Kind == filter.Kind)
-                        && (filter.IsPot is null || e.IsPot == filter.IsPot))
+                        && (filter.IsPot is null || e.IsPot == filter.IsPot)
+                        && (filter.Own is null || e.IsOwn == filter.Own))
             .OrderByDescending(e => e.At)
             .ToList();
 

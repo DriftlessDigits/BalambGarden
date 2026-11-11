@@ -121,38 +121,28 @@ internal static class YieldsTab
         ImGui.TableNextColumn();
         if (row.Cross is { } rate)
         {
-            Text(WindowFormat.Percent(rate.Percent), dim: !rate.Firm);
+            WindowText.Text(WindowFormat.Percent(rate.Percent), dim: !rate.Firm);
             if (ImGui.IsItemHovered())
                 ImGui.SetTooltip(WindowFormat.CrossRateHover(rate));
         }
         else
         {
-            Text(WindowFormat.NoCrossHeard, dim: true);
+            WindowText.Text(WindowFormat.NoCrossHeard, dim: true);
         }
 
         ImGui.TableNextColumn();
         if (row.Seeds.Count > 0)
         {
-            ImGui.TextUnformatted(WindowFormat.SeedShares(row.Seeds, SeedName));
+            ImGui.TextUnformatted(WindowFormat.SeedShares(row.Seeds, WindowText.SeedName));
             if (ImGui.IsItemHovered())
-                ImGui.SetTooltip(WindowFormat.SeedCounts(row.Seeds, SeedName));
+                ImGui.SetTooltip(WindowFormat.SeedCounts(row.Seeds, WindowText.SeedName));
         }
     }
-
-    private static string SeedName(uint seed) => WindowFormat.SeedName(Plugin.Tables.CropBySeedId(seed)?.Name, seed);
 
     /// <summary>A count in the next cell, dim at zero.</summary>
     private static void Count(int n)
     {
         ImGui.TableNextColumn();
-        Text(n.ToString(), dim: n == 0);
-    }
-
-    private static void Text(string text, bool dim)
-    {
-        if (dim)
-            ImGui.TextColored(Palette.TextDim, text);
-        else
-            ImGui.TextUnformatted(text);
+        WindowText.Text(n.ToString(), dim: n == 0);
     }
 }

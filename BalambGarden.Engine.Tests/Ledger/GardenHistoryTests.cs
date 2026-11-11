@@ -127,4 +127,17 @@ public class GardenHistoryTests
         var bed = new ClaimedBed { Estate = Garden, MapKey = 110, PatchOrdinal = 2, BedSlot = 5 };
         Assert.Equal("b:e:1", HistoryQuery.LastAt(history, bed)!.Id);
     }
+
+    [Fact] // rethink slice 9: the History tab's hand filter is "you" or "household" - every other hand at once
+    public void Query_by_own_hand_or_every_other_hand()
+    {
+        var history = new GardenHistory();
+        history.Record(Row("a:e:1", HistoryKind.Plant, T0, "own"));
+        history.Record(Row("b:e:1", HistoryKind.Harvest, T0.AddDays(1), "hhbbaa"));
+        history.Record(Row("c:e:1", HistoryKind.Harvest, T0.AddDays(2), "zz9yy8"));
+
+        Assert.Equal(["a:e:1"], HistoryQuery.Find(history, new HistoryFilter(Own: true)).Select(r => r.Id).ToArray());
+        Assert.Equal(["c:e:1", "b:e:1"], HistoryQuery.Find(history, new HistoryFilter(Own: false)).Select(r => r.Id).ToArray());
+        Assert.Equal(3, HistoryQuery.Find(history, new HistoryFilter()).Count);
+    }
 }

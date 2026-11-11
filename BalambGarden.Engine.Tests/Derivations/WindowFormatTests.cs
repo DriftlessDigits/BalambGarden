@@ -1,5 +1,7 @@
+using BalambGarden.Engine.Census;
 using BalambGarden.Engine.Derivations;
 using BalambGarden.Engine.Ledger;
+using BalambGarden.Engine.Sync;
 using Xunit;
 
 namespace BalambGarden.Engine.Tests.Derivations;
@@ -391,6 +393,7 @@ public class WindowFormatTests
     public void ACropWithNoCrossHeardAndAnUnknownSeedSayLittle()
     {
         Assert.Equal("-", WindowFormat.NoCrossHeard);
+        Assert.Equal("-", WindowFormat.NotHeard);
         Assert.Equal("seed 7728", WindowFormat.SeedName(null, 7728));
         Assert.Equal("Sun Lemon", WindowFormat.SeedName("Sun Lemon", 7728));
     }
@@ -410,5 +413,105 @@ public class WindowFormatTests
 
         Assert.Equal("Royal Kukuru 48% · Sun Lemon 27% · Curiel Root 25%", WindowFormat.SeedShares(mirror, Name));
         Assert.Equal("Royal Kukuru 19 · Sun Lemon 11 · Curiel Root 10", WindowFormat.SeedCounts(mirror, Name));
+    }
+
+    // ------------------------------------------------------------------ the History tab (rethink slice 9)
+    // Every expected string is the plan mock's literal text (Bench out/rethink9/history-plan-mock.png).
+
+    private static readonly EstateKey FcEstate = new(340, 11, 56);
+
+    private static HistoryEntry HistoryRow(HistoryKind kind, string by = "jw9cdj", bool pot = false,
+        int patch = 2, int slot = 6, int? qty = null, int? seedQty = null, uint? seedItem = null)
+        => new("jw9cdj:c33aty:1", DateTimeOffset.Parse("2026-11-08T00:18:00Z"), kind, 49, FcEstate, pot,
+            patch, pot ? 0 : slot, by, SyncSource.Chain, qty is { } q ? [new SyncYield(8165, q)] : null, seedQty, seedItem);
+
+    [Fact]
+    public void TheHistoryCountSaysHowManyAndSince()
+    {
+        var since = DateTimeOffset.Parse("2026-10-16T16:30:00-05:00");
+        Assert.Equal("527 on record since Oct 16", WindowFormat.HistoryCount(527, 527, since, filtered: false));
+        Assert.Equal("1 on record since Oct 16", WindowFormat.HistoryCount(1, 1, since, filtered: false));
+        Assert.Equal("36 of 527 match", WindowFormat.HistoryCount(36, 527, since, filtered: true));
+        Assert.Equal("1 of 527 matches", WindowFormat.HistoryCount(1, 527, since, filtered: true));
+        Assert.Equal("0 of 527 match", WindowFormat.HistoryCount(0, 527, since, filtered: true));
+    }
+
+    [Fact] // an empty record and a filter that hides every row are two different silences
+    public void TheHistoryEmptyStatesSayWhichEmptyItIs()
+    {
+        Assert.Equal("Nothing planted or harvested on record yet.", WindowFormat.NoHistory);
+        Assert.Equal("No plants or harvests match these filters.", WindowFormat.NoHistoryMatch);
+    }
+
+    [Fact]
+    public void TheHistoryDayHeadingAndTimeReadAsTheMock()
+    {
+        var at = DateTimeOffset.Parse("2026-11-07T18:18:00-06:00");
+        Assert.Equal("SAT NOV 7", WindowFormat.HistoryDay(at));
+        Assert.Equal("18:18", WindowFormat.HistoryTime(at));
+        try
+        {
+            WindowFormat.TwelveHourClock = true;
+            Assert.Equal("6:18 pm", WindowFormat.HistoryTime(at));
+        }
+        finally
+        {
+            WindowFormat.TwelveHourClock = false;
+        }
+    }
+
+    [Fact]
+    public void AHistoryRowSaysWhatWhereAndWhoseHand()
+    {
+        Assert.Equal("planted", WindowFormat.HistoryAct(HistoryKind.Plant));
+        Assert.Equal("harvested", WindowFormat.HistoryAct(HistoryKind.Harvest));
+
+        Assert.Equal("FC Estate, patch 3, bed 7", WindowFormat.HistoryWhere("FC Estate", HistoryRow(HistoryKind.Plant)));
+        Assert.Equal("Mama's Place, pot", WindowFormat.HistoryWhere("Mama's Place", HistoryRow(HistoryKind.Plant, pot: true, patch: 131)));
+        Assert.Equal("Ward 4 Plot 51, patch 1, bed 2", WindowFormat.HistoryWhere("Ward 4 Plot 51", HistoryRow(HistoryKind.Plant, patch: 0, slot: 1)));
+
+        Assert.Equal("household", WindowFormat.HistoryHand(HistoryRow(HistoryKind.Plant)));
+        Assert.Equal("you", WindowFormat.HistoryHand(HistoryRow(HistoryKind.Plant, by: Hand.OwnSlug)));
+    }
+
+    [Fact] // the conductor's check, 2026-11-11: an own act, as the receipt log hands it to the history, reads "you"
+    public void AnOwnActFromTheReceiptLogReadsYou()
+    {
+        var receipt = new LoggedReceipt(7, "eraaaa", SyncKind.Harvest, SyncSource.Chain, DateTimeOffset.Parse("2026-11-07T16:47:00Z"),
+            FcEstate, false, PatchOrdinal: 2, BedSlot: 6, PatchId: 1234, PotKey: -1, Data: new SyncData(Species: 49));
+        Assert.Equal("you", WindowFormat.HistoryHand(HistoryEntry.FromOwn(receipt, "k7f3qx")!));
+    }
+
+    [Fact] // a plant has no yield; "-" = not heard; a number = heard
+    public void AHistoryYieldCellSaysHeardOrNot()
+    {
+        Assert.Equal(("", false), WindowFormat.HistoryYield(HistoryRow(HistoryKind.Plant)));
+        Assert.Equal(("-", true), WindowFormat.HistoryYield(HistoryRow(HistoryKind.Harvest)));
+        Assert.Equal(("9", false), WindowFormat.HistoryYield(HistoryRow(HistoryKind.Harvest, qty: 9)));
+    }
+
+    [Fact] // the cross seed's three states on a bed harvest; nothing on a plant or a pot (pots never cross)
+    public void AHistoryCrossCellSaysCrossedMissedOrNotHeard()
+    {
+        string Name(uint seed) => WindowFormat.SeedName(seed == 7728 ? "Sun Lemon" : null, seed);
+
+        Assert.Equal(("", false), WindowFormat.HistoryCross(HistoryRow(HistoryKind.Plant), Name));
+        Assert.Equal(("", false), WindowFormat.HistoryCross(HistoryRow(HistoryKind.Harvest, pot: true, qty: 1), Name));
+        Assert.Equal(("-", true), WindowFormat.HistoryCross(HistoryRow(HistoryKind.Harvest, qty: 9), Name));
+        Assert.Equal(("no cross", true), WindowFormat.HistoryCross(HistoryRow(HistoryKind.Harvest, qty: 9, seedQty: 0), Name));
+        Assert.Equal(("Sun Lemon", false), WindowFormat.HistoryCross(HistoryRow(HistoryKind.Harvest, seedQty: 1, seedItem: 7728), Name));
+        Assert.Equal(("Sun Lemon x2", false), WindowFormat.HistoryCross(HistoryRow(HistoryKind.Harvest, seedQty: 2, seedItem: 7728), Name));
+        Assert.Equal(("seed 12345", false), WindowFormat.HistoryCross(HistoryRow(HistoryKind.Harvest, seedQty: 1, seedItem: 12345), Name));
+        Assert.Equal(("-", true), WindowFormat.HistoryCross(HistoryRow(HistoryKind.Harvest, seedQty: 1), Name)); // a seed with no item: which seed was not heard
+    }
+
+    [Fact]
+    public void TheHistoryFiltersReadAsTheMock()
+    {
+        Assert.Equal("All estates", WindowFormat.AllEstates);
+        Assert.Equal("All crops", WindowFormat.AllCrops);
+        Assert.Equal(["All hands", "You", "Household"], new[] { WindowFormat.HandChoice(null), WindowFormat.HandChoice(true), WindowFormat.HandChoice(false) });
+        Assert.Equal(["Plants and harvests", "Plants", "Harvests"],
+            new[] { WindowFormat.KindChoice(null), WindowFormat.KindChoice(HistoryKind.Plant), WindowFormat.KindChoice(HistoryKind.Harvest) });
     }
 }

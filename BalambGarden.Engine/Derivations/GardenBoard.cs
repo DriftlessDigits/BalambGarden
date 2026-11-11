@@ -133,7 +133,8 @@ public sealed record TimelineSpan(DateTimeOffset From, DateTimeOffset To)
         return days;
     }
 
-    private static DateTimeOffset AtMidnight(DateTime date, TimeZoneInfo zone) => new(date, zone.GetUtcOffset(date));
+    /// <summary>The start of <paramref name="date"/> in <paramref name="zone"/>, with that day's own offset.</summary>
+    internal static DateTimeOffset AtMidnight(DateTime date, TimeZoneInfo zone) => new(date, zone.GetUtcOffset(date));
 }
 
 /// <summary>Which row of a lane a mark sits on: the beds' ripe times, or the pots' below them.</summary>
