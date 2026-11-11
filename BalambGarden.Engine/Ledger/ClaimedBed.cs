@@ -124,12 +124,16 @@ public sealed class ClaimedBed
     /// <summary>Does a (species, stage) reading contradict the current plant? A different known
     /// species, or the same species at an EARLIER stage than this planting has already reached
     /// (stages only climb, so a regression is a replant). Species 0 on either side is a shrug,
-    /// never a contradiction; stage 0 stays out of the regression test. The ONE copy of this
-    /// rule - the live sighting path and the wire path both ask it.</summary>
+    /// never a contradiction; stage 0 stays out of the regression test. A plant last read dead
+    /// (stage 5) stays dead until someone clears it, so any living stage after it, 0 included,
+    /// is a new sowing even of the same crop (rethink slice 23; the stage brackets keep 1-4
+    /// only, so the regression test alone never sees it). The ONE copy of this rule - the live
+    /// sighting path and the wire path both ask it.</summary>
     public bool Contradicts(ushort species, byte stage)
         => HasPlanting && SpeciesOfRecord != 0 && species != 0
            && (species != SpeciesOfRecord
-               || (stage >= 1 && MaxStageSeen >= 1 && stage < MaxStageSeen));
+               || (stage >= 1 && MaxStageSeen >= 1 && stage < MaxStageSeen)
+               || (Latest is { Stage: GardenStage.Dead } && stage < GardenStage.Dead));
 
     private static bool IsOwnHand(Hand? by) => by is null || by.Value.IsOwn;
 

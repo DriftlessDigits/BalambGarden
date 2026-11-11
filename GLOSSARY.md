@@ -436,7 +436,7 @@ Death: twenty-four hours of continuous wilt. Mature plants never wither. "Dying"
 _Avoid_: die, dead, expire (for the withering)
 
 **Dead**:
-A plant past saving, as the game reads it: the map publishes stage five, and the game's inspect line says "This crop is beyond hope." (receipted on four onion pots, 2026-11-10; a dead bed's stage is unreceipted and read the same way). Never ripe and never growing, it claims no water and counts as a container to clear and sow. The hover says the game's words and when the read was taken: "beyond hope (seen 7m ago)". A later read showing a living plant or an empty container replaces it.
+A plant past saving, as the game reads it: the map publishes stage five, and the game's inspect line says "This crop is beyond hope." (receipted on four onion pots, 2026-11-10; a dead bed's stage is unreceipted and read the same way). Never ripe and never growing, it claims no water and counts as a container to clear and sow. The hover says the game's words and when the read was taken: "beyond hope (seen 7m ago)". A later read showing a living plant or an empty container replaces it, and a living one, whatever its crop, is a new planting: the record resets, the dead plant's sowing and watering leave with it.
 _Avoid_: withered (the event, see Wither), ripe (stage four only)
 
 **Grow hours**:
