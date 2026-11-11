@@ -93,8 +93,9 @@ public sealed record Standing(EstateKey Estate, bool Inside, IReadOnlyDictionary
 public sealed record VisitCard(
     EstateRecord Estate, DateTimeOffset? WaterBy, ContainerCount FirstToWilt, ContainerLook Thirst,
     ContainerCount Worst, ContainerCount TendUnheard,
-    ContainerCount Water, int Harvest, int RipeNow, int Replant, int PotsWilting, DateTimeOffset? PotsWiltingSeenAt,
-    IReadOnlyList<RipeGroup> Ripe, IReadOnlyList<PatchPicture> Patches, TimelineLane Lane, ContainerCount Dead);
+    ContainerCount Water, int Harvest, int RipeNow, int Replant, ContainerCount Dead,
+    int PotsWilting, DateTimeOffset? PotsWiltingSeenAt,
+    IReadOnlyList<RipeGroup> Ripe, IReadOnlyList<PatchPicture> Patches, TimelineLane Lane);
 
 /// <summary>A card's lane on the timeline under the cards (ruling 17). <see cref="WaterFrom"/> is
 /// where the water bar starts: the clock start of the bed or pot that sets the card's water
@@ -261,6 +262,7 @@ public static class GardenBoard
             TendUnheard: ContainerCount.Of(cells.Where(c => c.TendUnheard)),
             Water: ContainerCount.Of(water), harvest, ripeNow,
             Replant: cells.Count(c => c.Look is ContainerLook.Empty or ContainerLook.Dead),
+            Dead: ContainerCount.Of(cells.Where(c => c.Look == ContainerLook.Dead)),
             PotsWilting: potsWilting.Count,
             PotsWiltingSeenAt: potsWilting.Select(c => c.WiltSeenAt).Max(),
             ripe, patches, new TimelineLane(
@@ -270,8 +272,7 @@ public static class GardenBoard
                     .Concat(ripe.Select(Mark))
                     .Where(m => m.From <= Span(now).To)
                     .ToList(),
-                FromSowing: barSetter is not null && barSetter.Bed!.LastTended is null),
-            Dead: ContainerCount.Of(cells.Where(c => c.Look == ContainerLook.Dead)));
+                FromSowing: barSetter is not null && barSetter.Bed!.LastTended is null));
     }
 
     /// <summary>The water looks a card's thirst can take, worst first.</summary>

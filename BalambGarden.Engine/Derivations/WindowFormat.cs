@@ -239,18 +239,22 @@ public static class WindowFormat
     public static string ShownWilt(DateTimeOffset? seenAt, DateTimeOffset now)
         => seenAt is { } seen ? $"seen wilting {Ago(seen, now)}" : "game shows it wilting";
 
-    /// <summary>A dead plant's hover (rethink slice 23): the game's own words, from its inspect line
-    /// "This crop is beyond hope.", and when the read that showed it was taken: "beyond hope (seen
-    /// 7m ago)".</summary>
-    public static string BeyondHope(DateTimeOffset seenAt, DateTimeOffset now) => $"beyond hope (seen {Ago(seenAt, now)})";
+    /// <summary>A dead plant's hover (rethink slice 23): what it was, that it is dead, and the game's
+    /// own words from its inspect line ("This crop is beyond hope.") with when the read that showed
+    /// it was taken: "Pot 126: Thavnairian Onion, dead" / "beyond hope (seen 7m ago)". Without a
+    /// read time it says no time rather than invent one.</summary>
+    public static string DeadHover(string name, string crop, DateTimeOffset? seenAt, DateTimeOffset now)
+        => $"{name}: {crop}, dead\nbeyond hope" + (seenAt is { } seen ? $" (seen {Ago(seen, now)})" : "");
 
-    /// <summary>The replant chip's hover: the emptied containers, then the dead ones to clear first
-    /// ("4 pots died - clear and sow"), each line only when it has something to say.</summary>
-    public static string ReplantDue(int empty, ContainerCount dead)
+    /// <summary>The replant chip's hover. <paramref name="replant"/> is the chip's count, the emptied
+    /// containers and the <paramref name="dead"/> ones together; it says the emptied ones, then the
+    /// dead ones to clear first ("4 pots dead - clear and sow"), each line only when it has
+    /// something to say.</summary>
+    public static string ReplantDue(int replant, ContainerCount dead)
         => string.Join("\n", new[]
         {
-            empty > 0 || dead.Total == 0 ? "emptied by a harvest or an empty read, nothing sown since" : null,
-            dead.Total > 0 ? $"{Capital(Containers(dead))} died - clear and sow" : null,
+            replant > dead.Total || dead.Total == 0 ? "emptied by a harvest or an empty read, nothing sown since" : null,
+            dead.Total > 0 ? $"{Capital(Containers(dead))} dead - clear and sow" : null,
         }.OfType<string>());
 
     /// <summary>The headline's hover on a card with no water clock: why there is no deadline.</summary>

@@ -35,7 +35,7 @@ public class DeadPlantTests
     private static ContainerCell PotCell(VisitCard card, int key)
         => card.Patches.Single(p => p.IsPots).Cells.Single(c => c.Position == key);
 
-    /// <summary>A pot sown Sat 18:14, never watered, read dead at 18:43 two days later.</summary>
+    /// <summary>A pot sown Sat 18:14, never watered, read dead Tue 18:43, three days later (local time).</summary>
     private static ClaimedBed DeadPot(int key)
     {
         var pot = Seed.Plant(Pot(key), DateTimeOffset.Parse("2026-11-08T00:14:00Z"), Onion, stage: 0, by: Seed.Household);

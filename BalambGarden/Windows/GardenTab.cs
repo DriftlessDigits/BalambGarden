@@ -301,7 +301,7 @@ internal static class GardenTab
             ? $"{card.RipeNow} seen ripe; the rest may ripen within {span}"
             : $"may ripen within {span}");
         ImGui.SameLine();
-        Chip("replant", card.Replant, WindowFormat.ReplantDue(card.Replant - card.Dead.Total, card.Dead));
+        Chip("replant", card.Replant, WindowFormat.ReplantDue(card.Replant, card.Dead));
     }
 
     /// <summary>A count with its task word, framed, dimmed at zero so the chips that matter stand out.</summary>
@@ -463,8 +463,7 @@ internal static class GardenTab
             case ContainerLook.Empty:
                 return $"{name}: empty - harvested or read empty, nothing sown since";
             case ContainerLook.Dead:
-                return $"{name}: {Plugin.Tables.SpeciesName(cell.Species)}, dead\n"
-                       + WindowFormat.BeyondHope(cell.SeenDeadAt ?? now, now);
+                return WindowFormat.DeadHover(name, Plugin.Tables.SpeciesName(cell.Species), cell.SeenDeadAt, now);
         }
 
         var lines = new List<string> { $"{name}: {Plugin.Tables.SpeciesName(cell.Species)}, stage {cell.Stage}" };

@@ -49,6 +49,8 @@ internal static class Palette
     /// cleared first: the shape carries "dead", never ripe and never alive. Provisional (rethink
     /// slice 23), held for the final UI check.</summary>
     public static readonly Vector4 Dead = Empty;
+
+    /// <summary>The cross drawn over a dead plant: a pale ash ink, so the shape reads on the earth.</summary>
     public static readonly Vector4 DeadMark = new(0.70f, 0.66f, 0.60f, 1f);
 
     /// <summary>No claim, in greys: an unclaimed slot, nothing recorded (near-black); an unread

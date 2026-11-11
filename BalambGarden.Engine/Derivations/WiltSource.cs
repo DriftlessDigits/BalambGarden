@@ -54,7 +54,8 @@ public sealed class ClockWiltSource : IWiltSource
     /// bed gets a deadline instead of a "?"). A planting always rebases at its own instant,
     /// so a surviving watering is newer than the sowing and "watering, else sowing" is the
     /// later of the two. Beds and pots alike (ruling 23). Null where the clock makes no claim:
-    /// a ripe plant (cannot wilt), and a record with neither receipt.</summary>
+    /// a ripe plant (cannot wilt), a dead one (stage 5, past wilting - the same test covers
+    /// both), and a record with neither receipt.</summary>
     public static DateTimeOffset? ClockStart(ClaimedBed bed)
         => bed.Latest is { Stage: >= GardenStage.Ripe } ? null : bed.LastTended ?? bed.PlantedAt;
 
