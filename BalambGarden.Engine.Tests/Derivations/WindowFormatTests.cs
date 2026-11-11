@@ -545,14 +545,14 @@ public class WindowFormatTests
 
     [Fact] // a hand only the ledger holds has no act to name
     public void AHouseholdHandWithNothingInTheHistorySaysSo()
-        => Assert.Equal("Nothing in the History tab yet.", WindowFormat.ForeignHandLine(new SeenHand(new Hand("p1ant0"), 0, null), Crop));
+        => Assert.Equal("No plant or harvest on record yet.", WindowFormat.ForeignHandLine(new SeenHand(new Hand("p1ant0"), 0, null), Crop));
 
     [Fact]
     public void TheForeignHandsSectionReadsAsThePlan()
     {
         Assert.Equal("household", WindowFormat.Household);
         Assert.Equal("Household hands", WindowFormat.ForeignHandsHeading);
-        Assert.Equal("Name the other installs that have gardened with you.", WindowFormat.HandsIntro);
+        Assert.Equal("Name the other installs that garden with you.", WindowFormat.HandsIntro);
         Assert.Equal("No household hands heard yet. Each install that gardens with you through household sync shows up here to be named.",
             WindowFormat.NoForeignHands);
         Assert.Equal("Your name for this hand. Left empty, it reads \"household\".\n"

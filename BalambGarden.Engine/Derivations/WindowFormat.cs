@@ -471,9 +471,8 @@ public static class WindowFormat
     /// <summary>The section's heading.</summary>
     public const string ForeignHandsHeading = "Household hands";
 
-    /// <summary>The line under the heading when it lists a hand. "Have gardened": after a phrase change
-    /// the history still holds the old household's hands, and they are listed too.</summary>
-    public const string HandsIntro = "Name the other installs that have gardened with you.";
+    /// <summary>The line under the heading when it lists a hand.</summary>
+    public const string HandsIntro = "Name the other installs that garden with you.";
 
     /// <summary>The section with no foreign hand on record. True with sync off as well: nothing has
     /// been heard.</summary>
@@ -490,13 +489,12 @@ public static class WindowFormat
 
     /// <summary>What tells one hand from another: how many of the history's rows are its and the newest
     /// of them, "382 plants and harvests on record, the last: planted Krakka Root at FC Estate, Nov 7
-    /// 6:18 pm."; with one, "1 plant or harvest on record: ..."; a hand only the ledger holds, "Nothing
-    /// in the History tab yet." (the ledger may hold its planting, so not "no plant"). Says "on record",
-    /// never "last" alone: the history can lag the garden.</summary>
+    /// 6:18 pm."; with one, "1 plant or harvest on record: ..."; a hand only the ledger holds, "No plant
+    /// or harvest on record yet." Says "on record", never "last" alone: the history can lag the garden.</summary>
     public static string ForeignHandLine(SeenHand hand, Func<ushort, string> speciesName)
     {
         if (hand.Last is not { } last)
-            return "Nothing in the History tab yet.";
+            return "No plant or harvest on record yet.";
         var count = hand.HistoryRows == 1 ? "1 plant or harvest on record:" : $"{hand.HistoryRows} plants and harvests on record, the last:";
         return $"{count} {HistoryAct(last.Entry.Kind)} {speciesName(last.Entry.Species)} at {last.EstateName}, "
                + $"{ShortDay(last.LocalAt)} {Clock(last.LocalAt, withDay: false)}.";
