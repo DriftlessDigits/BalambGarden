@@ -139,8 +139,7 @@ internal static class GardenTab
         ImGui.InvisibleButton("drop", new Vector2(r * 2, r * 3));
         if (ImGui.IsItemHovered())
             ImGui.SetTooltip(WindowFormat.DropHead(by.ToLocalTime(), card.DeadlineSeenFine, now.ToLocalTime())
-                             + "\n" + WindowFormat.WaterFrom(card.FirstToWilt, card.Lane.FromSowing, from, now, card.Lane.SeenFine,
-                                 card.Lane.WateredBy, Plugin.Configuration.HandAliases)
+                             + "\n" + WindowFormat.WaterFrom(card.FirstToWilt, card.Lane.FromSowing, from, now, card.Lane.SeenFine)
                              + WorstLine(card));
     }
 
@@ -489,7 +488,7 @@ internal static class GardenTab
         {
             // The seen-fine floor (slice 21): the deadline is the look itself, so no deadline line.
             lines.Add(WindowFormat.SeenFineThirstLine(cell.Look));
-            lines.Add(WindowFormat.SeenFineClock(seenFine, cell.Bed?.LastTended, now, cell.Bed?.LastTendedBy, Plugin.Configuration.HandAliases));
+            lines.Add(WindowFormat.SeenFineClock(seenFine, cell.Bed?.LastTended, now));
             return string.Join("\n", lines);
         }
         else
@@ -504,7 +503,7 @@ internal static class GardenTab
         {
             lines.Add($"{WindowFormat.WaterBy(by.ToLocalTime(), now.ToLocalTime())} ({WindowFormat.Countdown(by, now)})");
             lines.Add(cell.Bed?.LastTended is { } tended
-                ? WindowFormat.Watered(tended, cell.Bed.LastTendedBy, Plugin.Configuration.HandAliases, now)
+                ? $"watered {WindowFormat.Ago(tended, now)}"
                 : "no watering recorded - counting from the sowing");
         }
         else if (cell.NeverWilts)

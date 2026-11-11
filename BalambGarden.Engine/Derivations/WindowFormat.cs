@@ -229,36 +229,22 @@ public static class WindowFormat
 
     /// <summary>The water bar's hover: whose clock it is and where it starts. "A pot: sown 1d ago, no
     /// watering recorded", "A bed in patch 1: watered 20h ago", and on the seen-fine floor "A pot:
-    /// seen fine 10m ago" (never "watered": a bound, not a receipt). A household hand's watering names
-    /// it (<see cref="ByHand"/>): "A bed in patch 1: watered 20h ago by Kupo".</summary>
+    /// seen fine 10m ago" (never "watered": a bound, not a receipt).</summary>
     public static string WaterFrom(ContainerCount count, bool fromSowing, DateTimeOffset from, DateTimeOffset now,
-        bool seenFine = false, Hand? wateredBy = null, IReadOnlyDictionary<string, string>? aliases = null)
+        bool seenFine = false)
         => $"{Capital(Containers(count))}: "
            + (seenFine ? SeenFine(from, now)
-               : fromSowing ? $"sown {Ago(from, now)}, no watering recorded" : Watered(from, wateredBy, aliases ?? NoAliases, now));
-
-    /// <summary>A bed's or pot's last watering on its hover: "watered 2h ago", and when a household
-    /// hand did it, "watered 2h ago by Kupo" (rethink slice 11).</summary>
-    public static string Watered(DateTimeOffset at, Hand? by, IReadOnlyDictionary<string, string> aliases, DateTimeOffset now)
-        => $"watered {Ago(at, now)}{ByHand(by, aliases)}";
+               : fromSowing ? $"sown {Ago(from, now)}, no watering recorded" : $"watered {Ago(from, now)}");
 
     /// <summary>When the room last showed a pot fine (rethink slice 21, spec ruling 23): "seen fine 10m ago".</summary>
     public static string SeenFine(DateTimeOffset at, DateTimeOffset now) => $"seen fine {Ago(at, now)}";
 
     /// <summary>A pot cell's clock line on the seen-fine floor: what the clock rests on, and what the
     /// plugin recorded under it. "seen fine 10m ago - no watering recorded", "seen fine 10m ago -
-    /// last watering recorded 2d ago", by a household hand "... 2d ago by Kupo".</summary>
-    public static string SeenFineClock(DateTimeOffset seenFine, DateTimeOffset? lastTended, DateTimeOffset now,
-        Hand? by = null, IReadOnlyDictionary<string, string>? aliases = null)
+    /// last watering recorded 2d ago".</summary>
+    public static string SeenFineClock(DateTimeOffset seenFine, DateTimeOffset? lastTended, DateTimeOffset now)
         => $"{SeenFine(seenFine, now)} - "
-           + (lastTended is { } tended ? $"last watering recorded {Ago(tended, now)}{ByHand(by, aliases ?? NoAliases)}" : "no watering recorded");
-
-    /// <summary>Who did it, on a hover (rethink slice 11): " by Kupo", " by household" for a household
-    /// hand; nothing for the player's own hand, or for an act whose hand is not on record.</summary>
-    private static string ByHand(Hand? by, IReadOnlyDictionary<string, string> aliases)
-        => by is { IsOwn: false } hand ? $" by {HandName(hand, aliases)}" : "";
-
-    private static readonly Dictionary<string, string> NoAliases = [];
+           + (lastTended is { } tended ? $"last watering recorded {Ago(tended, now)}" : "no watering recorded");
 
     /// <summary>The headline of a card whose deadline rests on the seen-fine floor: the act, since
     /// the deadline is the look itself (ruled 2026-11-10: "best thing to do is rewater to be safe").</summary>

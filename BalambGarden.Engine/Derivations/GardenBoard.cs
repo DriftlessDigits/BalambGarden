@@ -114,10 +114,9 @@ public sealed record SeenFineDeadline(DateTimeOffset SeenAt, bool MayBeDying);
 /// recorded. <see cref="SeenFine"/>: the card's deadline rests on the seen-fine floor alone
 /// (<see cref="VisitCard.DeadlineSeenFine"/>), so the bar starts at the look, the last thing the
 /// plugin knows, never at the floor a day before it: the deadline is that look, so only the drop
-/// shows. <see cref="WateredBy"/>: whose hand the watering that starts the bar was (null when a
-/// sowing or the look starts it, or the hand is not on record), for the bar's hover.</summary>
+/// shows.</summary>
 public sealed record TimelineLane(DateTimeOffset? WaterFrom, IReadOnlyList<LaneMark> Marks, bool FromSowing = false,
-    bool SeenFine = false, Hand? WateredBy = null);
+    bool SeenFine = false);
 
 /// <summary>The stretch of time the lanes draw.</summary>
 public sealed record TimelineSpan(DateTimeOffset From, DateTimeOffset To)
@@ -299,8 +298,7 @@ public static partial class GardenBoard
                     .Where(m => m.From <= Span(now).To)
                     .ToList(),
                 FromSowing: barSetter is not null && barSetter.Bed!.LastTended is null,
-                SeenFine: seenFine is not null,
-                WateredBy: barSetter?.Bed!.LastTended is null ? null : barSetter.Bed.LastTendedBy),
+                SeenFine: seenFine is not null),
             seenFine);
     }
 
