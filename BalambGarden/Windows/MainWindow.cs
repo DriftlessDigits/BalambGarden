@@ -1086,7 +1086,7 @@ public class MainWindow : Window, IDisposable
                         ImGui.SetTooltip(
                             (bed.LastTended is { } tendedAt
                                 ? $"unwatered {WindowFormat.Ago(tendedAt, now)}"
-                                : $"no watering heard - sown {WindowFormat.Ago(bed.PlantedAt!.Value, now)}")
+                                : $"no watering recorded - sown {WindowFormat.Ago(bed.PlantedAt!.Value, now)}")
                             + $"\nwilts at {crop!.WiltHours}h dry · dead at {crop.WitherHours}h dry"
                             + $"\ndies ~{WindowFormat.Range(dd.ToLocalTime(), dd.ToLocalTime())}");
                 }
