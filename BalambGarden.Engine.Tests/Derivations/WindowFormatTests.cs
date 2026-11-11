@@ -347,4 +347,68 @@ public class WindowFormatTests
         Assert.Equal("may wilt any time - water to be safe", WindowFormat.SeenFineThirstLine(ContainerLook.Growing));
         Assert.Equal("may be dying - water now", WindowFormat.SeenFineThirstLine(ContainerLook.Dying));
     }
+
+    // ------------------------------------------------------------------ the Yields tab (rethink slice 7)
+    // Each expected line is the plan mock's text (2026-11-11), typed here, never rebuilt with the
+    // code's own formatter.
+
+    [Fact]
+    public void TheYieldsHeaderSaysWhenTheRecordBegins()
+        => Assert.Equal("SINCE OCT 16", WindowFormat.YieldsSince(DateTimeOffset.Parse("2026-10-16T16:30:00-05:00")));
+
+    [Fact]
+    public void TheCrossRateReadsAsAPercentWithItsCountOnHover()
+    {
+        Assert.Equal("87%", WindowFormat.Percent(new CrossRate(40, 46).Percent));
+        Assert.Equal("40 of 46 harvests gave a cross seed", WindowFormat.CrossRateHover(new CrossRate(40, 46)));
+        Assert.Equal("3 of 4 harvests gave a cross seed\nUnder 10 harvests: too few to lean on",
+            WindowFormat.CrossRateHover(new CrossRate(3, 4)));
+        Assert.Equal("1 of 1 harvest gave a cross seed\nUnder 10 harvests: too few to lean on",
+            WindowFormat.CrossRateHover(new CrossRate(1, 1)));
+    }
+
+    [Fact]
+    public void HarvestsWithNoSowingOnRecordAreNamedOnTheHarvestedHover()
+    {
+        var since = DateTimeOffset.Parse("2026-10-16T16:30:00-05:00");
+        Assert.Equal("25 more harvests have no sowing on record (sown before Oct 16);\ntheir items and cross seeds still count",
+            WindowFormat.UnmatchedHover(25, since, isPot: false));
+        Assert.Equal("1 more harvest has no sowing on record (sown before Oct 16);\nits items and cross seed still count",
+            WindowFormat.UnmatchedHover(1, since, isPot: false));
+    }
+
+    [Fact] // review 2026-11-11: a pot's key can move, so its reason is not known; and pots never cross
+    public void APotsUnmatchedHarvestsClaimNoReasonAndNoCrossSeed()
+    {
+        var since = DateTimeOffset.Parse("2026-10-16T16:30:00-05:00");
+        Assert.Equal("1 more harvest has no sowing on record;\nits items still count",
+            WindowFormat.UnmatchedHover(1, since, isPot: true));
+        Assert.Equal("3 more harvests have no sowing on record;\ntheir items still count",
+            WindowFormat.UnmatchedHover(3, since, isPot: true));
+    }
+
+    [Fact]
+    public void ACropWithNoCrossHeardAndAnUnknownSeedSayLittle()
+    {
+        Assert.Equal("-", WindowFormat.NoCrossHeard);
+        Assert.Equal("seed 7728", WindowFormat.SeedName(null, 7728));
+        Assert.Equal("Sun Lemon", WindowFormat.SeedName("Sun Lemon", 7728));
+    }
+
+    [Fact]
+    public void GatheredSaysHowManyHarvestsItRestsOn()
+    {
+        Assert.Equal("from the 48 harvests with a yield recorded", WindowFormat.GatheredHover(48));
+        Assert.Equal("from the 1 harvest with a yield recorded", WindowFormat.GatheredHover(1));
+    }
+
+    [Fact]
+    public void CrossSeedsReadByShareWithTheirCountsOnHover()
+    {
+        SeedShare[] mirror = [new(7750, 19, 48), new(7728, 11, 27), new(8169, 10, 25)];
+        string Name(uint seed) => seed switch { 7750 => "Royal Kukuru", 7728 => "Sun Lemon", _ => "Curiel Root" };
+
+        Assert.Equal("Royal Kukuru 48% · Sun Lemon 27% · Curiel Root 25%", WindowFormat.SeedShares(mirror, Name));
+        Assert.Equal("Royal Kukuru 19 · Sun Lemon 11 · Curiel Root 10", WindowFormat.SeedCounts(mirror, Name));
+    }
 }

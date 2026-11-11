@@ -331,4 +331,53 @@ public static class WindowFormat
     };
 
     private static string Capital(string text) => text.Length == 0 ? text : char.ToUpperInvariant(text[0]) + text[1..];
+
+    // ------------------------------------------------------------------ the Yields tab (rethink slice 7)
+
+    /// <summary>The Yields tab with no history yet.</summary>
+    public const string NoYields = "Nothing planted or harvested on record yet.";
+
+    /// <summary>The Yields tab's header, the record's first day in the reader's time: "SINCE OCT 16".</summary>
+    public static string YieldsSince(DateTimeOffset since) => $"SINCE {ShortDay(since).ToUpperInvariant()}";
+
+    public static string Percent(int percent) => $"{percent}%";
+
+    /// <summary>The Crossed cell of a bed crop whose cross was never heard either way.</summary>
+    public const string NoCrossHeard = "-";
+
+    /// <summary>A cross seed by its crop's name; an item the crop table does not know by its id.</summary>
+    public static string SeedName(string? cropName, uint seedItem) => cropName ?? $"seed {seedItem}";
+
+    /// <summary>The cross rate's hover: its count, and a caution when it rests on too few harvests.</summary>
+    public static string CrossRateHover(CrossRate rate)
+        => $"{rate.Crossed} of {Harvests(rate.Heard)} gave a cross seed"
+           + (rate.Firm ? "" : $"\nUnder {GardenBoard.FirmRateHarvests} harvests: too few to lean on");
+
+    /// <summary>The Harvested hover when harvests found no sowing on record: they never count as
+    /// harvested, but their items (and, on beds, their cross seeds) still count (ruled 2026-11-11).
+    /// A bed's reason is the history's start; a pot's key can move, so a pot claims no reason.</summary>
+    public static string UnmatchedHover(int unmatched, DateTimeOffset since, bool isPot)
+    {
+        var one = unmatched == 1;
+        var head = $"{unmatched} more {(one ? "harvest has" : "harvests have")} no sowing on record"
+                   + (isPot ? "" : $" (sown before {ShortDay(since)})");
+        var counts = isPot ? "items" : one ? "items and cross seed" : "items and cross seeds";
+        return $"{head};\n{(one ? "its" : "their")} {counts} still count";
+    }
+
+    /// <summary>The Gathered hover: how many harvests the total rests on.</summary>
+    public static string GatheredHover(int from) => $"from the {Harvests(from)} with a yield recorded";
+
+    private static string Harvests(int n) => n == 1 ? "1 harvest" : $"{n} harvests";
+
+    /// <summary>"Oct 16", the same on every machine.</summary>
+    private static string ShortDay(DateTimeOffset at) => at.ToString("MMM d", CultureInfo.InvariantCulture);
+
+    /// <summary>A crop's cross seeds by share: "Sun Lemon 55% · Curiel Root 45%".</summary>
+    public static string SeedShares(IEnumerable<SeedShare> seeds, Func<uint, string> name)
+        => string.Join(" · ", seeds.Select(s => $"{name(s.SeedItem)} {s.Percent}%"));
+
+    /// <summary>The seed shares' hover: the harvests behind each, "Sun Lemon 17 · Curiel Root 14".</summary>
+    public static string SeedCounts(IEnumerable<SeedShare> seeds, Func<uint, string> name)
+        => string.Join(" · ", seeds.Select(s => $"{name(s.SeedItem)} {s.Harvests}"));
 }

@@ -279,9 +279,17 @@ _Avoid_: watered (nothing was recorded), last checked, fine sighting
 A run across many beds (Tend All, Water Patch): it skips only what the live map confirmed ripe or empty and fails open on map silence. A deliberate single press is never a sweep and is never filtered.
 _Avoid_: tend all (the button), batch tend, mass water
 
-**Tips**:
-Advisory sentences read off the household's plantings and the crossbreed pairs: stock (a feeder is ripening), bottleneck (a chain waits on its slow leg), anomaly (a bed breaks the pattern). Never a planner, never prescriptive.
-_Avoid_: recommendations, planner, advisor, suggestions engine
+**Yield book**:
+The Yields tab's content: per crop, beds and pots apart, every sowing in the history sorted into harvested (a harvest paired with its sowing in the same container), growing (the ledger still holds it alive) and lost (the rest), plus what was gathered and, for beds, the cross rate and the seed shares. All time, from the history's first day. A harvest whose sowing is not on record is never "harvested". It replaced Tips (advisory sentences over the plantings, retired 2026-11-08: never opened).
+_Avoid_: tips (retired), stats, scoreboard, pipeline view
+
+**Cross rate**:
+The harvests that gave a cross seed over the harvests whose cross was heard either way; a harvest not heard never counts as a miss. Shown as a percentage with its count on hover, dim when it rests on fewer than ten harvests. Beside it, the **seed shares**: each cross seed's part of the crossing harvests, rounded to add to 100.
+_Avoid_: crossbreed chance (the game's hidden roll), success rate, proc rate
+
+**Unmatched harvest**:
+A harvest in the history with no sowing on record in the same container: sown before the history began, or a pot whose key moved. Never counted as harvested (so harvested never tops planted); its items and cross seed still count in the yield book.
+_Avoid_: orphan harvest, unpaired, phantom harvest (that is a harvest that never happened)
 
 **Pipeline**:
 A chain of crossbreed recipes whose outputs feed the next recipe's inputs across estates. The household's onion pipeline (figs and mirrors to kukuru, krakka and mirrors to curiel, kukuru and curiel to onion, pots as grow-out) is user story one.
