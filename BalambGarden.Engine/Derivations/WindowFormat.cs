@@ -480,7 +480,7 @@ public static class WindowFormat
         "No household hands heard yet. Anyone who gardens with you through household sync shows up here to be named.";
 
     /// <summary>The alias box's hover.</summary>
-    public const string AliasHover = "Your name for this hand. Left empty, it reads \"household\".\n"
+    public const string AliasHover = "A nickname for this hand. Left empty, it reads \"household\".\n"
         + "Kept in your settings only, never sent.\n"
         + "Changing the household phrase clears every name.";
 

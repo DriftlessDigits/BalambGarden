@@ -179,7 +179,7 @@ _Avoid_: local, mine, internal
 
 **Foreign hand**:
 An act that arrived over the relay from another household install. Applied under THE RULE, credited by slug, displayed through a local alias.
-_Avoid_: external (the hover's display word only), household hand, remote, peer, a person's name
+_Avoid_: external (the hover's display word only), household hand (the settings window's heading "Household hands" only, approved on screen), remote, peer, a person's name
 
 **Fence**:
 The instant of a record's last reset, with its reason. Foreign evidence at or before the fence describes a plant that already left and changes nothing; the fence only moves forward.
@@ -411,7 +411,7 @@ _Avoid_: foreign hold (the store's name), orphan, unmatched (the log word), dead
 
 **Alias**:
 A local label the player types for a hand's slug in the settings window, shown in place of the slug on this install only. Never written to the wire, the relay, the ledger, the history or the repo; an unlabelled slug shows as "household".
-_Avoid_: name, nickname (that is an estate's label), display name, mapping
+_Avoid_: name, nickname (that is an estate's label in code and docs; on screen the player's word for an alias, approved), display name, mapping
 
 **Household reset**:
 What a phrase change means: everything household-scoped goes (entity cache, parked receipts, cursor, foreign hands on records, aliases); timestamps and own receipts stay, because they are facts about the garden, not the household.
