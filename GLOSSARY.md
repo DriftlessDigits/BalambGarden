@@ -1,6 +1,6 @@
 # Glossary
 
-The vocabulary of Balamb Garden: one tight definition per term and the words to avoid. Agents and contributors use these words in issues, tests, hypotheses, and docs; a concept missing here is either invented language (reconsider) or a real gap (add it). Rulings (the why behind decisions) live in the maintainer's private notes and are summarised as mechanism in `CLAUDE.md`.
+The vocabulary of Balamb Garden: one tight definition per term and the words to avoid. Agents and contributors use these words in issues, tests, hypotheses, and docs; a concept missing here is either invented language (reconsider) or a real gap (add it). Rulings (the why behind decisions) live in the maintainer's private notes and are summarised as mechanism in `CLAUDE.md`. The _Avoid_ lines cover the words the player reads on screen too: a mock's words are checked against them, and each clash is put to the player with the mock, who rules it.
 
 
 Balamb Garden is a Dalamud plugin that keeps the household's FFXIV gardens alive: it counts what grows where, keeps honest water and ripeness clocks, drives one-press tend, harvest and replant runs, and shares what each install witnessed with the other install over a relay. Its first law shapes most of this vocabulary: receipts, never inference. The words below are the ones the docs and the code already use; where several words were in play, the best one wins and the rest go under _Avoid_.
