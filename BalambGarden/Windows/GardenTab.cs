@@ -263,7 +263,7 @@ internal static class GardenTab
         ImGui.TextDisabled("no water clock here");
         ImGui.SetWindowFontScale(1f);
         if (ImGui.IsItemHovered())
-            ImGui.SetTooltip("no deadline: ripe, flowers, or nothing recorded");
+            ImGui.SetTooltip(WindowFormat.NoDeadline);
     }
 
     /// <summary>The card's thirst as a colour, shared by the headline and the lane's water bar so
@@ -301,7 +301,7 @@ internal static class GardenTab
             ? $"{card.RipeNow} seen ripe; the rest may ripen within {span}"
             : $"may ripen within {span}");
         ImGui.SameLine();
-        Chip("replant", card.Replant, "emptied by a harvest or an empty read, nothing sown since");
+        Chip("replant", card.Replant, WindowFormat.ReplantDue(card.Replant - card.Dead.Total, card.Dead));
     }
 
     /// <summary>A count with its task word, framed, dimmed at zero so the chips that matter stand out.</summary>
@@ -405,19 +405,29 @@ internal static class GardenTab
                 ? Palette.RipeInk
                 : Palette.Outline), 3f);
 
+        // A dead plant wears a cross over its fill: the shape says dead, the earth says sow here.
+        if (cell.Look == ContainerLook.Dead)
+        {
+            var inset = new Vector2(side * 0.22f);
+            var ink = ImGui.ColorConvertFloat4ToU32(Palette.DeadMark);
+            draw.AddLine(min + inset, max - inset, ink, 2f);
+            draw.AddLine(new Vector2(max.X - inset.X, min.Y + inset.Y), new Vector2(min.X + inset.X, max.Y - inset.Y), ink, 2f);
+        }
+
         if (ImGui.IsItemHovered())
             ImGui.SetTooltip(CellTooltip(patch, cell, now));
     }
 
     /// <summary>State colours (the colour map): green ramp by stage while growing, amber water soon,
     /// purple wilting, red dying, blue ripe (the 2026-08-18 ruling: ripe is a payoff, kept off the
-    /// health gradient), earth for a known-empty container, grey for one never read, near-black
-    /// for an unclaimed slot.</summary>
+    /// health gradient), earth for a known-empty container, earth under a cross for a dead plant,
+    /// grey for one never read, near-black for an unclaimed slot.</summary>
     private static Vector4 Fill(ContainerCell cell) => cell.Look switch
     {
         ContainerLook.Unclaimed => Palette.Unclaimed,
         ContainerLook.Unread => Palette.Unread,
         ContainerLook.Empty => Palette.Empty,
+        ContainerLook.Dead => Palette.Dead,
         ContainerLook.WaterSoon => Palette.WaterSoon,
         ContainerLook.Wilting => Palette.Wilting,
         ContainerLook.Dying => Palette.Dying,
@@ -452,6 +462,9 @@ internal static class GardenTab
                 return $"{name}: recorded, contents not read yet";
             case ContainerLook.Empty:
                 return $"{name}: empty - harvested or read empty, nothing sown since";
+            case ContainerLook.Dead:
+                return $"{name}: {Plugin.Tables.SpeciesName(cell.Species)}, dead\n"
+                       + WindowFormat.BeyondHope(cell.SeenDeadAt ?? now, now);
         }
 
         var lines = new List<string> { $"{name}: {Plugin.Tables.SpeciesName(cell.Species)}, stage {cell.Stage}" };

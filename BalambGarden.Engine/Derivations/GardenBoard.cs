@@ -12,8 +12,10 @@ namespace BalambGarden.Engine.Derivations;
 /// 22), beds and pots alike (ruling 23): <see cref="WaterSoon"/> is past three quarters of its wilt
 /// hours (the clock's Due); <see cref="Wilting"/> past its wilt hours (Overdue), or a pot the game
 /// shows wilting - the live map where the player stands, the last sighting elsewhere;
-/// <see cref="Dying"/> past halfway from its wilt hours to withering (Danger).</summary>
-public enum ContainerLook { Unclaimed, Unread, Empty, Growing, WaterSoon, Wilting, Dying, Ripe }
+/// <see cref="Dying"/> past halfway from its wilt hours to withering (Danger). <see cref="Dead"/> is
+/// a plant the game reads as lost (stage 5, "beyond hope"): never ripe, never growing, no water
+/// claim, one more container to clear and sow (rethink slice 23).</summary>
+public enum ContainerLook { Unclaimed, Unread, Empty, Growing, WaterSoon, Wilting, Dying, Ripe, Dead }
 
 /// <summary>One container of the garden picture, with what its hover needs. <see cref="Position"/>
 /// is the bed's slot (0-7) in a patch, or the pot's map key among the pots. <see cref="WaterBy"/>
@@ -22,11 +24,14 @@ public enum ContainerLook { Unclaimed, Unread, Empty, Growing, WaterSoon, Wiltin
 /// any) rests on its sowing, no watering recorded. <see cref="WiltShown"/> marks a pot whose wilt
 /// the game itself showed: the live read in its room, or (with <see cref="WiltSeenAt"/>, when the
 /// game last showed it) the sighting its record keeps. <see cref="NeverWilts"/> marks a plant with
-/// no wilt hours in the crop table (the flowerpot flowers): no clock, by its nature.</summary>
+/// no wilt hours in the crop table (the flowerpot flowers): no clock, by its nature.
+/// <see cref="SeenDeadAt"/> is when the read that showed a <see cref="ContainerLook.Dead"/> plant
+/// was taken (the record keeps only the newest read, so it is the last time it was seen dead).</summary>
 public sealed record ContainerCell(
     int Position, ContainerLook Look, ushort Species, byte Stage, bool TendUnheard,
     DateTimeOffset? WaterBy, EtaWindow? Ripe, ClaimedBed? Bed, DateTimeOffset? DiesAt = null,
-    DateTimeOffset? WiltSeenAt = null, bool WiltShown = false, bool NeverWilts = false)
+    DateTimeOffset? WiltSeenAt = null, bool WiltShown = false, bool NeverWilts = false,
+    DateTimeOffset? SeenDeadAt = null)
 {
     public static ContainerCell Unclaimed(int slot) => new(slot, ContainerLook.Unclaimed,
         Species: 0, Stage: 0, TendUnheard: false, WaterBy: null, Ripe: null, Bed: null);
@@ -78,7 +83,8 @@ public sealed record Standing(EstateKey Estate, bool Inside, IReadOnlyDictionary
 /// chips: <see cref="Water"/> beds and pots due within <see cref="GardenBoard.ChipSpan"/> of the deadline
 /// (or of now, once it has passed), <see cref="Harvest"/> containers ripe now or whose ripe
 /// window opens within the span (<see cref="RipeNow"/> of them seen ripe), <see cref="Replant"/>
-/// containers the plugin knows were emptied. <see cref="PotsWilting"/> counts the pots the game
+/// containers to sow: the ones the plugin knows were emptied and the <see cref="Dead"/> ones, which
+/// need clearing first (rethink slice 23). <see cref="PotsWilting"/> counts the pots the game
 /// showed wilting (ruling 4, rethink slice 19): in the room the player stands in, the live map's;
 /// anywhere else, the pots this install last saw wilting and has not heard watered, harvested or
 /// replanted since, with <see cref="PotsWiltingSeenAt"/> the newest of those sightings (null on the
@@ -88,7 +94,7 @@ public sealed record VisitCard(
     EstateRecord Estate, DateTimeOffset? WaterBy, ContainerCount FirstToWilt, ContainerLook Thirst,
     ContainerCount Worst, ContainerCount TendUnheard,
     ContainerCount Water, int Harvest, int RipeNow, int Replant, int PotsWilting, DateTimeOffset? PotsWiltingSeenAt,
-    IReadOnlyList<RipeGroup> Ripe, IReadOnlyList<PatchPicture> Patches, TimelineLane Lane);
+    IReadOnlyList<RipeGroup> Ripe, IReadOnlyList<PatchPicture> Patches, TimelineLane Lane, ContainerCount Dead);
 
 /// <summary>A card's lane on the timeline under the cards (ruling 17). <see cref="WaterFrom"/> is
 /// where the water bar starts: the clock start of the bed or pot that sets the card's water
@@ -254,7 +260,7 @@ public static class GardenBoard
             Worst: thirst == ContainerLook.Growing ? ContainerCount.None : ContainerCount.Of(cells.Where(c => c.Look == thirst)),
             TendUnheard: ContainerCount.Of(cells.Where(c => c.TendUnheard)),
             Water: ContainerCount.Of(water), harvest, ripeNow,
-            Replant: cells.Count(c => c.Look == ContainerLook.Empty),
+            Replant: cells.Count(c => c.Look is ContainerLook.Empty or ContainerLook.Dead),
             PotsWilting: potsWilting.Count,
             PotsWiltingSeenAt: potsWilting.Select(c => c.WiltSeenAt).Max(),
             ripe, patches, new TimelineLane(
@@ -264,7 +270,8 @@ public static class GardenBoard
                     .Concat(ripe.Select(Mark))
                     .Where(m => m.From <= Span(now).To)
                     .ToList(),
-                FromSowing: barSetter is not null && barSetter.Bed!.LastTended is null));
+                FromSowing: barSetter is not null && barSetter.Bed!.LastTended is null),
+            Dead: ContainerCount.Of(cells.Where(c => c.Look == ContainerLook.Dead)));
     }
 
     /// <summary>The water looks a card's thirst can take, worst first.</summary>
@@ -361,6 +368,12 @@ public static class GardenBoard
             return new ContainerCell(position, look, Species: 0, Stage: 0, TendUnheard: false,
                 WaterBy: null, Ripe: null, bed);
         }
+
+        // The game publishes death as stage 5 (rethink slice 23): dead, never ripe and never
+        // growing, no ripe window and no water claim, until a later read replaces it.
+        if (latest.Stage == GardenStage.Dead)
+            return new ContainerCell(position, ContainerLook.Dead, latest.SpeciesIndex, latest.Stage,
+                TendUnheard: false, WaterBy: null, Ripe: null, bed, SeenDeadAt: latest.At);
 
         var crop = tables.CropBySpeciesIndex(latest.SpeciesIndex);
         var ripe = latest.Stage >= GardenStage.Ripe;

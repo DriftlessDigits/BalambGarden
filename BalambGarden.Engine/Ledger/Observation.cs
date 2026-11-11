@@ -8,6 +8,12 @@ public enum Provenance { Anchored, Bracketed, Estimated }
 public static class GardenStage
 {
     public const byte Ripe = 4;
+
+    /// <summary>A lost plant: the game publishes death as stage 5 (2026-11-10, four dead onion
+    /// pots; the inspect line "This crop is beyond hope."). Receipted on pots; a dead bed's stage
+    /// byte is unreceipted and read the same way until one is seen. The wire keeps sending it as a
+    /// plain Stage observation.</summary>
+    public const byte Dead = 5;
 }
 
 // Persisted BY NAME (the ledger's JsonStringEnumConverter), never by ordinal - so RENAMING a

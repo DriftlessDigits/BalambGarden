@@ -239,6 +239,23 @@ public static class WindowFormat
     public static string ShownWilt(DateTimeOffset? seenAt, DateTimeOffset now)
         => seenAt is { } seen ? $"seen wilting {Ago(seen, now)}" : "game shows it wilting";
 
+    /// <summary>A dead plant's hover (rethink slice 23): the game's own words, from its inspect line
+    /// "This crop is beyond hope.", and when the read that showed it was taken: "beyond hope (seen
+    /// 7m ago)".</summary>
+    public static string BeyondHope(DateTimeOffset seenAt, DateTimeOffset now) => $"beyond hope (seen {Ago(seenAt, now)})";
+
+    /// <summary>The replant chip's hover: the emptied containers, then the dead ones to clear first
+    /// ("4 pots died - clear and sow"), each line only when it has something to say.</summary>
+    public static string ReplantDue(int empty, ContainerCount dead)
+        => string.Join("\n", new[]
+        {
+            empty > 0 || dead.Total == 0 ? "emptied by a harvest or an empty read, nothing sown since" : null,
+            dead.Total > 0 ? $"{Capital(Containers(dead))} died - clear and sow" : null,
+        }.OfType<string>());
+
+    /// <summary>The headline's hover on a card with no water clock: why there is no deadline.</summary>
+    public const string NoDeadline = "no deadline: ripe, flowers, dead, or nothing recorded";
+
     /// <summary>The water chip's hover: "4 pots due within 24h of the deadline".</summary>
     public static string WaterDue(ContainerCount count, string span)
         => $"{(count.Total == 0 ? "nothing" : Containers(count))} due within {span} of the deadline";
