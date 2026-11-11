@@ -287,6 +287,33 @@ public class WindowFormatTests
         Assert.Equal("1 bed with no watering recorded", WindowFormat.NoWatering(new ContainerCount(1, 0, 4)));
     }
 
+    [Fact] // rethink slice 23: a dead plant's hover says the game's words and when it was seen
+    public void ADeadPlantsHoverSaysBeyondHopeAndWhenItWasSeen()
+    {
+        Assert.Equal("Pot 126: Thavnairian Onion, dead\nbeyond hope (seen 7m ago)",
+            WindowFormat.DeadHover("Pot 126", "Thavnairian Onion", Now.AddMinutes(-7), Now));
+        Assert.Equal("Bed 3: Krakka Root, dead\nbeyond hope (seen 2d ago)",
+            WindowFormat.DeadHover("Bed 3", "Krakka Root", Now.AddHours(-50), Now));
+        Assert.Equal("Pot 126: Thavnairian Onion, dead\nbeyond hope",
+            WindowFormat.DeadHover("Pot 126", "Thavnairian Onion", seenAt: null, Now));
+    }
+
+    [Fact] // rethink slice 23: the replant chip counts the dead with the empty, and says which
+    public void TheReplantChipSaysWhatIsDeadAndWhatIsEmpty()
+    {
+        Assert.Equal("emptied by a harvest or an empty read, nothing sown since",
+            WindowFormat.ReplantDue(replant: 2, ContainerCount.None));
+        Assert.Equal("4 pots dead - clear and sow",
+            WindowFormat.ReplantDue(replant: 4, new ContainerCount(0, 4, null)));
+        Assert.Equal("emptied by a harvest or an empty read, nothing sown since\nA bed in patch 2 dead - clear and sow",
+            WindowFormat.ReplantDue(replant: 2, new ContainerCount(1, 0, 1)));
+        Assert.Equal("A pot dead - clear and sow", WindowFormat.ReplantDue(replant: 1, new ContainerCount(0, 1, null)));
+    }
+
+    [Fact] // a card with no water clock says why, dead plants among the reasons
+    public void TheNoDeadlineHoverNamesItsReasons()
+        => Assert.Equal("no deadline: ripe, flowers, dead, or nothing recorded", WindowFormat.NoDeadline);
+
     [Fact] // the lanes' day heads read the same on every machine, whatever its culture
     public void DayHeadIsTheWeekdayAndTheDayOfTheMonth()
         => Assert.Equal("Mon 9", WindowFormat.DayHead(DateTimeOffset.Parse("2026-11-09T00:00:00-06:00")));

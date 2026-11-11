@@ -194,7 +194,7 @@ The one path that resets a record's planting: contents and clocks leave, the row
 _Avoid_: reset (the effect, not the operation), clear, wipe, reconcile (the broader activity)
 
 **Rebase reason**:
-Why a record was reset, one of five: a harvest was witnessed; a live read found the slot empty; a new planting was sighted (species changed or stage regressed); a pot's entry vanished from a settled indoor read; a plant receipt started a new planting.
+Why a record was reset, one of five: a harvest was witnessed; a live read found the slot empty; a new planting was sighted (species changed, stage regressed, or any stage below dead read after a dead read); a pot's entry vanished from a settled indoor read; a plant receipt started a new planting.
 _Avoid_: reset cause, trigger, rebase kind
 
 **Cut**:
@@ -288,11 +288,11 @@ The per-patch summary the dashboard rows carry: counts of claimed, ripe, due, ov
 _Avoid_: aggregate, summary row, stats
 
 **Garden picture**:
-The Garden tab's small picture of an estate: each patch with its eight beds where the game puts them (the ring, see Bed), then the pots, every container coloured by its state (growing by stage, water soon, wilting, dying, ripe, empty, never read), a dashed outline on a bed or pot with no watering recorded. The patch strip's successor.
+The Garden tab's small picture of an estate: each patch with its eight beds where the game puts them (the ring, see Bed), then the pots, every container coloured by its state (growing by stage, water soon, wilting, dying, ripe, empty, dead under a cross, never read), a dashed outline on a bed or pot with no watering recorded. The patch strip's successor.
 _Avoid_: map, mini-map, heatmap, grid
 
 **Palette**:
-The one home of the plugin's colours, each named by the one thing it means under the colour map: growing (a green ramp by stage), water soon, wilting, dying, ripe, empty, and the no-claim greys (unclaimed, unread, a water clock that is fine); plus plain and dim text and the structure greys of frames, rules and chips. A screen picks a meaning, never a value; what colour does not carry (not heard, provenance, status) goes to line style, glyphs and words.
+The one home of the plugin's colours, each named by the one thing it means under the colour map: growing (a green ramp by stage), water soon, wilting, dying, ripe, empty, dead (the earth of empty under a cross), and the no-claim greys (unclaimed, unread, a water clock that is fine); plus plain and dim text and the structure greys of frames, rules and chips. A screen picks a meaning, never a value; what colour does not carry (not heard, provenance, status) goes to line style, glyphs and words.
 _Avoid_: theme (ImGui's own style), colour scheme, color constants
 
 **Patch strip**:
@@ -420,7 +420,7 @@ The game's own two-byte index for what grows in a slot, the vocabulary the map a
 _Avoid_: crop id, seed id, plant name
 
 **Stage**:
-How far along a plant is, one to four as the map publishes it; four is ripe. A reading of zero is no reading, not a stage.
+How far along a plant is, one to four as the map publishes it; four is ripe, and five is dead (see Dead). A reading of zero is no reading, not a stage; the one exception is a plant read at zero after a dead read, which is a new sowing (the read replaces the dead one either way).
 _Avoid_: growth phase, progress, level
 
 **Ripe**:
@@ -434,6 +434,10 @@ _Avoid_: thirsty (the dashboard's pre-wilt warning, a different line), drooping,
 **Wither**:
 Death: twenty-four hours of continuous wilt. Mature plants never wither. "Dying" is the colour map's word for the danger window before it (past halfway from wilt to wither, red), never for the withering itself.
 _Avoid_: die, dead, expire (for the withering)
+
+**Dead**:
+A plant past saving, as the game reads it: the map publishes stage five, and the game's inspect line says "This crop is beyond hope." (receipted on four onion pots, 2026-11-10; a dead bed's stage is unreceipted and read the same way). Never ripe and never growing, it claims no water and counts as a container to clear and sow. The hover says the game's words and when the read was taken: "beyond hope (seen 7m ago)". A later read showing a living plant or an empty container replaces it, and a living one, whatever its crop, is a new planting: the record resets, the dead plant's sowing and watering leave with it.
+_Avoid_: withered (the event, see Wither), ripe (stage four only)
 
 **Grow hours**:
 A crop's total time from sowing to ripe, from the frozen table; the number every ripe window is cut from.

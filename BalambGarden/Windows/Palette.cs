@@ -44,6 +44,15 @@ internal static class Palette
     /// <summary>Empty: earth, ready to replant.</summary>
     public static readonly Vector4 Empty = new(0.24f, 0.19f, 0.13f, 1f);
 
+    /// <summary>Dead: the game reads the plant as lost ("beyond hope"). The earth of a container to
+    /// sow again, under a cross (<see cref="DeadMark"/>) that says the plant is gone and must be
+    /// cleared first: the shape carries "dead", never ripe and never alive. Provisional (rethink
+    /// slice 23), held for the final UI check.</summary>
+    public static readonly Vector4 Dead = Empty;
+
+    /// <summary>The cross drawn over a dead plant: a pale ash ink, so the shape reads on the earth.</summary>
+    public static readonly Vector4 DeadMark = new(0.70f, 0.66f, 0.60f, 1f);
+
     /// <summary>No claim, in greys: an unclaimed slot, nothing recorded (near-black); an unread
     /// record, contents never read (mid grey); a water clock that is fine and asks nothing.</summary>
     public static readonly Vector4 Unclaimed = new(0.12f, 0.12f, 0.12f, 1f);

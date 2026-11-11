@@ -128,13 +128,14 @@ internal sealed class GardenVerbs(Plugin plugin)
     /// <summary>The pot Tend All's membership: every in-reach pot the live map says holds a
     /// plant that can still drink - ripe (stage 4) offers no Tend, so counting it would make the
     /// button claim waters it cannot pour (08-22 field report: "Water All (4 pots)" over 2 ripe
-    /// cosmos). An unkeyed pot stays a per-row press - with no map key there is nothing honest
-    /// to claim the water against, and a sweep should not queue guesses.</summary>
+    /// cosmos). A dead plant (stage 5, "beyond hope") drinks nothing either, so the list is the
+    /// stages below ripe (rethink slice 23). An unkeyed pot stays a per-row press - with no map key
+    /// there is nothing honest to claim the water against, and a sweep should not queue guesses.</summary>
     internal static List<PotObject> WaterablePots(List<PotObject> pots)
         => pots
             .Where(p => p.InReach && p.MapKey is { } key
                 && CensusPump.LastIndoor.TryGetValue(key, out var reading)
-                && reading.Occupied && reading.Stage != 4)
+                && reading.Occupied && reading.Stage < PotWiltRule.RipeStage)
             .ToList();
 
     /// <summary>Water All, over the list <see cref="WaterablePots"/> returned.</summary>
