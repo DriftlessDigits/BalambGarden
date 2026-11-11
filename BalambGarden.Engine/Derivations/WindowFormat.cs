@@ -416,7 +416,10 @@ public static class WindowFormat
         => row.IsPot ? $"{estate}, pot" : $"{estate}, patch {row.PatchOrdinal + 1}, bed {row.BedSlot + 1}";
 
     /// <summary>Whose hand: "you" for this install's, "household" for every other until the labels land.</summary>
-    public static string HistoryHand(HistoryEntry row) => row.IsOwn ? "you" : "household";
+    public static string HistoryHand(HistoryEntry row) => row.IsOwn ? "you" : Household;
+
+    /// <summary>What every hand but this install's reads without a label.</summary>
+    public const string Household = "household";
 
     /// <summary>The Yield cell and whether it draws dim: blank on a plant; the items gathered when
     /// the harvest's yield was heard, else "-" (not heard).</summary>
@@ -462,4 +465,35 @@ public static class WindowFormat
         HistoryKind.Plant => "Plants",
         _ => "Harvests",
     };
+
+    // ------------------------------------------------------------------ the settings window's foreign hands (rethink slice 10; on screen "Household hands")
+
+    /// <summary>The line under the section's heading when it lists a hand.</summary>
+    public const string HandsIntro = "Name the other installs that garden with you.";
+
+    /// <summary>The section with no foreign hand on record. True with sync off as well: nothing has
+    /// been heard.</summary>
+    public const string NoForeignHands =
+        "No household hands heard yet. Each install that gardens with you through household sync shows up here to be named.";
+
+    /// <summary>The label box's hover.</summary>
+    public const string AliasHover = "Your name for this hand. Left empty, it reads \"household\".\n"
+        + "Kept in this install's settings only, never sent.\n"
+        + "Changing the household phrase clears every name.";
+
+    /// <summary>The tag's hover.</summary>
+    public const string SlugHover = "The tag its receipts carry: a random code, never a name.";
+
+    /// <summary>What tells one hand from another: how many of the history's rows are its and the newest
+    /// of them, "382 plants and harvests on record, the last: planted Krakka Root at FC Estate, Nov 7
+    /// 6:18 pm."; with one, "1 plant or harvest on record: ..."; a tag only the ledger holds, "No plant
+    /// or harvest on record yet." Says "on record", never "last" alone: the history can lag the garden.</summary>
+    public static string HandSeen(SeenHand hand, Func<ushort, string> speciesName)
+    {
+        if (hand.Last is not { } last)
+            return "No plant or harvest on record yet.";
+        var count = hand.OnRecord == 1 ? "1 plant or harvest on record:" : $"{hand.OnRecord} plants and harvests on record, the last:";
+        return $"{count} {HistoryAct(last.Entry.Kind)} {speciesName(last.Entry.Species)} at {last.EstateName}, "
+               + $"{ShortDay(last.LocalAt)} {Clock(last.LocalAt, withDay: false)}.";
+    }
 }
