@@ -175,13 +175,13 @@ public sealed class ClaimedBed
 
     /// <summary>A LIVE pot read's wilt, already judged by the pot wilt rule: wilting stamps
     /// <see cref="WiltSeenAt"/> with this read; not wilting clears it (the game shows the pot is
-    /// not thirsty, ripe included). Not wilting while <paramref name="growing"/> (below ripe: a
-    /// ripe or dead plant cannot wilt, so its byte proves nothing) also stamps
-    /// <see cref="SeenFineAt"/>, the clock's floor.</summary>
-    public void SightWilt(DateTimeOffset at, bool wilting, bool growing)
+    /// not thirsty, ripe included). Not wilting at a <paramref name="stage"/> below ripe (a ripe or
+    /// dead plant cannot wilt, so its byte proves nothing) also stamps <see cref="SeenFineAt"/>,
+    /// the clock's floor.</summary>
+    public void SightWilt(DateTimeOffset at, bool wilting, byte stage)
     {
         WiltSeenAt = wilting ? at : null;
-        if (!wilting && growing)
+        if (!wilting && stage < GardenStage.Ripe)
             SeenFineAt = at;
     }
 

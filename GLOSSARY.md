@@ -272,7 +272,7 @@ The last instant this install's live map read showed a pot wilting under the pot
 _Avoid_: wilt flag (the raw byte), wilt state, saved wilt
 
 **Seen fine**:
-The last instant this install's live map read showed a growing pot (below ripe) not wilting. A crop not wilting was watered within its wilt hours, so it floors the pot's wilt clock at that instant minus them: a bound, never a receipt. A pot whose clock rests on the floor alone has its deadline at the look itself, so it reads water soon with a "?" ("may wilt any time - water to be safe"), never wilting, and dying from the floor's dying point. Said "seen fine 10m ago". Local only, like the wilt sighting; cleared by a reset.
+The last instant this install's live map read showed a growing pot (below ripe) not wilting. A crop not wilting was watered within its wilt hours, so it floors the pot's wilt clock at that instant minus them: a bound, never a receipt. A pot whose clock rests on the floor alone has its deadline at the look itself, so it reads water soon with a "?" ("may wilt any time - water to be safe"), never wilting, and dying ("may be dying - water now") from the floor's dying point, the earliest it could be. Said "seen fine 10m ago". Local only, like the wilt sighting; cleared by a reset.
 _Avoid_: watered (nothing was recorded), last checked, fine sighting
 
 **Tend sweep**:

@@ -86,7 +86,7 @@ public class LedgerTests
         var store = new LedgerStore();
         var pot = new ClaimedBed { Estate = Gardener, MapKey = 4, PatchOrdinal = 4, BedSlot = 0, IsPot = true, FirstRecorded = T0 };
         Seed.Sight(pot, T0, 0x41, 2);
-        pot.SightWilt(T0, wilting: true, growing: true);
+        pot.SightWilt(T0, wilting: true, stage: 2);
         store.Beds.Add(pot);
 
         var restored = Assert.Single(LedgerStore.FromJson(store.ToJson()).Beds);
@@ -161,7 +161,7 @@ public class LedgerTests
         var store = new LedgerStore();
         var pot = new ClaimedBed { Estate = Gardener, MapKey = 4, PatchOrdinal = 4, BedSlot = 0, IsPot = true, FirstRecorded = T0 };
         Seed.Sight(pot, T0, 0x41, 2);
-        pot.SightWilt(T0, wilting: false, growing: true);
+        pot.SightWilt(T0, wilting: false, stage: 2);
         store.Beds.Add(pot);
 
         var restored = Assert.Single(LedgerStore.FromJson(store.ToJson()).Beds);

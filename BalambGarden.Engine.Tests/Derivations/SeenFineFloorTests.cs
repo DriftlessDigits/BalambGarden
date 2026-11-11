@@ -78,7 +78,7 @@ public class SeenFineFloorTests
         Assert.Equal(Seen.AddHours(24), cell.DiesAt);
         Assert.Equal(Seen, card.WaterBy);
         Assert.Equal(ContainerLook.WaterSoon, card.Thirst);
-        Assert.Equal(Seen, card.DeadlineSeenFineAt);
+        Assert.Equal(new SeenFineDeadline(Seen, MayBeDying: false), card.DeadlineSeenFine);
         Assert.Equal(0, card.PotsWilting);
     }
 
@@ -89,7 +89,9 @@ public class SeenFineFloorTests
         Read(1, Seen, stage: 2, wilt: 0);
 
         Assert.Equal(ContainerLook.WaterSoon, Cell(Card(Seen.AddHours(12).AddMinutes(-1)), 1).Look);
-        Assert.Equal(ContainerLook.Dying, Cell(Card(Seen.AddHours(12)), 1).Look);
+        var dying = Card(Seen.AddHours(12));
+        Assert.Equal(ContainerLook.Dying, Cell(dying, 1).Look);
+        Assert.Equal(new SeenFineDeadline(Seen, MayBeDying: true), dying.DeadlineSeenFine);   // the headline follows the cell
     }
 
     [Fact] // no watering or sowing recorded at all: the floor alone is a clock
@@ -117,7 +119,7 @@ public class SeenFineFloorTests
         Assert.Equal(ContainerLook.Growing, cell.Look);
         Assert.Null(cell.SeenFineAt);
         Assert.Equal(Seen.AddMinutes(5).AddHours(24), cell.WaterBy);
-        Assert.Null(card.DeadlineSeenFineAt);
+        Assert.Null(card.DeadlineSeenFine);
     }
 
     [Fact] // watered two hours before the look: the floor (a day before it) is older and changes nothing
@@ -235,7 +237,7 @@ public class SeenFineFloorTests
 
         Assert.Equal(ContainerLook.WaterSoon, Cell(card, 1).Look);
         Assert.Equal(Seen, Cell(card, 1).SeenFineAt);
-        Assert.Equal(Seen, card.DeadlineSeenFineAt);
+        Assert.Equal(new SeenFineDeadline(Seen, MayBeDying: false), card.DeadlineSeenFine);
     }
 
     [Fact] // the lane's water bar is one real clock: on the floor it starts at the look, not a day before it
@@ -259,13 +261,15 @@ public class SeenFineFloorTests
 
         var floorFirst = Card();
         Assert.Equal(Seen, floorFirst.WaterBy);
-        Assert.Equal(Seen, floorFirst.DeadlineSeenFineAt);
+        Assert.Equal(Seen, floorFirst.DeadlineSeenFine?.SeenAt);
         Assert.Equal(1, floorFirst.FirstToWilt.Pots);
 
         Sown(3, Now.AddDays(-2));        // recorded, never seen fine since: its deadline came first
 
         var recordedFirst = Card();
         Assert.Equal(Now.AddDays(-1), recordedFirst.WaterBy);
-        Assert.Null(recordedFirst.DeadlineSeenFineAt);
+        Assert.Null(recordedFirst.DeadlineSeenFine);
+        Assert.False(recordedFirst.Lane.SeenFine);                 // the bar and the headline agree
+        Assert.Equal(Now.AddDays(-2), recordedFirst.Lane.WaterFrom);
     }
 }

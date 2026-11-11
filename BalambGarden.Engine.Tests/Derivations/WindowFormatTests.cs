@@ -323,22 +323,28 @@ public class WindowFormatTests
     {
         Assert.Equal("seen fine 10m ago", WindowFormat.SeenFine(Now.AddMinutes(-10), Now));
         Assert.Equal("seen fine 10m ago - no watering recorded",
-            WindowFormat.FloorClock(Now.AddMinutes(-10), lastTended: null, Now));
+            WindowFormat.SeenFineClock(Now.AddMinutes(-10), lastTended: null, Now));
         Assert.Equal("seen fine 10m ago - last watering recorded 2d ago",
-            WindowFormat.FloorClock(Now.AddMinutes(-10), Now.AddDays(-2), Now));
+            WindowFormat.SeenFineClock(Now.AddMinutes(-10), Now.AddDays(-2), Now));
         Assert.Equal("A pot: seen fine 10m ago",
             WindowFormat.WaterFrom(new ContainerCount(0, 1, null), fromSowing: false, Now.AddMinutes(-10), Now, seenFine: true));
     }
 
-    [Fact] // rethink slice 21 (provisional, slice 14): the act, not the mechanism - "rewater to be safe"
+    [Fact] // rethink slice 21: the act, not the mechanism ("best thing to do is rewater to be safe", ruled 2026-11-10)
     public void APotOnTheFloorSaysToWaterToBeSafe()
     {
-        Assert.Equal("water to be safe", WindowFormat.WaterToBeSafe);
-        Assert.Equal("may wilt any time - water to be safe", WindowFormat.MayWiltLine);
-        Assert.Equal("A pot may wilt any time", WindowFormat.MayWilt(new ContainerCount(0, 1, null)));
-        Assert.Equal("2 pots may wilt any time", WindowFormat.MayWilt(new ContainerCount(0, 2, null)));
-        Assert.Equal("may wilt any time - water to be safe", WindowFormat.FloorThirstLine(ContainerLook.WaterSoon, Now.AddHours(12), Now));
-        Assert.Equal("may wilt any time - water to be safe", WindowFormat.FloorThirstLine(ContainerLook.Growing, Now.AddHours(12), Now));
-        Assert.StartsWith("dying: withers ~", WindowFormat.FloorThirstLine(ContainerLook.Dying, Now.AddHours(12), Now));
+        var fine = new SeenFineDeadline(Now.AddMinutes(-10), MayBeDying: false);
+        var dying = new SeenFineDeadline(Now.AddHours(-12), MayBeDying: true);
+        var pot = new ContainerCount(0, 1, null);
+
+        Assert.Equal(("water to be safe", "seen fine 10m ago"), WindowFormat.Headline(Now.AddMinutes(-10), fine, Now));
+        Assert.Equal(("water now", "seen fine 12h ago"), WindowFormat.Headline(Now.AddHours(-12), dying, Now));
+        Assert.Equal(("water now", "1h over"), WindowFormat.Headline(Now.AddHours(-1), seenFine: null, Now));
+        Assert.Equal("A pot may wilt any time", WindowFormat.HeadlineHover(pot, Now, fine));
+        Assert.Equal("2 pots may be dying", WindowFormat.HeadlineHover(new ContainerCount(0, 2, null), Now, dying));
+        Assert.Equal("water to be safe", WindowFormat.DropHead(Now.AddMinutes(-10), fine, Now));
+        Assert.Equal("may wilt any time - water to be safe", WindowFormat.SeenFineThirstLine(ContainerLook.WaterSoon));
+        Assert.Equal("may wilt any time - water to be safe", WindowFormat.SeenFineThirstLine(ContainerLook.Growing));
+        Assert.Equal("may be dying - water now", WindowFormat.SeenFineThirstLine(ContainerLook.Dying));
     }
 }

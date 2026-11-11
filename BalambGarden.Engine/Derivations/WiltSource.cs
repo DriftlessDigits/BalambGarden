@@ -57,20 +57,21 @@ public sealed class ClockWiltSource : IWiltSource
     /// a ripe plant (cannot wilt), a dead one (stage 5, past wilting - the same test covers
     /// both), and a record with neither receipt.</summary>
     public static DateTimeOffset? RecordedStart(ClaimedBed bed)
-        => bed.Latest is { Stage: >= GardenStage.Ripe } ? null : bed.LastTended ?? bed.PlantedAt;
+        => PastWilting(bed) ? null : bed.LastTended ?? bed.PlantedAt;
 
     /// <summary>The floor a pot seen fine puts under its clock (rethink slice 21, spec ruling 23): a
     /// growing pot the room showed not wilting at T was watered after T minus its wilt hours, or it
     /// would have been wilting. A bound, never a receipt. Pots only (beds show no wilt in any game
     /// data); null where the clock makes no claim.</summary>
-    public static DateTimeOffset? Floor(ClaimedBed bed, Crop crop)
-        => bed.IsPot && bed.SeenFineAt is { } seen && bed.Latest is not { Stage: >= GardenStage.Ripe }
-            ? seen.AddHours(-crop.WiltHours)
-            : null;
+    public static DateTimeOffset? SeenFineFloor(ClaimedBed bed, Crop crop)
+        => bed.IsPot && bed.SeenFineAt is { } seen && !PastWilting(bed) ? seen.AddHours(-crop.WiltHours) : null;
+
+    /// <summary>A plant read ripe or dead makes no water claim: fully grown cannot wilt, dead is past it.</summary>
+    private static bool PastWilting(ClaimedBed bed) => bed.Latest is { Stage: >= GardenStage.Ripe };
 
     /// <summary>Where the wilt clock starts: the later of the recorded start and the seen-fine floor.</summary>
     public static DateTimeOffset? ClockStart(ClaimedBed bed, Crop crop)
-        => (RecordedStart(bed), Floor(bed, crop)) switch
+        => (RecordedStart(bed), SeenFineFloor(bed, crop)) switch
         {
             ({ } recorded, { } floor) => floor > recorded ? floor : recorded,
             (var recorded, var floor) => recorded ?? floor,
@@ -80,8 +81,8 @@ public sealed class ClockWiltSource : IWiltSource
     /// recorded watering or sowing (a tie goes to the receipt). Its deadline is then the look
     /// itself, and the board draws it "water soon" with a "?", never wilting (ruled 2026-11-10 at
     /// the plan call).</summary>
-    public static bool RestsOnFloor(ClaimedBed bed, Crop crop)
-        => Floor(bed, crop) is { } floor && (RecordedStart(bed) is not { } recorded || floor > recorded);
+    public static bool RestsOnSeenFineFloor(ClaimedBed bed, Crop crop)
+        => SeenFineFloor(bed, crop) is { } floor && (RecordedStart(bed) is not { } recorded || floor > recorded);
 
     /// <summary>The water deadline: when this bed or pot reaches its crop's wilt hours if nobody
     /// waters it. Null wherever <see cref="ClockStart"/> is.</summary>

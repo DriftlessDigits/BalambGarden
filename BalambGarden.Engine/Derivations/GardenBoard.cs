@@ -91,24 +91,30 @@ public sealed record Standing(EstateKey Estate, bool Inside, IReadOnlyDictionary
 /// anywhere else, the pots this install last saw wilting and has not heard watered, harvested or
 /// replanted since, with <see cref="PotsWiltingSeenAt"/> the newest of those sightings (null on the
 /// live read). A pot wilting by its clock alone is not among them: it speaks as a wilting bed does,
-/// in its cell and the deadline (ruling 23). <see cref="DeadlineSeenFineAt"/> is set when every pot
+/// in its cell and the deadline (ruling 23). <see cref="DeadlineSeenFine"/> is set when every pot
 /// that sets the deadline rests on the seen-fine floor alone (rethink slice 21): the deadline is
-/// then the look itself, and the headline says to water to be safe rather than "water now"; it
-/// carries the newest of those looks.</summary>
+/// then the look itself, so the headline says what to do rather than "water now ... over".</summary>
 public sealed record VisitCard(
     EstateRecord Estate, DateTimeOffset? WaterBy, ContainerCount FirstToWilt, ContainerLook Thirst,
     ContainerCount Worst, ContainerCount TendUnheard,
     ContainerCount Water, int Harvest, int RipeNow, int Replant, ContainerCount Dead,
     int PotsWilting, DateTimeOffset? PotsWiltingSeenAt,
     IReadOnlyList<RipeGroup> Ripe, IReadOnlyList<PatchPicture> Patches, TimelineLane Lane,
-    DateTimeOffset? DeadlineSeenFineAt = null);
+    SeenFineDeadline? DeadlineSeenFine = null);
+
+/// <summary>A card deadline that rests on the seen-fine floor alone (rethink slice 21):
+/// <see cref="SeenAt"/> is the newest look at the pots that set it; <see cref="MayBeDying"/> once
+/// any of them has passed its floor's dying point (the earliest it could be dying).</summary>
+public sealed record SeenFineDeadline(DateTimeOffset SeenAt, bool MayBeDying);
 
 /// <summary>A card's lane on the timeline under the cards (ruling 17). <see cref="WaterFrom"/> is
 /// where the water bar starts: the clock start of the bed or pot that sets the card's water
 /// deadline, so the bar is one real clock, from its watering (or sowing) to the deadline drop; null
 /// when nothing carries a clock. <see cref="FromSowing"/>: that start is a sowing, no watering
-/// recorded. <see cref="SeenFine"/>: that clock rests on the seen-fine floor alone, so the bar
-/// starts at the look (the last thing the plugin knows), never at the floor a day before it.</summary>
+/// recorded. <see cref="SeenFine"/>: the card's deadline rests on the seen-fine floor alone
+/// (<see cref="VisitCard.DeadlineSeenFine"/>), so the bar starts at the look, the last thing the
+/// plugin knows, never at the floor a day before it: the deadline is that look, so only the drop
+/// shows.</summary>
 public sealed record TimelineLane(DateTimeOffset? WaterFrom, IReadOnlyList<LaneMark> Marks, bool FromSowing = false,
     bool SeenFine = false);
 
@@ -260,11 +266,18 @@ public static class GardenBoard
         // The note counts what the game showed; a pot wilting by its clock alone speaks in its cell.
         var potsWilting = cells.Where(c => c.WiltShown).ToList();
 
-        // The water bar is the clock of the one that sets the deadline; on the seen-fine floor it
-        // starts at the look.
-        var barSetter = firstToWilt.MinBy(c => ClockWiltSource.ClockStart(c.Bed!, tables.CropBySpeciesIndex(c.Species)!));
-        var barFrom = barSetter is null ? null
-            : barSetter.SeenFineAt ?? ClockWiltSource.ClockStart(barSetter.Bed!, tables.CropBySpeciesIndex(barSetter.Species)!);
+        // The deadline rests on the seen-fine floor when every bed or pot setting it does (slice 21).
+        var seenFine = firstToWilt.Count > 0 && firstToWilt.All(c => c.SeenFineAt is not null)
+            ? new SeenFineDeadline(firstToWilt.Max(c => c.SeenFineAt!.Value), firstToWilt.Any(c => c.Look == ContainerLook.Dying))
+            : null;
+
+        // The water bar is the clock of the one that sets the deadline: on the floor it starts at the
+        // look; otherwise at the earliest recorded clock among the setters not on the floor (theirs
+        // is the recorded start, the floor being no later).
+        var barSetter = seenFine is null
+            ? firstToWilt.Where(c => c.SeenFineAt is null).MinBy(c => ClockWiltSource.RecordedStart(c.Bed!))
+            : null;
+        var barFrom = seenFine?.SeenAt ?? (barSetter is null ? null : ClockWiltSource.RecordedStart(barSetter.Bed!));
 
         return new VisitCard(estate, waterBy,
             FirstToWilt: ContainerCount.Of(firstToWilt),
@@ -283,11 +296,9 @@ public static class GardenBoard
                     .Concat(ripe.Select(Mark))
                     .Where(m => m.From <= Span(now).To)
                     .ToList(),
-                FromSowing: barSetter is { SeenFineAt: null } && barSetter.Bed!.LastTended is null,
-                SeenFine: barSetter is { SeenFineAt: not null }),
-            DeadlineSeenFineAt: firstToWilt.Count > 0 && firstToWilt.All(c => c.SeenFineAt is not null)
-                ? firstToWilt.Max(c => c.SeenFineAt)
-                : null);
+                FromSowing: barSetter is not null && barSetter.Bed!.LastTended is null,
+                SeenFine: seenFine is not null),
+            seenFine);
     }
 
     /// <summary>The water looks a card's thirst can take, worst first.</summary>
@@ -399,11 +410,11 @@ public static class GardenBoard
         // A pot whose clock rests on the seen-fine floor alone was fine at the look, so past its
         // floor's wilt hours it may wilt any time, not "is wilting" (ruled 2026-11-10 at slice 21's
         // plan call): water soon until the floor's dying point.
-        var onFloor = !ripe && crop is not null && ClockWiltSource.RestsOnFloor(bed, crop);
+        var onSeenFineFloor = !ripe && crop is not null && ClockWiltSource.RestsOnSeenFineFloor(bed, crop);
         var grown = ripe ? ContainerLook.Ripe : water switch
         {
             WaterState.Due => ContainerLook.WaterSoon,
-            WaterState.Overdue when onFloor => ContainerLook.WaterSoon,
+            WaterState.Overdue when onSeenFineFloor => ContainerLook.WaterSoon,
             WaterState.Overdue => ContainerLook.Wilting,
             WaterState.Danger => ContainerLook.Dying,
             _ => ContainerLook.Growing,
@@ -420,6 +431,6 @@ public static class GardenBoard
             window, bed,
             DiesAt: crop is null ? null : ClockWiltSource.DiesAt(bed, crop),
             NeverWilts: crop is null && tables.GrowHours(latest.SpeciesIndex) is not null,
-            SeenFineAt: onFloor ? bed.SeenFineAt : null);
+            SeenFineAt: onSeenFineFloor ? bed.SeenFineAt : null);
     }
 }

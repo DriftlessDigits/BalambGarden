@@ -242,7 +242,7 @@ public static class WindowFormat
     /// <summary>A pot cell's clock line on the seen-fine floor: what the clock rests on, and what the
     /// plugin recorded under it. "seen fine 10m ago - no watering recorded", "seen fine 10m ago -
     /// last watering recorded 2d ago".</summary>
-    public static string FloorClock(DateTimeOffset seenFine, DateTimeOffset? lastTended, DateTimeOffset now)
+    public static string SeenFineClock(DateTimeOffset seenFine, DateTimeOffset? lastTended, DateTimeOffset now)
         => $"{SeenFine(seenFine, now)} - "
            + (lastTended is { } tended ? $"last watering recorded {Ago(tended, now)}" : "no watering recorded");
 
@@ -250,18 +250,40 @@ public static class WindowFormat
     /// the deadline is the look itself (ruled 2026-11-10: "best thing to do is rewater to be safe").</summary>
     public const string WaterToBeSafe = "water to be safe";
 
-    /// <summary>The headline's hover on the seen-fine floor: "A pot may wilt any time".</summary>
-    public static string MayWilt(ContainerCount count) => $"{Capital(Containers(count))} may wilt any time";
-
     /// <summary>A pot cell's water line on the seen-fine floor, in place of "water soon: past three
     /// quarters of its wilt hours".</summary>
     public const string MayWiltLine = "may wilt any time - water to be safe";
 
-    /// <summary>A pot cell's water line on the seen-fine floor: <see cref="MayWiltLine"/> through
-    /// its wilting band (and wherever the room's live read shows it fine), the dying line from the
-    /// floor's dying point. Caller converts both instants to local time.</summary>
-    public static string FloorThirstLine(ContainerLook look, DateTimeOffset? diesAt, DateTimeOffset now)
-        => look == ContainerLook.Dying ? ThirstLine(look, diesAt, now)! : MayWiltLine;
+    /// <summary>A pot cell's water line on the seen-fine floor from its dying point, the earliest it
+    /// could be dying.</summary>
+    public const string MayBeDyingLine = "may be dying - water now";
+
+    /// <summary>A pot cell's water line on the seen-fine floor: <see cref="MayBeDyingLine"/> from the
+    /// floor's dying point, else <see cref="MayWiltLine"/> (its wilting band, or the room's live read
+    /// showing it fine).</summary>
+    public static string SeenFineThirstLine(ContainerLook look)
+        => look == ContainerLook.Dying ? MayBeDyingLine : MayWiltLine;
+
+    /// <summary>The card's headline and the dim words beside it. Normally the deadline and its
+    /// countdown ("water by tonight ~7:44 pm", "in 27m"); on the seen-fine floor, the act and when the
+    /// pots were seen ("water to be safe", "seen fine 10m ago"; "water now" once they may be dying).
+    /// Caller converts <paramref name="by"/> and <paramref name="now"/> to local time.</summary>
+    public static (string Text, string Aside) Headline(DateTimeOffset by, SeenFineDeadline? seenFine, DateTimeOffset now)
+        => seenFine is null
+            ? (WaterBy(by, now), Countdown(by, now))
+            : (seenFine.MayBeDying ? "water now" : WaterToBeSafe, SeenFine(seenFine.SeenAt, now));
+
+    /// <summary>The headline's hover: what wilts first and when ("A pot wilts at Sun 6:14 pm"); on the
+    /// seen-fine floor, "A pot may wilt any time" or, from its dying point, "A pot may be dying".
+    /// Caller converts <paramref name="by"/> to local time.</summary>
+    public static string HeadlineHover(ContainerCount count, DateTimeOffset by, SeenFineDeadline? seenFine)
+        => seenFine is null ? FirstToWilt(count, by)
+            : $"{Capital(Containers(count))} may {(seenFine.MayBeDying ? "be dying" : "wilt any time")}";
+
+    /// <summary>The first line of the water drop's hover: the deadline and its countdown, or on the
+    /// seen-fine floor the headline's own words. Caller converts both instants to local time.</summary>
+    public static string DropHead(DateTimeOffset by, SeenFineDeadline? seenFine, DateTimeOffset now)
+        => seenFine is null ? $"{WaterBy(by, now)} ({Countdown(by, now)})" : Headline(by, seenFine, now).Text;
 
     /// <summary>A pot cell's hover when the game itself showed it wilting: "game shows it wilting"
     /// on the live read in its room (<paramref name="seenAt"/> null), "seen wilting 12m ago" from

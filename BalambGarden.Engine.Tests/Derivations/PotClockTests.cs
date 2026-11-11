@@ -185,9 +185,9 @@ public class PotClockTests
     {
         var seen = Now.AddMinutes(-12);
         var fine = Seed.Sight(Seed.Plant(Pot(Room, 1), Now.AddHours(-2), Krakka, stage: 1), seen, Krakka, stage: 1);
-        fine.SightWilt(seen, wilting: true, growing: true);
+        fine.SightWilt(seen, wilting: true, stage: 2);
         var dying = Seed.Sight(Seed.Plant(Pot(Room, 2), Now.AddHours(-40), Krakka, stage: 1), seen, Krakka, stage: 1);
-        dying.SightWilt(seen, wilting: true, growing: true);
+        dying.SightWilt(seen, wilting: true, stage: 2);
 
         var card = OneCard([fine, dying]);
 
