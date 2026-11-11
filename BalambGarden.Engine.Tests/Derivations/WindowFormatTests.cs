@@ -391,68 +391,40 @@ public class WindowFormatTests
 
     private static string SplitCrop(ushort species) => species switch { 49 => "Krakka Root", 65 => "Old World Fig", _ => "?" };
 
-    private static string SplitSoil(uint item) => WindowFormat.SoilName(item switch
-    {
-        7766 => "Grade 3 Thanalan Topsoil",
-        7763 => "Grade 3 Shroud Topsoil",
-        16026 => "Potting Soil",
-        _ => null,
-    }, item);
-
     private static YieldRow Row(int planted) => new(17, false, planted, 0, 0, planted, 0, 0, 0, null, []);
 
-    [Fact] // rethink slice 8: the glossary avoids "topsoil", the game's word
-    public void ASoilReadsWithoutTheGamesTopsoil()
+    [Fact] // rethink slice 8: the words of the plan mock
+    public void ASplitRowNamesItsPartner()
     {
-        Assert.Equal("Grade 3 Thanalan", SplitSoil(7766));
-        Assert.Equal("Potting Soil", SplitSoil(16026));
-        Assert.Equal("soil 9999", SplitSoil(9999));
+        Assert.Equal("beside Krakka Root", WindowFormat.PartnerLabel(Partner.Beside(49), SplitCrop));
+        Assert.Equal("no partner", WindowFormat.PartnerLabel(Partner.NoPartner, SplitCrop));
+        Assert.Equal("partner not recorded", WindowFormat.PartnerLabel(Partner.NotRecorded, SplitCrop));
     }
 
     [Fact]
-    public void ASplitRowNamesItsPartnerItsSoilOrBoth()
+    public void TheCropHoverCountsThePartnersItsSowingsRecorded()
     {
-        Assert.Equal("beside Krakka Root", WindowFormat.SplitLabel(Row(1) with { Partner = Partner.Beside(49) }, SplitCrop, SplitSoil));
-        Assert.Equal("no partner", WindowFormat.SplitLabel(Row(1) with { Partner = Partner.NoPartner }, SplitCrop, SplitSoil));
-        Assert.Equal("partner not recorded", WindowFormat.SplitLabel(Row(1) with { Partner = Partner.NotRecorded }, SplitCrop, SplitSoil));
-        Assert.Equal("Grade 3 Shroud", WindowFormat.SplitLabel(Row(1) with { Soil = new SowSoil(7763) }, SplitCrop, SplitSoil));
-        Assert.Equal("soil not recorded", WindowFormat.SplitLabel(Row(1) with { Soil = new SowSoil(null) }, SplitCrop, SplitSoil));
-        Assert.Equal("beside Old World Fig · Grade 3 Thanalan",
-            WindowFormat.SplitLabel(Row(1) with { Partner = Partner.Beside(65), Soil = new SowSoil(7766) }, SplitCrop, SplitSoil));
-        Assert.Equal("beside Old World Fig · soil not recorded",
-            WindowFormat.SplitLabel(Row(1) with { Partner = Partner.Beside(65), Soil = new SowSoil(null) }, SplitCrop, SplitSoil));
-        Assert.Equal("partner and soil not recorded",
-            WindowFormat.SplitLabel(Row(1) with { Partner = Partner.NotRecorded, Soil = new SowSoil(null) }, SplitCrop, SplitSoil));
-    }
-
-    [Fact]
-    public void TheCropHoverCountsThePartnersAndSoilsItsSowingsRecorded()
-    {
-        // Mirror Apple at orient: 24 sown since v0.4.1, 12 beside each partner, all Grade 3 Thanalan.
+        // Mirror Apple at orient: 24 sown since v0.4.1, 12 beside each partner (the plan mock's line).
         var mirror = Row(95) with
         {
-            Partners = [new PartnerCount(Partner.Beside(49), 12), new PartnerCount(Partner.Beside(65), 12)],
-            Soils = [new SoilCount(7766, 24)],
+            Partners = [new PartnerCount(Partner.Beside(65), 12), new PartnerCount(Partner.Beside(49), 12)],
         };
-        Assert.Equal(
-            "Of 95 planted:\nbeside Krakka Root 12 · beside Old World Fig 12 · partner not recorded 71\nGrade 3 Thanalan 24 · soil not recorded 71",
-            WindowFormat.SowingHover(mirror, SplitCrop, SplitSoil));
+        Assert.Equal("Of 95 planted:\nbeside Old World Fig 12 · beside Krakka Root 12 · partner not recorded 71",
+            WindowFormat.PartnerHover(mirror, SplitCrop));
 
         // Every sowing recorded, one with nothing to cross with.
         var whole = Row(3) with
         {
             Partners = [new PartnerCount(Partner.Beside(49), 2), new PartnerCount(Partner.NoPartner, 1)],
-            Soils = [new SoilCount(7766, 3)],
         };
-        Assert.Equal("Of 3 planted:\nbeside Krakka Root 2 · no partner 1\nGrade 3 Thanalan 3",
-            WindowFormat.SowingHover(whole, SplitCrop, SplitSoil));
+        Assert.Equal("Of 3 planted:\nbeside Krakka Root 2 · no partner 1", WindowFormat.PartnerHover(whole, SplitCrop));
 
-        // A pot crop: soil only.
-        var onion = Row(20) with { Soils = [new SoilCount(16026, 5)] };
-        Assert.Equal("Of 20 planted:\nPotting Soil 5 · soil not recorded 15", WindowFormat.SowingHover(onion, SplitCrop, SplitSoil));
+        // The singular.
+        var one = Row(1) with { Partners = [new PartnerCount(Partner.Beside(49), 1)] };
+        Assert.Equal("Of 1 planted:\nbeside Krakka Root 1", WindowFormat.PartnerHover(one, SplitCrop));
 
-        // Nothing recorded: no hover.
-        Assert.Null(WindowFormat.SowingHover(Row(48), SplitCrop, SplitSoil));
+        // No partner recorded (every crop before v0.4.1, every pot crop): no hover.
+        Assert.Null(WindowFormat.PartnerHover(Row(48), SplitCrop));
     }
 
     [Fact]

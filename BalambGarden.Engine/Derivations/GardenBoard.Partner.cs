@@ -16,11 +16,8 @@ public readonly record struct Partner(PartnerKind Kind, ushort Species = 0)
     public static Partner NotRecorded => new(PartnerKind.NotRecorded);
 }
 
+/// <summary>In the order the yield book lists a crop's split rows: partners, then no partner, then not recorded.</summary>
 public enum PartnerKind { Beside, NoPartner, NotRecorded }
-
-/// <summary>A sowing's soil as a split of the yield book: the soil's item id, or null when the
-/// sowing's soil was not heard (every sowing before v0.4.1, a hand sow with no sow question heard).</summary>
-public readonly record struct SowSoil(uint? Item);
 
 public static partial class GardenBoard
 {

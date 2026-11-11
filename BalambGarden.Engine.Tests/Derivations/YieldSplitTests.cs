@@ -7,10 +7,10 @@ using Xunit;
 
 namespace BalambGarden.Engine.Tests.Derivations;
 
-/// <summary>The yield book's splits through the garden board's seam (rethink slice 8, rulings 10
-/// and 12): sowings with their patch at sow and soil go in, a crop's rows by partner and by soil
-/// come out. The partner is worked out from the patch at sow by the crossbreed walk (right, down,
-/// up, left on the patch's grid, first valid partner wins), never stored.</summary>
+/// <summary>The yield book's partner split through the garden board's seam (rethink slice 8,
+/// ruling 12): sowings with their patch at sow go in, a crop's rows by partner come out; soil splits
+/// nothing (ruled 2026-11-11). The partner is worked out from the patch at sow by the crossbreed
+/// walk (right, down, up, left on the patch's grid, first valid partner wins), never stored.</summary>
 public class YieldSplitTests
 {
     private static readonly DomainTables T = DomainTables.Load();
@@ -83,7 +83,6 @@ public class YieldSplitTests
         var fig = mirror.Splits[1];
         Assert.Equal((1, 1, new CrossRate(1, 1)), (fig.Planted, fig.Harvested, fig.Cross));
         Assert.Equal([new SeedShare(KukuruSeeds, 1, 100)], fig.Seeds);
-        Assert.All(mirror.Splits, s => Assert.Null(s.Soil));
     }
 
     [Fact]
@@ -217,60 +216,23 @@ public class YieldSplitTests
         Assert.Empty(mirror.Partners);
     }
 
-    [Fact]
-    public void OneSoilDoesNotSplitAndRidesTheHover()
+    [Fact] // ruled 2026-11-11 over ruling 10: "Off the table. We only really use Thav grade 3 or potting soil"
+    public void SoilSplitsNothing()
     {
+        // Harvests from two soils and one with none recorded: still one Krakka Root row, and no hover.
         var krakka = Bed(History(
                 Grown(Krakka, 0, 1, null, Thanalan3),
-                Grown(Krakka, 1, 1, null, Thanalan3),
-                [Plant(T0, Krakka, 2, 1, null, Shroud3)],
-                Grown(Krakka, 3, 1, null, null)),
+                Grown(Krakka, 1, 1, null, Shroud3),
+                Grown(Krakka, 2, 1, null, null)),
             Krakka);
 
-        // The Shroud sowing is still in the ground: harvests come from one soil only.
+        Assert.Equal((3, 3), (krakka.Planted, krakka.Harvested));
         Assert.Empty(krakka.Splits);
-        Assert.Equal([new SoilCount(Thanalan3, 2), new SoilCount(Shroud3, 1)], krakka.Soils);
+        Assert.Empty(krakka.Partners);
     }
 
     [Fact]
-    public void TwoSoilsSplitTheCropIntoARowPerSoil()
-    {
-        var krakka = Bed(History(
-                Grown(Krakka, 0, 1, null, Thanalan3),
-                Grown(Krakka, 1, 1, null, Thanalan3),
-                Grown(Krakka, 2, 1, null, Shroud3, 0, null),
-                Grown(Krakka, 3, 1, null, null)),
-            Krakka);
-
-        Assert.Equal(
-            [new SowSoil(Thanalan3), new SowSoil(Shroud3), new SowSoil(null)],
-            krakka.Splits.Select(s => s.Soil!.Value));
-        Assert.Equal((2, new CrossRate(2, 2)), (krakka.Splits[0].Harvested, krakka.Splits[0].Cross));
-        Assert.Equal((1, new CrossRate(0, 1)), (krakka.Splits[1].Harvested, krakka.Splits[1].Cross));
-        Assert.All(krakka.Splits, s => Assert.Null(s.Partner));
-        Assert.Empty(krakka.Soils);
-    }
-
-    [Fact]
-    public void ACropSplitByPartnerAndSoilGetsARowForEachPairHeard()
-    {
-        var mirror = Bed(History(
-                Grown(Mirror, 0, 1, BesideKrakka, Thanalan3),
-                Grown(Mirror, 1, 1, BesideKrakka, Shroud3),
-                Grown(Mirror, 2, 1, BesideFig, Thanalan3)),
-            Mirror);
-
-        Assert.Equal(
-            [
-                (Partner.Beside(Krakka), new SowSoil(Thanalan3)),
-                (Partner.Beside(Krakka), new SowSoil(Shroud3)),
-                (Partner.Beside(Fig), new SowSoil(Thanalan3)),
-            ],
-            mirror.Splits.Select(s => (s.Partner!.Value, s.Soil!.Value)));
-    }
-
-    [Fact]
-    public void PotsSplitBySoilButNeverByPartner()
+    public void PotsNeverSplitAndListNoPartner()
     {
         var book = GardenBoard.Yields(History(
                 [Plant(T0, Onion, 129, 0, soil: PottingSoil, pot: true), Harvest(T0.AddDays(4), Onion, 129, 0, pot: true)],
@@ -278,9 +240,7 @@ public class YieldSplitTests
             [], T);
 
         var onion = Assert.Single(book.Pots);
-        // One planting each: the soil first met comes first.
-        Assert.Equal([new SowSoil(PottingSoil), new SowSoil(Thanalan3)], onion.Splits.Select(s => s.Soil!.Value));
-        Assert.All(onion.Splits, s => Assert.Null(s.Partner));
+        Assert.Empty(onion.Splits);
         Assert.Empty(onion.Partners);
     }
 

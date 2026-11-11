@@ -109,7 +109,7 @@ internal static class YieldsTab
     /// <summary>How far a split row's name sits in from its crop's.</summary>
     private const float SplitIndent = 14f;
 
-    private static string SplitLabel(YieldRow split) => WindowFormat.SplitLabel(split, WindowText.CropName, WindowText.SoilName);
+    private static string SplitLabel(YieldRow split) => WindowFormat.PartnerLabel(split.Partner!.Value, WindowText.CropName);
 
     /// <summary>A crop's row, or with <paramref name="split"/> one of its split rows (rethink slice 8):
     /// its name dim and indented under the crop, the same columns after it.</summary>
@@ -121,7 +121,7 @@ internal static class YieldsTab
         if (split is null)
         {
             ImGui.TextUnformatted(WindowText.CropName(row.Species));
-            if (ImGui.IsItemHovered() && WindowFormat.SowingHover(row, WindowText.CropName, WindowText.SoilName) is { } hover)
+            if (ImGui.IsItemHovered() && WindowFormat.PartnerHover(row, WindowText.CropName) is { } hover)
                 ImGui.SetTooltip(hover);
         }
         else

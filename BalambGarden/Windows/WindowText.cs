@@ -1,6 +1,4 @@
 using System;
-using System.Collections.Generic;
-using BalambGarden.Chains;
 using BalambGarden.Engine.Derivations;
 using Dalamud.Bindings.ImGui;
 
@@ -33,17 +31,6 @@ internal static class WindowText
 
     /// <summary>A crop by its species number.</summary>
     public static string CropName(ushort species) => Plugin.Tables.SpeciesName(species);
-
-    /// <summary>A soil by name: the topsoil table's, else the game's item sheet (Potting Soil is in
-    /// no table), kept once read since the Yields tab asks every frame.</summary>
-    public static string SoilName(uint soil)
-    {
-        if (!SoilNames.TryGetValue(soil, out var name))
-            SoilNames[soil] = name = WindowFormat.SoilName(Plugin.Tables.SoilByItemId(soil)?.Name ?? PlantFlow.ItemName(soil), soil);
-        return name;
-    }
-
-    private static readonly Dictionary<uint, string> SoilNames = [];
 
     /// <summary>Text at full brightness, or in <see cref="Palette.TextDim"/>.</summary>
     public static void Text(string text, bool dim)
