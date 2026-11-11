@@ -380,4 +380,83 @@ public static class WindowFormat
     /// <summary>The seed shares' hover: the harvests behind each, "Sun Lemon 17 · Curiel Root 14".</summary>
     public static string SeedCounts(IEnumerable<SeedShare> seeds, Func<uint, string> name)
         => string.Join(" · ", seeds.Select(s => $"{name(s.SeedItem)} {s.Harvests}"));
+
+    // ------------------------------------------------------------------ the History tab (rethink slice 9)
+
+    /// <summary>The History tab with nothing on record. The history is read at plugin start, before
+    /// the window draws, so this always means the record is empty, never that it is still loading.</summary>
+    public const string NoHistory = "Nothing planted or harvested on record yet.";
+
+    /// <summary>The History tab when the filters hide every row of a record that has some.</summary>
+    public const string NoHistoryMatch = "No plants or harvests match these filters.";
+
+    /// <summary>The line over the rows: "527 on record since Oct 16" with no filter set; with one,
+    /// how many of the whole record it lets through ("36 of 527 match", "1 of 527 matches").</summary>
+    public static string HistoryCount(int shown, int total, DateTimeOffset since, bool filtered)
+        => filtered
+            ? $"{shown} of {total} {(shown == 1 ? "matches" : "match")}"
+            : $"{total} on record since {ShortDay(since)}";
+
+    /// <summary>A day's heading over its rows: "SAT NOV 7". Caller converts to local time first.</summary>
+    public static string HistoryDay(DateTimeOffset day)
+        => day.ToString("ddd MMM d", CultureInfo.InvariantCulture).ToUpperInvariant();
+
+    /// <summary>A row's time of day in the reader's clock: "6:18 pm". Caller converts to local time first.</summary>
+    public static string HistoryTime(DateTimeOffset at) => Clock(at, withDay: false);
+
+    /// <summary>What happened: "planted" or "harvested".</summary>
+    public static string HistoryAct(HistoryKind kind) => kind == HistoryKind.Plant ? "planted" : "harvested";
+
+    /// <summary>Where: "FC Estate, patch 3, bed 7"; a pot by its place alone, "Mama's Place, pot" (spec
+    /// ruling 23: "I don't really care about which pot, just where that pot is").</summary>
+    public static string HistoryWhere(string estate, HistoryEntry row)
+        => row.IsPot ? $"{estate}, pot" : $"{estate}, patch {row.PatchOrdinal + 1}, bed {row.BedSlot + 1}";
+
+    /// <summary>Whose hand: "you" for this install's, "household" for every other until the labels land.</summary>
+    public static string HistoryHand(HistoryEntry row) => row.IsOwn ? "you" : "household";
+
+    /// <summary>The Yield cell and whether it draws dim: blank on a plant; the items gathered when
+    /// the harvest's yield was heard, else "-" (not heard).</summary>
+    public static (string Text, bool Dim) HistoryYield(HistoryEntry row)
+        => row.Kind == HistoryKind.Plant ? ("", false)
+            : row.Yields is not { Count: > 0 } ? (NoCrossHeard, true)
+            : (row.YieldQty.ToString(CultureInfo.InvariantCulture), false);
+
+    /// <summary>The Cross seed cell and whether it draws dim: blank on a plant and on a pot (pots
+    /// never cross); on a bed harvest the seed it gave ("Sun Lemon", "Sun Lemon x2"), "no cross"
+    /// when the cross was heard and no seed came, "-" when it was not heard either way.</summary>
+    public static (string Text, bool Dim) HistoryCross(HistoryEntry row, Func<uint, string> seedName)
+    {
+        if (row.Kind == HistoryKind.Plant || row.IsPot)
+            return ("", false);
+        if (row.SeedQty is not { } qty)
+            return (NoCrossHeard, true);
+        if (qty == 0)
+            return ("no cross", true);
+        if (row.SeedItem is not { } seed)
+            return (NoCrossHeard, true);
+        return (qty == 1 ? seedName(seed) : $"{seedName(seed)} x{qty}", false);
+    }
+
+    /// <summary>The estate filter's first line, which clears it.</summary>
+    public const string AllEstates = "All estates";
+
+    /// <summary>The crop filter's first line, which clears it.</summary>
+    public const string AllCrops = "All crops";
+
+    /// <summary>The hand filter's lines: "All hands", "You" (this install), "Household" (every other hand).</summary>
+    public static string HandChoice(bool? own) => own switch
+    {
+        null => "All hands",
+        true => "You",
+        false => "Household",
+    };
+
+    /// <summary>The kind filter's lines: "Plants and harvests", "Plants", "Harvests".</summary>
+    public static string KindChoice(HistoryKind? kind) => kind switch
+    {
+        null => "Plants and harvests",
+        HistoryKind.Plant => "Plants",
+        _ => "Harvests",
+    };
 }
