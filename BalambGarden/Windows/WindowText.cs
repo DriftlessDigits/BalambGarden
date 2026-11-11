@@ -29,10 +29,13 @@ internal static class WindowText
     /// <summary>A cross seed by its crop's name, or by its id when the crop table does not know it.</summary>
     public static string SeedName(uint seed) => WindowFormat.SeedName(Plugin.Tables.CropBySeedId(seed)?.Name, seed);
 
-    /// <summary>Text at full brightness, or in <see cref="Palette.TextDim"/>.</summary>
-    public static void Text(string text, bool dim)
+    /// <summary>Text at full brightness, in <see cref="Palette.TextDim"/>, or with
+    /// <paramref name="onion"/> in <see cref="Palette.OnionInk"/> (the onion mark).</summary>
+    public static void Text(string text, bool dim, bool onion = false)
     {
-        if (dim)
+        if (onion)
+            ImGui.TextColored(Palette.OnionInk, text);
+        else if (dim)
             ImGui.TextColored(Palette.TextDim, text);
         else
             ImGui.TextUnformatted(text);

@@ -13,8 +13,10 @@ namespace BalambGarden.Windows;
 /// what was planted, harvested, still growing and lost, what was gathered, and for beds how often
 /// the cross took and which seed it gave. Everything on it is <see cref="GardenBoard.Yields"/>'s;
 /// every sentence and cell word is <see cref="WindowFormat"/>'s (the headings are this file's);
-/// this file only places them. Brightness is the only colour it uses: labels, a zero count and a
-/// rate resting on too few harvests draw in <see cref="Palette.TextDim"/>.
+/// this file only places them. Besides brightness (labels, a zero count and a rate resting on too few
+/// harvests draw in <see cref="Palette.TextDim"/>) it uses one colour, the onion ink (rethink slice
+/// 12, spec ruling 14): the trophy line over the tables, and the onion row's name and gathered count
+/// once it has gathered something (<see cref="YieldRow.OnionMark"/>).
 /// </summary>
 internal static class YieldsTab
 {
@@ -31,6 +33,9 @@ internal static class YieldsTab
     private static int bookRows = -1;
     private static DateTime bookAt;
 
+    /// <summary>The trophy line's words, built with the book (never per frame); null = no line.</summary>
+    private static string? trophy;
+
     public static void Draw()
     {
         using var tab = ImRaii.TabItem("Yields###yields");
@@ -43,6 +48,7 @@ internal static class YieldsTab
             book = GardenBoard.Yields(history, Plugin.Garden.Census.LedgerBeds, Plugin.Tables);
             bookRows = history.Entries.Count;
             bookAt = DateTime.UtcNow;
+            trophy = WindowFormat.OnionTrophy(book.Trophy);
         }
 
         ImGui.Spacing();
@@ -51,6 +57,9 @@ internal static class YieldsTab
             ImGui.TextColored(Palette.TextDim, WindowFormat.NoYields);
             return;
         }
+
+        if (trophy is not null)
+            Trophy(trophy);
 
         var local = since.ToLocalTime();
         ImGui.TextColored(Palette.TextDim, WindowFormat.YieldsSince(local));
@@ -106,6 +115,73 @@ internal static class YieldsTab
         }
     }
 
+    /// <summary>How much larger the trophy line draws than the tab's text.</summary>
+    private const float TrophyScale = 1.4f;
+
+    /// <summary>The shimmer's band, soft-edged: three clipped copies of the line in the shine ink,
+    /// each a share of the band's width and an alpha; the narrower ones sit over the wider. The inks
+    /// are worked out once, not per frame.</summary>
+    private static readonly (float Width, uint Ink)[] ShineBands =
+    [
+        (1f, ImGui.ColorConvertFloat4ToU32(Palette.OnionShine with { W = 0.30f })),
+        (0.6f, ImGui.ColorConvertFloat4ToU32(Palette.OnionShine with { W = 0.35f })),
+        (0.3f, ImGui.ColorConvertFloat4ToU32(Palette.OnionShine with { W = 0.45f })),
+    ];
+
+    // The trophy line's sparkles, in line heights: the text sits LeadIn in from the line's start;
+    // a big sparkle Big from the text's edge, radius BigRadius; a small one Small out, radius
+    // SmallRadius. The space kept for the line reaches the small sparkles' outer tips.
+    private const float LeadIn = 1.1f, Big = 0.6f, BigRadius = 0.42f, Small = 0.95f, SmallRadius = 0.18f;
+
+    /// <summary>The trophy line (rethink slice 12): the onion tally over the tables, in the onion
+    /// ink, larger than a row, a gold sparkle either side, and a slow shimmer crossing it
+    /// (<see cref="TrophyShimmer"/>, off ImGui's own clock, so opening the tab starts nothing). It
+    /// lives on this tab only; nothing announces it. Per frame it adds the line's text run, up to three
+    /// clipped copies of it while the band crosses, and four sparkle shapes; it builds no string and
+    /// keeps nothing between frames (the words are built with the book).</summary>
+    private static void Trophy(string line)
+    {
+        ImGui.SetWindowFontScale(TrophyScale);
+        var draw = ImGui.GetWindowDrawList();
+        var size = ImGui.CalcTextSize(line);
+        var h = size.Y;
+        var start = ImGui.GetCursorScreenPos();
+        var at = start + new Vector2(h * LeadIn, 0f);
+        var gold = ImGui.ColorConvertFloat4ToU32(Palette.OnionInk);
+
+        draw.AddText(at, gold, line);
+        if (TrophyShimmer.Centre(ImGui.GetTime()) is { } centre)
+        {
+            var x = at.X + centre * size.X;
+            var half = TrophyShimmer.HalfWidth * size.X;
+            foreach (var (width, ink) in ShineBands)
+            {
+                draw.PushClipRect(new Vector2(x - half * width, at.Y), new Vector2(x + half * width, at.Y + h), true);
+                draw.AddText(at, ink, line);
+                draw.PopClipRect();
+            }
+        }
+
+        Sparkle(draw, at + new Vector2(-h * Big, h * 0.5f), h * BigRadius, gold);
+        Sparkle(draw, at + new Vector2(-h * Small, h * 0.15f), h * SmallRadius, gold);
+        Sparkle(draw, at + new Vector2(size.X + h * Big, h * 0.5f), h * BigRadius, gold);
+        Sparkle(draw, at + new Vector2(size.X + h * Small, h * 0.85f), h * SmallRadius, gold);
+
+        ImGui.Dummy(new Vector2(size.X + h * (LeadIn + Small + SmallRadius), h));
+        ImGui.SetWindowFontScale(1f);
+        ImGui.Spacing();
+    }
+
+    /// <summary>A four-point sparkle centred on <paramref name="centre"/>: two thin diamonds crossed.</summary>
+    private static void Sparkle(ImDrawListPtr draw, Vector2 centre, float radius, uint colour)
+    {
+        var waist = radius * 0.28f;
+        draw.AddQuadFilled(centre + new Vector2(0f, -radius), centre + new Vector2(waist, 0f),
+            centre + new Vector2(0f, radius), centre + new Vector2(-waist, 0f), colour);
+        draw.AddQuadFilled(centre + new Vector2(-radius, 0f), centre + new Vector2(0f, -waist),
+            centre + new Vector2(radius, 0f), centre + new Vector2(0f, waist), colour);
+    }
+
     /// <summary>How far a split row's name sits in from its crop's.</summary>
     private const float SplitIndent = 14f;
 
@@ -118,9 +194,10 @@ internal static class YieldsTab
         ImGui.TableNextRow();
 
         ImGui.TableNextColumn();
+        var onion = row.OnionMark;
         if (split is null)
         {
-            ImGui.TextUnformatted(Plugin.Tables.SpeciesName(row.Species));
+            WindowText.Text(Plugin.Tables.SpeciesName(row.Species), dim: false, onion);
             if (ImGui.IsItemHovered() && WindowFormat.PartnerHover(row, Plugin.Tables.SpeciesName) is { } hover)
                 ImGui.SetTooltip(hover);
         }
@@ -136,7 +213,7 @@ internal static class YieldsTab
             ImGui.SetTooltip(WindowFormat.UnmatchedHover(row.Unmatched, since, row.IsPot));
         Count(row.Growing);
         Count(row.Lost);
-        Count(row.Gathered);
+        Count(row.Gathered, onion);
         if (row.GatheredFrom > 0 && ImGui.IsItemHovered())
             ImGui.SetTooltip(WindowFormat.GatheredHover(row.GatheredFrom));
 
@@ -164,10 +241,11 @@ internal static class YieldsTab
         }
     }
 
-    /// <summary>A count in the next cell, dim at zero.</summary>
-    private static void Count(int n)
+    /// <summary>A count in the next cell, dim at zero; with <paramref name="onion"/>, gold above zero
+    /// (the onion row's gathered count, rethink slice 12).</summary>
+    private static void Count(int n, bool onion = false)
     {
         ImGui.TableNextColumn();
-        WindowText.Text(n.ToString(), dim: n == 0);
+        WindowText.Text(n.ToString(), dim: n == 0, onion: onion && n > 0);
     }
 }

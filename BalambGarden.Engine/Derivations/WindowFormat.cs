@@ -340,6 +340,22 @@ public static class WindowFormat
     /// <summary>The Yields tab's header, the record's first day in the reader's time: "SINCE OCT 16".</summary>
     public static string YieldsSince(DateTimeOffset since) => $"SINCE {ShortDay(since).ToUpperInvariant()}";
 
+    /// <summary>The trophy line over the Yields tab (rethink slice 12, words ruled 2026-11-11):
+    /// "6 onions harvested, 3 seeds gathered"; a part at zero is left out ("3 seeds gathered"), and
+    /// with nothing of either there is no line (null). The onions are the items gathered.</summary>
+    public static string? OnionTrophy(OnionTally tally)
+    {
+        string? onions = tally.Onions switch { 0 => null, 1 => "1 onion harvested", var n => $"{n} onions harvested" };
+        string? seeds = tally.Seeds switch { 0 => null, 1 => "1 seed gathered", var n => $"{n} seeds gathered" };
+        return (onions, seeds) switch
+        {
+            (null, null) => null,
+            (_, null) => onions,
+            (null, _) => seeds,
+            _ => $"{onions}, {seeds}",
+        };
+    }
+
     public static string Percent(int percent) => $"{percent}%";
 
     /// <summary>The Crossed cell of a bed crop whose cross was never heard either way.</summary>
