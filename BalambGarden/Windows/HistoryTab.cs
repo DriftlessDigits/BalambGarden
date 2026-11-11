@@ -14,9 +14,10 @@ namespace BalambGarden.Windows;
 /// heading for each day, filtered by estate, crop, hand and kind; a hand reads its alias (rethink
 /// slice 11, spec ruling 15), else "household", and the player's own reads "you". Everything on it is
 /// <see cref="GardenBoard.History"/>'s; every sentence and cell word is <see cref="WindowFormat"/>'s
-/// (the column headings are this file's); this file only places them. Brightness is the only colour
-/// it uses: labels, day headings, a value not heard and a heard harvest that gave no cross seed
-/// ("no cross") draw in <see cref="Palette.TextDim"/>.
+/// (the column headings are this file's); this file only places them. Besides brightness (labels, day
+/// headings, a value not heard and a heard harvest that gave no cross seed - "no cross" - draw in
+/// <see cref="Palette.TextDim"/>) it uses one colour: an onion harvest's crop and heard yield in
+/// <see cref="Palette.Onion"/> (rethink slice 12, spec ruling 14; <see cref="GardenBoard.IsOnionHarvest"/>).
 /// </summary>
 internal static class HistoryTab
 {

@@ -13,8 +13,9 @@ namespace BalambGarden.Windows;
 /// what was planted, harvested, still growing and lost, what was gathered, and for beds how often
 /// the cross took and which seed it gave. Everything on it is <see cref="GardenBoard.Yields"/>'s;
 /// every sentence and cell word is <see cref="WindowFormat"/>'s (the headings are this file's);
-/// this file only places them. Brightness is the only colour it uses: labels, a zero count and a
-/// rate resting on too few harvests draw in <see cref="Palette.TextDim"/>.
+/// this file only places them. Besides brightness (labels, a zero count and a rate resting on too few
+/// harvests draw in <see cref="Palette.TextDim"/>) it uses one colour: the onion row's name and its
+/// gathered count in <see cref="Palette.Onion"/> (rethink slice 12, spec ruling 14).
 /// </summary>
 internal static class YieldsTab
 {

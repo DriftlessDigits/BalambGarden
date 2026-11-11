@@ -299,6 +299,10 @@ _Avoid_: neighbor (the raw bed beside it, partner or not), parent (the pairs tab
 A chain of crossbreed recipes whose outputs feed the next recipe's inputs across estates. The household's onion pipeline (figs and mirrors to kukuru, krakka and mirrors to curiel, kukuru and curiel to onion, pots as grow-out) is user story one.
 _Avoid_: chain (that is a run), recipe tree, cross plan
 
+**Onion mark**:
+The gold the pipeline's goal crop wears, Thavnairian Onion only: on the History tab an onion harvest's crop name and its yield when heard, on the Yields tab the onion row's name and its gathered count. A sowing, another onion (Onion Prince, Wild Onion Set) and a yield not heard take none. It is the only celebration: nothing speaks unprompted.
+_Avoid_: badge, notification, highlight (a hover's), goal (alone: say goal crop)
+
 **Rollup**:
 The per-patch summary the dashboard rows carry: counts of claimed, ripe, due, overdue, danger, unknown, and the next ripe window. Pots roll up as one group per estate.
 _Avoid_: aggregate, summary row, stats
@@ -308,7 +312,7 @@ The Garden tab's small picture of an estate: each patch with its eight beds wher
 _Avoid_: map, mini-map, heatmap, grid
 
 **Palette**:
-The one home of the plugin's colours, each named by the one thing it means under the colour map: growing (a green ramp by stage), water soon, wilting, dying, ripe, empty, dead (the earth of empty under a cross), and the no-claim greys (unclaimed, unread, a water clock that is fine); plus plain and dim text and the structure greys of frames, rules and chips. A screen picks a meaning, never a value; what colour does not carry (not heard, provenance, status) goes to line style, glyphs and words.
+The one home of the plugin's colours, each named by the one thing it means under the colour map: growing (a green ramp by stage), water soon, wilting, dying, ripe, empty, dead (the earth of empty under a cross), onion (gold, the **Onion mark**), and the no-claim greys (unclaimed, unread, a water clock that is fine); plus plain and dim text and the structure greys of frames, rules and chips. A screen picks a meaning, never a value; what colour does not carry (not heard, provenance, status) goes to line style, glyphs and words.
 _Avoid_: theme (ImGui's own style), colour scheme, color constants
 
 **Patch strip**:
