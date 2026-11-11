@@ -3,7 +3,7 @@ using BalambGarden.Engine.Ledger;
 
 namespace BalambGarden.Engine.Derivations;
 
-/// <summary>Water status of a claimed bed. <see cref="NotApplicable"/> is appended last so
+/// <summary>Water status of a claimed bed or pot. <see cref="NotApplicable"/> is appended last so
 /// the existing members keep their numeric values.</summary>
 public enum WaterState { Unknown, Watered, Due, Overdue, Danger, NotApplicable }
 
@@ -20,12 +20,12 @@ public sealed class ClockWiltSource : IWiltSource
 
     public WaterState StateFor(ClaimedBed bed, Crop crop, DateTimeOffset now)
     {
-        // Pots DO wilt (08-16, Drift's Krakka twins), but they also BROADCAST it - the
-        // live map's b4=1 is the game's own claim, so pot wilt is observed, never
-        // clocked. The prediction machinery below is for beds, where the byte hunt
-        // closed refuted and a clock is all there is.
-        if (bed.IsPot)
-            return WaterState.NotApplicable;
+        // Pots run the same clock as beds (dashboard rethink ruling 23, 2026-11-10): a crop
+        // wilts wherever it grows (08-16, Drift's Krakka twins), and a pot nobody stands
+        // beside shows its wilt to no one - four onion pots died that way across a
+        // maintenance. Where the game does speak (a pot's live wilt flag in its room, a kept
+        // sighting), the garden board lets it win the look. Flowerpot flowers never wilt:
+        // they have no crop row, so the caller never reaches here for them.
 
         // A fully grown crop cannot wilt or die (the same community table the wilt hours
         // come from), so a bed last SEEN ripe makes no water claim however stale its tend
@@ -53,21 +53,21 @@ public sealed class ClockWiltSource : IWiltSource
     /// sowing (dashboard rethink ruling 3, 2026-11-08: a sowing starts the clock, so a fresh
     /// bed gets a deadline instead of a "?"). A planting always rebases at its own instant,
     /// so a surviving watering is newer than the sowing and "watering, else sowing" is the
-    /// later of the two. Null where the clock makes no claim: pots (observed, never
-    /// clocked), ripe beds (cannot wilt), and a bed with neither receipt.</summary>
+    /// later of the two. Beds and pots alike (ruling 23). Null where the clock makes no claim:
+    /// a ripe plant (cannot wilt), and a record with neither receipt.</summary>
     public static DateTimeOffset? ClockStart(ClaimedBed bed)
-        => bed.IsPot || bed.Latest is { Stage: >= GardenStage.Ripe } ? null : bed.LastTended ?? bed.PlantedAt;
+        => bed.Latest is { Stage: >= GardenStage.Ripe } ? null : bed.LastTended ?? bed.PlantedAt;
 
-    /// <summary>The water deadline: when this bed reaches its crop's wilt hours if nobody
+    /// <summary>The water deadline: when this bed or pot reaches its crop's wilt hours if nobody
     /// waters it. Null wherever <see cref="ClockStart"/> is.</summary>
     public static DateTimeOffset? WaterBy(ClaimedBed bed, Crop crop)
         => ClockStart(bed)?.AddHours(crop.WiltHours);
 
-    /// <summary>A bed whose tend was never heard: its deadline, if it has one, rests on the
-    /// sowing. Beds only - a pot makes no water claim to rest on anything.</summary>
-    public static bool TendUnheard(ClaimedBed bed) => !bed.IsPot && bed.LastTended is null;
+    /// <summary>A bed or pot with no watering recorded: its deadline, if it has one, rests on
+    /// the sowing.</summary>
+    public static bool TendUnheard(ClaimedBed bed) => bed.LastTended is null;
 
-    /// <summary>When this bed's plant becomes unrecoverable if nobody waters: the clock's start +
+    /// <summary>When this bed's or pot's plant becomes unrecoverable if nobody waters: the clock's start +
     /// WitherHours (2026-08-18, the Allagan Melons - wilt is a countdown, not an end
     /// state, and the deadline deserves saying out loud). Null wherever the clock makes
     /// no claim (<see cref="ClockStart"/>).</summary>

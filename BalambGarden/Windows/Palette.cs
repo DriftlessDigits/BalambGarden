@@ -8,8 +8,9 @@ namespace BalambGarden.Windows;
 /// one meaning, on every surface). A meaning has a fill (cells, bands, bars) and, where text or a
 /// thin mark carries it, a brighter ink. The Garden tab and its lanes take every colour value from
 /// here, and each draws only its one meaning; the estate tabs still hold their own values. What
-/// colour does not carry is said by line style, glyphs and words: the no-watering-heard line is
-/// plain text, the unheard bed's outline is <see cref="Dashed"/>, a lit chip is a structure grey.
+/// colour does not carry is said by line style, glyphs and words: the no-watering-recorded line
+/// is plain text, the outline of a bed or pot with no watering recorded is <see cref="Dashed"/>, a
+/// lit chip is a structure grey.
 /// </summary>
 internal static class Palette
 {
@@ -26,8 +27,8 @@ internal static class Palette
     public static readonly Vector4 WaterSoon = new(0.62f, 0.46f, 0.16f, 1f);
     public static readonly Vector4 WaterSoonInk = new(1f, 0.78f, 0.35f, 1f);
 
-    /// <summary>Wilting: purple, the game's own haze - past the crop's wilt hours, or a pot the
-    /// live map shows wilting.</summary>
+    /// <summary>Wilting: purple, the game's own haze - a bed or pot past its crop's wilt hours, or a
+    /// pot the game shows wilting.</summary>
     public static readonly Vector4 Wilting = new(0.48f, 0.26f, 0.66f, 1f);
     public static readonly Vector4 WiltingInk = new(0.80f, 0.56f, 1f, 1f);
 

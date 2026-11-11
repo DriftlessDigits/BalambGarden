@@ -232,6 +232,61 @@ public class WindowFormatTests
         Assert.Equal("4 pots wilting - water now", WindowFormat.PotsWilting(4, seenAt: null, Now));
     }
 
+    [Fact] // spec ruling 23 (ruled 2026-11-10: "I don't really care about which pot, just where that pot is"): a kind and a place, never a number
+    public void TheCardNamesWhatNeedsWaterByKindAndPlace()
+    {
+        Assert.Equal("a pot", WindowFormat.Containers(new ContainerCount(0, 1, null)));
+        Assert.Equal("a bed in patch 2", WindowFormat.Containers(new ContainerCount(1, 0, 1)));
+        Assert.Equal("4 pots", WindowFormat.Containers(new ContainerCount(0, 4, null)));
+        Assert.Equal("2 beds, 1 pot", WindowFormat.Containers(new ContainerCount(2, 1, null)));
+        Assert.Equal("1 bed, 3 pots", WindowFormat.Containers(new ContainerCount(1, 3, 0)));
+        Assert.Equal("a bed", WindowFormat.Containers(new ContainerCount(1, 0, null)));   // no patch known: say less, never "patch "
+    }
+
+    [Fact] // a pot's hover says when the game itself showed it wilting
+    public void APotsHoverSaysWhereItsWiltWasSeen()
+    {
+        Assert.Equal("game shows it wilting", WindowFormat.ShownWilt(seenAt: null, Now));
+        Assert.Equal("seen wilting 12m ago", WindowFormat.ShownWilt(Now.AddMinutes(-12), Now));
+    }
+
+    [Fact]
+    public void TheDeadlineHoverSaysWhatWiltsFirst()
+    {
+        var at = DateTimeOffset.Parse("2026-11-08T18:14:00-06:00");
+        Assert.Equal("A pot wilts at Sun 18:14", WindowFormat.FirstToWilt(new ContainerCount(0, 1, null), at));
+        Assert.Equal("A bed in patch 1 wilts at Sun 18:14", WindowFormat.FirstToWilt(new ContainerCount(1, 0, 0), at));
+        Assert.Equal("4 pots wilt at Sun 18:14", WindowFormat.FirstToWilt(new ContainerCount(0, 4, null), at));
+    }
+
+    [Fact]
+    public void TheWorstLineNamesItsKind()
+    {
+        Assert.Equal("worst: 4 pots, wilting", WindowFormat.Worst(new ContainerCount(0, 4, null), ContainerLook.Wilting));
+        Assert.Equal("worst: a bed in patch 1, dying", WindowFormat.Worst(new ContainerCount(1, 0, 0), ContainerLook.Dying));
+        Assert.Null(WindowFormat.Worst(ContainerCount.None, ContainerLook.Growing));
+    }
+
+    [Fact] // the water bar's hover: whose clock it is and where it starts
+    public void TheWaterBarSaysWhoseClockItIs()
+    {
+        Assert.Equal("A pot: sown 1d ago, no watering recorded",
+            WindowFormat.WaterFrom(new ContainerCount(0, 1, null), fromSowing: true, Now.AddHours(-25), Now));
+        Assert.Equal("A bed in patch 1: watered 20h ago",
+            WindowFormat.WaterFrom(new ContainerCount(1, 0, 0), fromSowing: false, Now.AddHours(-20), Now));
+    }
+
+    [Fact]
+    public void TheWaterChipAndTheNoWateringNoteCountBedsAndPots()
+    {
+        Assert.Equal("4 pots due within 24h of the deadline", WindowFormat.WaterDue(new ContainerCount(0, 4, null), "24h"));
+        Assert.Equal("2 beds, 1 pot due within 24h of the deadline", WindowFormat.WaterDue(new ContainerCount(2, 1, null), "24h"));
+        Assert.Equal("nothing due within 24h of the deadline", WindowFormat.WaterDue(ContainerCount.None, "24h"));
+        Assert.Equal("3 pots with no watering recorded", WindowFormat.NoWatering(new ContainerCount(0, 3, null)));
+        Assert.Equal("2 beds, 3 pots with no watering recorded", WindowFormat.NoWatering(new ContainerCount(2, 3, null)));
+        Assert.Equal("1 bed with no watering recorded", WindowFormat.NoWatering(new ContainerCount(1, 0, 4)));
+    }
+
     [Fact] // the lanes' day heads read the same on every machine, whatever its culture
     public void DayHeadIsTheWeekdayAndTheDayOfTheMonth()
         => Assert.Equal("Mon 9", WindowFormat.DayHead(DateTimeOffset.Parse("2026-11-09T00:00:00-06:00")));

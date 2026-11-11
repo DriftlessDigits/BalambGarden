@@ -116,8 +116,9 @@ internal static class GardenTab
         ImGui.Dummy(new Vector2(width, lanesBottom - left.Y));
     }
 
-    /// <summary>The thin bar from the deadline bed's watering (or sowing) to the drop at the card's
-    /// deadline, coloured by the card's thirst like the headline. No clock, no bar.</summary>
+    /// <summary>The thin bar from the watering (or sowing) of the bed or pot that sets the card's
+    /// deadline to the drop at that deadline, coloured by the card's thirst like the headline. No
+    /// clock, no bar.</summary>
     private static void DrawWaterBar(VisitCard card, float top, float line, Func<DateTimeOffset, float> x, DateTimeOffset now)
     {
         if (card.WaterBy is not { } by || card.Lane.WaterFrom is not { } from)
@@ -138,15 +139,14 @@ internal static class GardenTab
         ImGui.InvisibleButton("drop", new Vector2(r * 2, r * 3));
         if (ImGui.IsItemHovered())
             ImGui.SetTooltip($"{WindowFormat.WaterBy(by.ToLocalTime(), now.ToLocalTime())} ({WindowFormat.Countdown(by, now)})\n"
-                             + "the bar is the first bed here to reach its crop's wilt hours, from its last watering\n"
-                             + $"(or its sowing, when no watering was heard) {WindowFormat.Ago(from, now)}"
-                             + WorstBedLine(card));
+                             + WindowFormat.WaterFrom(card.FirstToWilt, card.Lane.FromSowing, from, now)
+                             + WorstLine(card));
     }
 
-    /// <summary>The card's thirst in words for the headline and drop hovers, on a line of its own;
-    /// empty while the beds ask nothing.</summary>
-    private static string WorstBedLine(VisitCard card)
-        => WindowFormat.Thirst(card.Thirst) is { } word ? $"\nworst bed here: {word}" : "";
+    /// <summary>The card's worst look and what wears it, for the headline and drop hovers, on a line
+    /// of its own; empty while nothing here asks for water.</summary>
+    private static string WorstLine(VisitCard card)
+        => WindowFormat.Worst(card.Worst, card.Thirst) is { } line ? $"\n{line}" : "";
 
     /// <summary>A ripe mark: a tick for an anchored window, a band as wide as its window (striped when
     /// estimated), a dot at the now line for what is seen ripe; its crops and glyph beside it.
@@ -240,7 +240,8 @@ internal static class GardenTab
     }
 
     /// <summary>The big number: the water deadline and its countdown, coloured by the card's
-    /// thirst. A card with no water clock says so plainly - pots are watched, not clocked.</summary>
+    /// thirst; its hover names what wilts first, by kind and place (spec ruling 23). A card with no
+    /// water clock says so plainly.</summary>
     private static void DrawHeadline(VisitCard card, DateTimeOffset now)
     {
         ImGui.SetWindowFontScale(HeadlineScale);
@@ -255,15 +256,14 @@ internal static class GardenTab
             ImGui.SameLine();
             ImGui.TextDisabled(WindowFormat.Countdown(by, now));
             if (ImGui.IsItemHovered())
-                ImGui.SetTooltip($"the first bed here reaches its crop's wilt hours at {WindowFormat.Exact(by.ToLocalTime())}"
-                                 + WorstBedLine(card));
+                ImGui.SetTooltip(WindowFormat.FirstToWilt(card.FirstToWilt, by.ToLocalTime()) + WorstLine(card));
             return;
         }
 
         ImGui.TextDisabled("no water clock here");
         ImGui.SetWindowFontScale(1f);
         if (ImGui.IsItemHovered())
-            ImGui.SetTooltip("no bed here carries a clock: pots are watched, not clocked");
+            ImGui.SetTooltip("no deadline: ripe, flowers, or nothing recorded");
     }
 
     /// <summary>The card's thirst as a colour, shared by the headline and the lane's water bar so
@@ -276,18 +276,16 @@ internal static class GardenTab
         _ => null,
     };
 
-    /// <summary>The card's notes: the no-watering-heard count in plain words (a caution is a word,
-    /// not a colour), and the pots wilting, purple: the live map's where the player stands, the
-    /// last sighting's elsewhere, with its age.</summary>
+    /// <summary>The card's notes: the beds and pots with no watering recorded, in plain words (a
+    /// caution is a word, not a colour), and the pots the game showed wilting, purple: the live
+    /// map's where the player stands, the last sighting's elsewhere, with its age.</summary>
     private static void DrawNotes(VisitCard card, DateTimeOffset now)
     {
-        if (card.TendUnheard > 0)
+        if (card.TendUnheard.Total > 0)
         {
-            ImGui.Text(card.TendUnheard == 1
-                ? "1 bed with no watering heard"
-                : $"{card.TendUnheard} beds with no watering heard");
+            ImGui.Text(WindowFormat.NoWatering(card.TendUnheard));
             if (ImGui.IsItemHovered())
-                ImGui.SetTooltip("their deadline counts from the sowing; a bed with no sowing heard either has no deadline at all");
+                ImGui.SetTooltip("clock counts from the sowing");
         }
 
         if (card.PotsWilting > 0)
@@ -297,7 +295,7 @@ internal static class GardenTab
     private static void DrawChips(VisitCard card)
     {
         var span = $"{GardenBoard.ChipSpan.TotalHours:0}h";
-        Chip("water", card.Water, $"beds due within {span} of this card's deadline");
+        Chip("water", card.Water.Total, WindowFormat.WaterDue(card.Water, span));
         ImGui.SameLine();
         Chip("harvest", card.Harvest, card.RipeNow > 0
             ? $"{card.RipeNow} seen ripe; the rest may ripen within {span}"
@@ -350,8 +348,8 @@ internal static class GardenTab
     // ------------------------------------------------------------------ the garden picture
 
     /// <summary>Each patch as the game lays its beds out (<see cref="GardenBoard.RingPosition"/>),
-    /// side by side, then the pots in map-key order. A dashed outline marks a bed whose tend was
-    /// never heard.</summary>
+    /// side by side, then the pots in map-key order. A dashed outline marks a bed or pot with no
+    /// watering recorded.</summary>
     private static void DrawPictures(VisitCard card, DateTimeOffset now)
     {
         var side = ImGui.GetTextLineHeight() * 1.2f;
@@ -462,19 +460,29 @@ internal static class GardenTab
         else if (cell.Ripe is { } ripe)
             lines.Add($"ripe ~{WindowFormat.Range(ripe.Earliest.ToLocalTime(), ripe.Latest.ToLocalTime())} {WindowFormat.Mark(ripe.Provenance)}");
 
-        if (patch.IsPots)
-            lines.Add(cell.Look == ContainerLook.Wilting ? "wilting - water now" : "pots are watched, not clocked");
-        else if (cell.WaterBy is { } by)
+        // Beds and pots alike run the clock (ruling 23); a pot whose wilt the game showed says so.
+        var shown = cell.WiltShown ? WindowFormat.ShownWilt(cell.WiltSeenAt, now) : null;
+        if (shown is not null && cell.Look == ContainerLook.Wilting)
+            lines.Add($"{shown} - water now");
+        else
         {
             if (WindowFormat.ThirstLine(cell.Look, cell.DiesAt?.ToLocalTime(), now.ToLocalTime()) is { } thirst)
                 lines.Add(thirst);
+            if (shown is not null)
+                lines.Add(shown);
+        }
+
+        if (cell.WaterBy is { } by)
+        {
             lines.Add($"{WindowFormat.WaterBy(by.ToLocalTime(), now.ToLocalTime())} ({WindowFormat.Countdown(by, now)})");
             lines.Add(cell.Bed?.LastTended is { } tended
                 ? $"watered {WindowFormat.Ago(tended, now)}"
-                : "no watering heard - counting from the sowing");
+                : "no watering recorded - counting from the sowing");
         }
+        else if (cell.NeverWilts)
+            lines.Add("never wilts - no deadline");
         else if (cell.Look != ContainerLook.Ripe)
-            lines.Add("no watering or sowing heard - no deadline");
+            lines.Add("no watering or sowing recorded - no deadline");
 
         return string.Join("\n", lines);
     }
