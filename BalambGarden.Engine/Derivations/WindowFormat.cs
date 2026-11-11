@@ -472,7 +472,7 @@ public static class WindowFormat
     public const string ForeignHandsHeading = "Household hands";
 
     /// <summary>The line under the heading when it lists a hand.</summary>
-    public const string HandsIntro = "Name the other installs that garden with you.";
+    public const string HandsIntro = "Name the others who garden with you.";
 
     /// <summary>The section with no foreign hand on record. True with sync off as well: nothing has
     /// been heard.</summary>
