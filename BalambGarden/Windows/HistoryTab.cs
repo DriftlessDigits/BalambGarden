@@ -17,7 +17,7 @@ namespace BalambGarden.Windows;
 /// (the column headings are this file's); this file only places them. Besides brightness (labels, day
 /// headings, a value not heard and a heard harvest that gave no cross seed - "no cross" - draw in
 /// <see cref="Palette.TextDim"/>) it uses one colour: an onion harvest's crop and heard yield in
-/// <see cref="Palette.Onion"/> (rethink slice 12, spec ruling 14; <see cref="GardenBoard.IsOnionHarvest"/>).
+/// <see cref="Palette.OnionInk"/> (rethink slice 12, spec ruling 14; <see cref="GardenBoard.IsGoalCropHarvest"/>).
 /// </summary>
 internal static class HistoryTab
 {
@@ -46,12 +46,12 @@ internal static class HistoryTab
     private static List<Line> lines = [];
     private static float[] widths = [];
 
-    /// <summary>A day heading (<see cref="Day"/>) or a row's cells, each with whether it draws dim;
-    /// <see cref="Onion"/> = an onion harvest, whose crop and heard yield draw gold.</summary>
-    private sealed record Line(string? Day, (string Text, bool Dim)[] Cells, bool Onion = false);
+    /// <summary>A day heading (<see cref="Day"/>) or a row's cells.</summary>
+    private sealed record Line(string? Day, Cell[] Cells);
 
-    /// <summary>The cells an onion harvest draws gold: its crop, and its yield when heard.</summary>
-    private static readonly int CropColumn = Array.IndexOf(Columns, "Crop");
+    /// <summary>A cell's words and how they draw: dim, or in the onion mark's gold (an onion
+    /// harvest's crop, and its yield when heard), else full.</summary>
+    private sealed record Cell(string Text, bool Dim = false, bool Onion = false);
 
     public static void Draw()
     {
@@ -129,18 +129,27 @@ internal static class HistoryTab
     private static Line ToLine(HistoryLine line, Dictionary<string, string> aliases) => line switch
     {
         HistoryDayLine day => new Line(WindowFormat.HistoryDay(day.Day), []),
-        HistoryRowLine row => new Line(null,
-        [
-            (WindowFormat.HistoryTime(row.LocalAt), false),
-            (WindowFormat.HistoryAct(row.Entry.Kind), false),
-            (Plugin.Tables.SpeciesName(row.Entry.Species), false),
-            (WindowFormat.HistoryWhere(row.EstateName, row.Entry), false),
-            (WindowFormat.HistoryHand(row.Entry, aliases), false),
-            WindowFormat.HistoryYield(row.Entry),
-            WindowFormat.HistoryCross(row.Entry, WindowText.SeedName),
-        ], GardenBoard.IsOnionHarvest(row.Entry)),
+        HistoryRowLine row => RowLine(row.Entry, row, aliases),
         _ => throw new ArgumentOutOfRangeException(nameof(line)),
     };
+
+    /// <summary>A row's cells: an onion harvest's crop, and its yield when heard, wear the onion mark.</summary>
+    private static Line RowLine(HistoryEntry entry, HistoryRowLine row, Dictionary<string, string> aliases)
+    {
+        var onion = GardenBoard.IsGoalCropHarvest(entry);
+        var (yield, yieldDim) = WindowFormat.HistoryYield(entry);
+        var (cross, crossDim) = WindowFormat.HistoryCross(entry, WindowText.SeedName);
+        return new Line(null,
+        [
+            new Cell(WindowFormat.HistoryTime(row.LocalAt)),
+            new Cell(WindowFormat.HistoryAct(entry.Kind)),
+            new Cell(Plugin.Tables.SpeciesName(entry.Species), Onion: onion),
+            new Cell(WindowFormat.HistoryWhere(row.EstateName, entry)),
+            new Cell(WindowFormat.HistoryHand(entry, aliases)),
+            new Cell(yield, yieldDim, Onion: onion && entry.Yields is { Count: > 0 }),
+            new Cell(cross, crossDim),
+        ]);
+    }
 
     // ------------------------------------------------------------------ the four filters
 
@@ -254,15 +263,12 @@ internal static class HistoryTab
         for (var c = 0; c < Columns.Length; c++)
         {
             ImGui.TableNextColumn();
-            var (text, dim) = line.Cells[c];
-            if (text.Length == 0)
+            var cell = line.Cells[c];
+            if (cell.Text.Length == 0)
                 continue;
             if (c == YieldColumn)
-                RightAlign(text, c);
-            if (line.Onion && !dim && (c == CropColumn || c == YieldColumn))
-                ImGui.TextColored(Palette.Onion, text);
-            else
-                WindowText.Text(text, dim);
+                RightAlign(cell.Text, c);
+            WindowText.Text(cell.Text, cell.Dim, cell.Onion);
         }
     }
 

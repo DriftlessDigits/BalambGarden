@@ -41,11 +41,10 @@ internal static class Palette
     public static readonly Vector4 RipeInk = new(0.52f, 0.72f, 1f, 1f);
     public static readonly Vector4 RipeStripe = new(0.12f, 0.26f, 0.50f, 1f);
 
-    /// <summary>Onion: gold, the goal crop's harvest (rethink slice 12) - nothing else. An ink only:
-    /// the crop name and its yield on the History and Yields tabs. A pure gold (CSS "gold"), so it
-    /// reads apart from <see cref="WaterSoonInk"/>'s amber: more yellow and fully saturated (about 28
-    /// CIELAB units away, where the old ripe-tick gold sat about 5).</summary>
-    public static readonly Vector4 Onion = new(1f, 0.84f, 0f, 1f);
+    /// <summary>Onion: gold, the goal crop's harvest (rethink slice 12) - nothing else. An ink only,
+    /// with no fill: the crop name and its yield on the History and Yields tabs. A pure gold, more
+    /// yellow and more saturated than <see cref="WaterSoonInk"/>'s amber, so the two read apart.</summary>
+    public static readonly Vector4 OnionInk = new(1f, 0.84f, 0f, 1f);
 
     /// <summary>Empty: earth, ready to replant.</summary>
     public static readonly Vector4 Empty = new(0.24f, 0.19f, 0.13f, 1f);

@@ -300,7 +300,7 @@ A chain of crossbreed recipes whose outputs feed the next recipe's inputs across
 _Avoid_: chain (that is a run), recipe tree, cross plan
 
 **Onion mark**:
-The gold the pipeline's goal crop wears, Thavnairian Onion only: on the History tab an onion harvest's crop name and its yield when heard, on the Yields tab the onion row's name and its gathered count. A sowing, another onion (Onion Prince, Wild Onion Set) and a yield not heard take none. It is the only celebration: nothing speaks unprompted.
+The gold the pipeline's goal crop wears, Thavnairian Onion only: on the History tab an onion harvest's crop name and its yield when heard, on the Yields tab the onion row's name and its gathered count above zero (never a split row). A sowing, another onion (Onion Prince, Wild Onion Set) and a yield not heard take none. It is the only celebration: nothing speaks unprompted.
 _Avoid_: badge, notification, highlight (a hover's), goal (alone: say goal crop)
 
 **Rollup**:

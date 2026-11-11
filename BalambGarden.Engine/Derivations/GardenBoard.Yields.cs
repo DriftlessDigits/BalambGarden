@@ -21,7 +21,10 @@ public sealed record YieldBook(DateTimeOffset? Since, IReadOnlyList<YieldRow> Be
 /// naming its <see cref="Partner"/> and carrying its own counts, adding up to the crop's. A harvest
 /// takes its sowing's partner; a harvest with no sowing on record reads not recorded. Until the
 /// crop splits, the partners its sowings recorded ride <see cref="Partners"/> for the hover; once
-/// it splits, that list is empty. Soil splits nothing (ruled 2026-11-11: "Off the table").</para></summary>
+/// it splits, that list is empty. Soil splits nothing (ruled 2026-11-11: "Off the table").</para>
+///
+/// <para><see cref="GoalCrop"/> = the goal crop's row, which wears the onion mark (rethink slice 12,
+/// ruling 14); its split rows do not.</para></summary>
 public sealed record YieldRow(
     ushort Species,
     bool IsPot,
@@ -36,6 +39,8 @@ public sealed record YieldRow(
     IReadOnlyList<SeedShare> Seeds)
 {
     public Partner? Partner { get; init; }
+
+    public bool GoalCrop { get; init; }
 
     public IReadOnlyList<YieldRow> Splits { get; init; } = [];
 
@@ -173,6 +178,7 @@ public static partial class GardenBoard
 
             return whole.Row(species, isPot) with
             {
+                GoalCrop = IsGoalCrop(species),
                 Splits = splits
                     ? Ordered(parts).Select(p => p.Value.Row(species, isPot) with { Partner = p.Key }).ToList()
                     : [],

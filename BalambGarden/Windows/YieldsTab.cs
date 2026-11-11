@@ -15,7 +15,7 @@ namespace BalambGarden.Windows;
 /// every sentence and cell word is <see cref="WindowFormat"/>'s (the headings are this file's);
 /// this file only places them. Besides brightness (labels, a zero count and a rate resting on too few
 /// harvests draw in <see cref="Palette.TextDim"/>) it uses one colour: the onion row's name and its
-/// gathered count in <see cref="Palette.Onion"/> (rethink slice 12, spec ruling 14).
+/// gathered count in <see cref="Palette.OnionInk"/> (rethink slice 12, spec ruling 14).
 /// </summary>
 internal static class YieldsTab
 {
@@ -119,13 +119,10 @@ internal static class YieldsTab
         ImGui.TableNextRow();
 
         ImGui.TableNextColumn();
-        var onion = split is null && GardenBoard.IsOnion(row.Species);
+        var onion = row.GoalCrop;
         if (split is null)
         {
-            if (onion)
-                ImGui.TextColored(Palette.Onion, Plugin.Tables.SpeciesName(row.Species));
-            else
-                ImGui.TextUnformatted(Plugin.Tables.SpeciesName(row.Species));
+            WindowText.Text(Plugin.Tables.SpeciesName(row.Species), dim: false, onion);
             if (ImGui.IsItemHovered() && WindowFormat.PartnerHover(row, Plugin.Tables.SpeciesName) is { } hover)
                 ImGui.SetTooltip(hover);
         }
@@ -174,9 +171,6 @@ internal static class YieldsTab
     private static void Count(int n, bool onion = false)
     {
         ImGui.TableNextColumn();
-        if (onion && n > 0)
-            ImGui.TextColored(Palette.Onion, n.ToString());
-        else
-            WindowText.Text(n.ToString(), dim: n == 0);
+        WindowText.Text(n.ToString(), dim: n == 0, onion: onion && n > 0);
     }
 }
