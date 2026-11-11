@@ -42,10 +42,7 @@ public static partial class GardenBoard
     public static HistoryPage History(GardenHistory history, HistoryFilter filter,
         IReadOnlyList<EstateRecord> estates, DomainTables tables, TimeZoneInfo zone)
     {
-        var names = new Dictionary<EstateKey, string>();
-        foreach (var record in estates)
-            names.TryAdd(record.Key, record.DisplayName);
-        string Name(EstateKey key) => names.TryGetValue(key, out var name) ? name : key.DisplayLabel();
+        var estateName = EstateNamer(estates);
 
         var rows = HistoryQuery.Find(history, filter);
         var lines = new List<HistoryLine>(rows.Count + 8);
@@ -58,7 +55,7 @@ public static partial class GardenBoard
                 day = local.Date;
                 lines.Add(new HistoryDayLine(TimelineSpan.AtMidnight(local.Date, zone)));
             }
-            lines.Add(new HistoryRowLine(row, Name(row.Estate), local));
+            lines.Add(new HistoryRowLine(row, estateName(row.Estate), local));
         }
 
         return new HistoryPage(
@@ -68,7 +65,7 @@ public static partial class GardenBoard
             Filtered: filter != new HistoryFilter(),
             Lines: lines,
             Estates: history.Entries.Select(e => e.Estate).Distinct()
-                .Select(key => new HistoryEstate(key, Name(key)))
+                .Select(key => new HistoryEstate(key, estateName(key)))
                 .OrderBy(e => e.Name, StringComparer.CurrentCulture)
                 .ToList(),
             Species: history.Entries.Select(e => e.Species).Distinct()

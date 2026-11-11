@@ -514,4 +514,50 @@ public class WindowFormatTests
         Assert.Equal(["Plants and harvests", "Plants", "Harvests"],
             new[] { WindowFormat.KindChoice(null), WindowFormat.KindChoice(HistoryKind.Plant), WindowFormat.KindChoice(HistoryKind.Harvest) });
     }
+
+    // The settings window's foreign hands (rethink slice 10, spec ruling 15; on screen "Household hands"). Each expected line is
+    // the plan's literal text, never rebuilt with the format's own helpers.
+
+    private static SeenHand Seen(int onRecord, HistoryKind kind = HistoryKind.Plant, string estate = "FC Estate",
+        string localAt = "2026-11-07T18:18:00-06:00")
+        => new(new Hand("jw9cdj"), onRecord, new HistoryRowLine(HistoryRow(kind), estate, DateTimeOffset.Parse(localAt)));
+
+    private static string Crop(ushort species) => species == 49 ? "Krakka Root" : "?";
+
+    [Fact]
+    public void AForeignHandSaysHowManyAreItsOnRecordAndTheNewest()
+    {
+        Assert.Equal("382 plants and harvests on record, the last: planted Krakka Root at FC Estate, Nov 7 18:18.",
+            WindowFormat.ForeignHandLine(Seen(382), Crop));
+        Assert.Equal("1 plant or harvest on record: harvested Krakka Root at Mama's Place, Nov 17 09:05.",
+            WindowFormat.ForeignHandLine(Seen(1, HistoryKind.Harvest, "Mama's Place", "2026-11-17T09:05:00-06:00"), Crop));
+        try
+        {
+            WindowFormat.TwelveHourClock = true;
+            Assert.Equal("382 plants and harvests on record, the last: planted Krakka Root at FC Estate, Nov 7 6:18 pm.",
+                WindowFormat.ForeignHandLine(Seen(382), Crop));
+        }
+        finally
+        {
+            WindowFormat.TwelveHourClock = false;
+        }
+    }
+
+    [Fact] // a hand only the ledger holds has no act to name
+    public void AHouseholdHandWithNothingInTheHistorySaysSo()
+        => Assert.Equal("Nothing in the History tab yet.", WindowFormat.ForeignHandLine(new SeenHand(new Hand("p1ant0"), 0, null), Crop));
+
+    [Fact]
+    public void TheForeignHandsSectionReadsAsThePlan()
+    {
+        Assert.Equal("household", WindowFormat.Household);
+        Assert.Equal("Household hands", WindowFormat.ForeignHandsHeading);
+        Assert.Equal("Name the other installs that have gardened with you.", WindowFormat.HandsIntro);
+        Assert.Equal("No household hands heard yet. Each install that gardens with you through household sync shows up here to be named.",
+            WindowFormat.NoForeignHands);
+        Assert.Equal("Your name for this hand. Left empty, it reads \"household\".\n"
+            + "Kept in this install's settings only, never sent.\n"
+            + "Changing the household phrase clears every name.", WindowFormat.AliasHover);
+        Assert.Equal("The tag its receipts carry: a random code, never a name.", WindowFormat.SlugHover);
+    }
 }

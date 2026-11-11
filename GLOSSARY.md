@@ -410,7 +410,7 @@ A foreign receipt whose entity this install has not minted yet, held beside the 
 _Avoid_: foreign hold (the store's name), orphan, unmatched (the log word), dead letter
 
 **Alias**:
-A local label the player types for a hand's slug, shown in place of the slug on this install only. Never written to the wire, the relay, the ledger, the history or the repo; an unlabelled slug shows as "household".
+A local label the player types for a hand's slug in the settings window, shown in place of the slug on this install only. Never written to the wire, the relay, the ledger, the history or the repo; an unlabelled slug shows as "household".
 _Avoid_: name, nickname (that is an estate's label), display name, mapping
 
 **Household reset**:
