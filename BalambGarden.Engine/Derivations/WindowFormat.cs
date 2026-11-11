@@ -331,4 +331,47 @@ public static class WindowFormat
     };
 
     private static string Capital(string text) => text.Length == 0 ? text : char.ToUpperInvariant(text[0]) + text[1..];
+
+    // ------------------------------------------------------------------ the Yields tab (rethink slice 7)
+
+    /// <summary>The Yields tab with no history yet.</summary>
+    public const string NoYields = "Nothing planted or harvested on record yet.";
+
+    /// <summary>The Yields tab's header, the record's first day in the reader's time: "SINCE OCT 16".</summary>
+    public static string YieldsSince(DateTimeOffset since)
+        => $"SINCE {since.ToString("MMM d", CultureInfo.InvariantCulture).ToUpperInvariant()}";
+
+    public static string Percent(int percent) => $"{percent}%";
+
+    /// <summary>The cross rate's hover: its count, and a caution when it rests on too few harvests.</summary>
+    public static string CrossRateHover(CrossRate rate)
+        => $"{rate.Crossed} of {rate.Heard} {(rate.Heard == 1 ? "harvest" : "harvests")} gave a cross seed"
+           + (rate.Firm ? "" : $"\nUnder {GardenBoard.FirmRateHarvests} harvests: too few to lean on");
+
+    /// <summary>The Harvested hover when harvests found no sowing on record (they never count as
+    /// harvested). Under plan pick A their items and seeds still count, and the hover says so.</summary>
+    public static string UnmatchedHover(int unmatched, DateTimeOffset since)
+    {
+        var head = unmatched == 1
+            ? "1 more harvest has no sowing on record"
+            : $"{unmatched} more harvests have no sowing on record";
+        head += $" (sown before {since.ToString("MMM d", CultureInfo.InvariantCulture)})";
+        if (!GardenBoard.UnmatchedHarvestsCount)
+            return head;
+        return head + (unmatched == 1
+            ? ";\nits items and cross seed still count"
+            : ";\ntheir items and cross seeds still count");
+    }
+
+    /// <summary>The Gathered hover: how many harvests the total rests on.</summary>
+    public static string GatheredHover(int from)
+        => $"from the {from} {(from == 1 ? "harvest" : "harvests")} with a yield recorded";
+
+    /// <summary>A crop's cross seeds by share: "Sun Lemon 55% · Curiel Root 45%".</summary>
+    public static string SeedShares(IEnumerable<SeedShare> seeds, Func<uint, string> name)
+        => string.Join(" · ", seeds.Select(s => $"{name(s.SeedItem)} {s.Percent}%"));
+
+    /// <summary>The seed shares' hover: the harvests behind each, "Sun Lemon 17 · Curiel Root 14".</summary>
+    public static string SeedCounts(IEnumerable<SeedShare> seeds, Func<uint, string> name)
+        => string.Join(" · ", seeds.Select(s => $"{name(s.SeedItem)} {s.Harvests}"));
 }
