@@ -482,7 +482,7 @@ public static class WindowFormat
     /// <summary>The alias box's hover.</summary>
     public const string AliasHover = "A nickname for this hand. Left empty, it reads \"household\".\n"
         + "Kept in your settings only, never sent.\n"
-        + "Changing the household phrase clears every name.";
+        + "Changing the household phrase clears every nickname.";
 
     /// <summary>The slug's hover (on screen, "the tag").</summary>
     public const string SlugHover = "The tag its receipts carry: a random code, never a name.";
