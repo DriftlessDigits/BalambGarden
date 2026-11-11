@@ -468,31 +468,36 @@ public static class WindowFormat
 
     // ------------------------------------------------------------------ the settings window's foreign hands (rethink slice 10; on screen "Household hands")
 
-    /// <summary>The line under the section's heading when it lists a hand.</summary>
-    public const string HandsIntro = "Name the other installs that garden with you.";
+    /// <summary>The section's heading.</summary>
+    public const string ForeignHandsHeading = "Household hands";
+
+    /// <summary>The line under the heading when it lists a hand. "Have gardened": after a phrase change
+    /// the history still holds the old household's hands, and they are listed too.</summary>
+    public const string HandsIntro = "Name the other installs that have gardened with you.";
 
     /// <summary>The section with no foreign hand on record. True with sync off as well: nothing has
     /// been heard.</summary>
     public const string NoForeignHands =
         "No household hands heard yet. Each install that gardens with you through household sync shows up here to be named.";
 
-    /// <summary>The label box's hover.</summary>
+    /// <summary>The alias box's hover.</summary>
     public const string AliasHover = "Your name for this hand. Left empty, it reads \"household\".\n"
         + "Kept in this install's settings only, never sent.\n"
         + "Changing the household phrase clears every name.";
 
-    /// <summary>The tag's hover.</summary>
+    /// <summary>The slug's hover (on screen, "the tag").</summary>
     public const string SlugHover = "The tag its receipts carry: a random code, never a name.";
 
     /// <summary>What tells one hand from another: how many of the history's rows are its and the newest
     /// of them, "382 plants and harvests on record, the last: planted Krakka Root at FC Estate, Nov 7
-    /// 6:18 pm."; with one, "1 plant or harvest on record: ..."; a tag only the ledger holds, "No plant
-    /// or harvest on record yet." Says "on record", never "last" alone: the history can lag the garden.</summary>
-    public static string HandSeen(SeenHand hand, Func<ushort, string> speciesName)
+    /// 6:18 pm."; with one, "1 plant or harvest on record: ..."; a hand only the ledger holds, "Nothing
+    /// in the History tab yet." (the ledger may hold its planting, so not "no plant"). Says "on record",
+    /// never "last" alone: the history can lag the garden.</summary>
+    public static string ForeignHandLine(SeenHand hand, Func<ushort, string> speciesName)
     {
         if (hand.Last is not { } last)
-            return "No plant or harvest on record yet.";
-        var count = hand.OnRecord == 1 ? "1 plant or harvest on record:" : $"{hand.OnRecord} plants and harvests on record, the last:";
+            return "Nothing in the History tab yet.";
+        var count = hand.HistoryRows == 1 ? "1 plant or harvest on record:" : $"{hand.HistoryRows} plants and harvests on record, the last:";
         return $"{count} {HistoryAct(last.Entry.Kind)} {speciesName(last.Entry.Species)} at {last.EstateName}, "
                + $"{ShortDay(last.LocalAt)} {Clock(last.LocalAt, withDay: false)}.";
     }

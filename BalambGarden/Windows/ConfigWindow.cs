@@ -186,25 +186,26 @@ public class ConfigWindow : Window, IDisposable
                 + "configure anywhere. It cannot be turned back into the phrase.");
     }
 
-    /// <summary>The household's hands, rebuilt when a history row lands or once a second (the ledger's
-    /// planted-by and tended-by carry no change signal); the window is open rarely and briefly.</summary>
+    /// <summary>The foreign hands, rebuilt when a history row lands or once a second (the ledger's
+    /// planted-by and tended-by carry no change signal, as for the Yields tab); the window is open rarely
+    /// and briefly.</summary>
     private IReadOnlyList<SeenHand> hands = [];
     private int handsRows = -1;
     private DateTime handsAt;
 
-    /// <summary>Aliases for foreign hands (rethink slice 10, spec ruling 15): every tag the ledger or
+    /// <summary>Aliases for foreign hands (rethink slice 10, spec ruling 15): every slug the ledger or
     /// the history holds but this install's own, each with a box for what this player calls it. The
-    /// labels stay in this config (<see cref="Configuration.HandAliases"/>); the one write rule is
+    /// aliases stay in this config (<see cref="Configuration.HandAliases"/>); the one write rule is
     /// <see cref="Aliases.Set"/>; a phrase change clears them all (<see cref="DrawSync"/>). Every
-    /// sentence is <see cref="WindowFormat"/>'s.</summary>
+    /// word the player reads is <see cref="WindowFormat"/>'s.</summary>
     private void DrawHands()
     {
-        ImGui.Text("Household hands");
+        ImGui.Text(WindowFormat.ForeignHandsHeading);
 
         var history = Plugin.Garden.History;
         if (handsRows != history.Entries.Count || DateTime.UtcNow - handsAt > TimeSpan.FromSeconds(1))
         {
-            hands = GardenBoard.ForeignHands(Plugin.Garden.Ledger.Beds, history, Plugin.Garden.Ledger.Estates,
+            hands = GardenBoard.ForeignHands(Plugin.Garden.Census.LedgerBeds, history, Plugin.Garden.Ledger.Estates,
                 TimeZoneInfo.Local);
             handsRows = history.Entries.Count;
             handsAt = DateTime.UtcNow;
@@ -219,20 +220,21 @@ public class ConfigWindow : Window, IDisposable
         DimWrapped(WindowFormat.HandsIntro);
         foreach (var hand in hands)
         {
-            var label = configuration.HandAliases.GetValueOrDefault(hand.Slug, "");
+            var slug = hand.Hand.Slug;
+            var alias = configuration.HandAliases.GetValueOrDefault(slug, "");
             ImGui.SetNextItemWidth(180f);
-            ImGui.InputTextWithHint($"##hand-{hand.Slug}", WindowFormat.Household, ref label, 24);
-            if (ImGui.IsItemDeactivatedAfterEdit() && Aliases.Set(configuration.HandAliases, hand.Slug, label))
+            ImGui.InputTextWithHint($"##hand-{slug}", WindowFormat.Household, ref alias, 24);
+            if (ImGui.IsItemDeactivatedAfterEdit() && Aliases.Set(configuration.HandAliases, hand.Hand, alias))
                 configuration.Save();
             if (ImGui.IsItemHovered())
                 ImGui.SetTooltip(WindowFormat.AliasHover);
 
             ImGui.SameLine();
-            ImGui.TextColored(Palette.TextDim, hand.Slug);
+            ImGui.TextColored(Palette.TextDim, slug);
             if (ImGui.IsItemHovered())
                 ImGui.SetTooltip(WindowFormat.SlugHover);
 
-            DimWrapped(WindowFormat.HandSeen(hand, Plugin.Tables.SpeciesName));
+            DimWrapped(WindowFormat.ForeignHandLine(hand, Plugin.Tables.SpeciesName));
         }
     }
 

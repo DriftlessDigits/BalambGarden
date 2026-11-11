@@ -21,24 +21,25 @@ public readonly record struct Hand(string Slug)
     public override string ToString() => Slug;
 }
 
-/// <summary>The one write rule for the player's LOCAL labels (tag -> what this player calls that
-/// install; the map itself lives in plugin config, spec ruling 15). A label is kept as typed without
-/// the spaces round it; an empty or blank box removes it, so the tag reads "household" again; the own
-/// tag never takes one, it reads "you".</summary>
+/// <summary>The one write rule for the player's LOCAL aliases (slug -> what this player calls that
+/// hand; the map itself lives in plugin config, spec ruling 15). It sits beside <see cref="Hand"/>
+/// because it is the hand's display rule, not ledger state. An alias is kept as typed without the
+/// spaces round it; an empty or blank box removes it, so the hand reads "household" again; the own
+/// hand never takes one, it reads "you".</summary>
 public static class Aliases
 {
-    /// <summary>Puts <paramref name="typed"/> on <paramref name="slug"/>. True when the map changed,
+    /// <summary>Puts <paramref name="typed"/> on <paramref name="hand"/>. True when the map changed,
     /// so the caller saves only then.</summary>
-    public static bool Set(IDictionary<string, string> labels, string slug, string typed)
+    public static bool Set(IDictionary<string, string> aliases, Hand hand, string typed)
     {
-        if (slug == Hand.OwnSlug)
+        if (hand.IsOwn)
             return false;
-        var label = typed.Trim();
-        if (label.Length == 0)
-            return labels.Remove(slug);
-        if (labels.TryGetValue(slug, out var old) && old == label)
+        var alias = typed.Trim();
+        if (alias.Length == 0)
+            return aliases.Remove(hand.Slug);
+        if (aliases.TryGetValue(hand.Slug, out var old) && old == alias)
             return false;
-        labels[slug] = label;
+        aliases[hand.Slug] = alias;
         return true;
     }
 }

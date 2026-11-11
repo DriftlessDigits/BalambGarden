@@ -6,9 +6,9 @@ using Xunit;
 
 namespace BalambGarden.Engine.Tests.Derivations;
 
-/// <summary>The settings window's foreign hands (rethink slice 10, spec ruling 15): every hand tag
+/// <summary>The settings window's foreign hands (rethink slice 10, spec ruling 15): every slug
 /// the ledger or the history holds, other than this install's own, each with how much of the history
-/// is its and its newest act there; and the one rule that writes a label into the local map.</summary>
+/// is its and its newest act there; and the one rule that writes an alias into the local map.</summary>
 public class ForeignHandsTests
 {
     private const ushort Krakka = 49, Onion = 50;
@@ -45,14 +45,14 @@ public class ForeignHandsTests
     public void NoHandsOnRecordListsNone()
         => Assert.Empty(Seen([], new GardenHistory()));
 
-    [Fact] // the own tag reads "you" by rule and is never offered for a label, wherever it appears
+    [Fact] // the own hand reads "you" by rule and is never offered for an alias, wherever it appears
     public void TheOwnHandIsNeverListed()
     {
         var history = History(Row("2026-11-07T16:47:00Z", Hand.OwnSlug));
         Assert.Empty(Seen([Bed(0, Hand.Own, Hand.Own)], history));
     }
 
-    [Fact] // a tag in the history: how many rows are its, and its newest one with the estate named and the time local
+    [Fact] // a slug in the history: how many rows are its, and its newest one with the estate named and the time local
     public void AHistoryHandCarriesItsCountAndNewestAct()
     {
         var history = History(
@@ -62,8 +62,8 @@ public class ForeignHandsTests
             Row("2026-11-08T01:00:00Z", Hand.OwnSlug));
 
         var hand = Assert.Single(Seen([], history));
-        Assert.Equal("jw9cdj", hand.Slug);
-        Assert.Equal(3, hand.OnRecord);
+        Assert.Equal("jw9cdj", hand.Hand.Slug);
+        Assert.Equal(3, hand.HistoryRows);
         Assert.NotNull(hand.Last);
         Assert.Equal(DateTimeOffset.Parse("2026-11-08T00:18:00Z"), hand.Last!.Entry.At);
         Assert.Equal("FC Estate", hand.Last.EstateName);
@@ -78,74 +78,74 @@ public class ForeignHandsTests
         Assert.Equal(Unnamed.DisplayLabel(), hand.Last!.EstateName);
     }
 
-    [Fact] // a tag only the ledger holds (planted by, or last tended by) is listed, with nothing from the history
+    [Fact] // a slug only the ledger holds (planted by, or last tended by) is listed, with nothing from the history
     public void ALedgerOnlyHandIsListedWithNoHistory()
     {
         var hands = Seen([Bed(0, plantedBy: new Hand("p1ant0")), Bed(1, tendedBy: new Hand("t3nd00"))], new GardenHistory());
-        Assert.Equal(["p1ant0", "t3nd00"], hands.Select(h => h.Slug));
-        Assert.All(hands, h => Assert.Equal(0, h.OnRecord));
+        Assert.Equal(["p1ant0", "t3nd00"], hands.Select(h => h.Hand.Slug));
+        Assert.All(hands, h => Assert.Equal(0, h.HistoryRows));
         Assert.All(hands, h => Assert.Null(h.Last));
     }
 
-    [Fact] // one tag on many beds and many rows is one hand
-    public void ATagSeenInBothPlacesIsListedOnce()
+    [Fact] // one slug on many beds and many rows is one hand
+    public void ASlugSeenInBothPlacesIsListedOnce()
     {
         var hand = Assert.Single(Seen(
             [Bed(0, new Hand("jw9cdj"), new Hand("jw9cdj")), Bed(1, new Hand("jw9cdj"))],
             History(Row("2026-11-08T00:18:00Z", "jw9cdj"))));
-        Assert.Equal(1, hand.OnRecord);
+        Assert.Equal(1, hand.HistoryRows);
     }
 
-    [Fact] // newest act first; hands with nothing in the history after them, by tag
+    [Fact] // newest act first; hands with nothing in the history after them, by slug
     public void HandsReadNewestActFirstThenLedgerOnlyByTag()
     {
         var hands = Seen(
             [Bed(0, new Hand("zz0000")), Bed(1, new Hand("aa0000"))],
             History(Row("2026-11-01T12:00:00Z", "older1"), Row("2026-11-08T00:18:00Z", "newer1")));
-        Assert.Equal(["newer1", "older1", "aa0000", "zz0000"], hands.Select(h => h.Slug));
+        Assert.Equal(["newer1", "older1", "aa0000", "zz0000"], hands.Select(h => h.Hand.Slug));
     }
 
-    [Fact] // a label is set as typed, without the spaces round it
-    public void ALabelIsSetTrimmed()
+    [Fact] // an alias is set as typed, without the spaces round it
+    public void AnAliasIsSetTrimmed()
     {
-        var labels = new Dictionary<string, string>();
-        Assert.True(Aliases.Set(labels, "jw9cdj", "  the laptop "));
-        Assert.Equal("the laptop", labels["jw9cdj"]);
+        var aliases = new Dictionary<string, string>();
+        Assert.True(Aliases.Set(aliases, new Hand("jw9cdj"), "  the laptop "));
+        Assert.Equal("the laptop", aliases["jw9cdj"]);
     }
 
-    [Fact] // an emptied box clears the label: the tag reads "household" again
-    public void AnEmptyOrBlankBoxClearsTheLabel()
+    [Fact] // an emptied box clears the alias: the hand reads "household" again
+    public void AnEmptyOrBlankBoxClearsTheAlias()
     {
-        var labels = new Dictionary<string, string> { ["jw9cdj"] = "the laptop", ["k7f3qx"] = "upstairs" };
-        Assert.True(Aliases.Set(labels, "jw9cdj", ""));
-        Assert.True(Aliases.Set(labels, "k7f3qx", "   "));
-        Assert.Empty(labels);
+        var aliases = new Dictionary<string, string> { ["jw9cdj"] = "the laptop", ["k7f3qx"] = "upstairs" };
+        Assert.True(Aliases.Set(aliases, new Hand("jw9cdj"), ""));
+        Assert.True(Aliases.Set(aliases, new Hand("k7f3qx"), "   "));
+        Assert.Empty(aliases);
     }
 
-    [Fact] // the same words again, or clearing a tag with no label, changes nothing and asks for no save
-    public void AnUnchangedLabelReportsNoChange()
+    [Fact] // the same words again, or clearing a hand with no alias, changes nothing and asks for no save
+    public void AnUnchangedAliasReportsNoChange()
     {
-        var labels = new Dictionary<string, string> { ["jw9cdj"] = "the laptop" };
-        Assert.False(Aliases.Set(labels, "jw9cdj", "the laptop "));
-        Assert.False(Aliases.Set(labels, "k7f3qx", ""));
-        Assert.Equal(["jw9cdj"], labels.Keys);
+        var aliases = new Dictionary<string, string> { ["jw9cdj"] = "the laptop" };
+        Assert.False(Aliases.Set(aliases, new Hand("jw9cdj"), "the laptop "));
+        Assert.False(Aliases.Set(aliases, new Hand("k7f3qx"), ""));
+        Assert.Equal(["jw9cdj"], aliases.Keys);
     }
 
-    [Fact] // a label for one tag leaves the others alone
-    public void ALabelTouchesOnlyItsOwnTag()
+    [Fact] // an alias for one hand leaves the others alone
+    public void AnAliasTouchesOnlyItsOwnHand()
     {
-        var labels = new Dictionary<string, string> { ["k7f3qx"] = "upstairs" };
-        Aliases.Set(labels, "jw9cdj", "the laptop");
-        Aliases.Set(labels, "jw9cdj", "");
-        Assert.Equal("upstairs", labels["k7f3qx"]);
-        Assert.Single(labels);
+        var aliases = new Dictionary<string, string> { ["k7f3qx"] = "upstairs" };
+        Aliases.Set(aliases, new Hand("jw9cdj"), "the laptop");
+        Aliases.Set(aliases, new Hand("jw9cdj"), "");
+        Assert.Equal("upstairs", aliases["k7f3qx"]);
+        Assert.Single(aliases);
     }
 
-    [Fact] // the own hand always reads "you": the map never takes a label for it
-    public void TheOwnTagTakesNoLabel()
+    [Fact] // the own hand always reads "you": the map never takes an alias for it
+    public void TheOwnHandTakesNoAlias()
     {
-        var labels = new Dictionary<string, string>();
-        Assert.False(Aliases.Set(labels, Hand.OwnSlug, "me"));
-        Assert.Empty(labels);
+        var aliases = new Dictionary<string, string>();
+        Assert.False(Aliases.Set(aliases, Hand.Own, "me"));
+        Assert.Empty(aliases);
     }
 }
