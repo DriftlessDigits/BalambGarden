@@ -206,7 +206,7 @@ The ruling for the ambiguous window: a tend newer than the old plant's last sigh
 _Avoid_: drop the tend, conservative reset
 
 **History**:
-The permanent record of every plant and harvest by every hand, with yields, forever: the garden's scoreboard. Born empty on 2026-10-15, never back-filled, never the outbox, never pruned. Tends and fertilizes are state, not history.
+The permanent record of every plant and harvest by every hand, with yields, forever: the garden's scoreboard. Born empty on 2026-10-15, never back-filled, never the outbox, never pruned. Tends and fertilizes are state, not history. The History tab lists it, newest first.
 _Avoid_: log (that is the receipt log), archive, timeline, scoreboard (the purpose, not the name)
 
 **Receipt log**:
