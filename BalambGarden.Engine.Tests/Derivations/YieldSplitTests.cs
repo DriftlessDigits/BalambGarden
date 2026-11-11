@@ -104,16 +104,18 @@ public class YieldSplitTests
     {
         // Two partners split the crop; the sowing from before v0.4.1 (no patch at sow) and the harvest
         // with no sowing on record at all both land in the not-recorded row, never guessed.
+        // The not-recorded row is the most planted and met first, and still comes last.
         var mirror = Bed(History(
+                Grown(Mirror, 2, 1, null, null, 1, SunLemonSeeds),
+                Grown(Mirror, 3, 1, null, null, 0, null),
                 Grown(Mirror, 0, 1, BesideKrakka, Thanalan3),
                 Grown(Mirror, 1, 1, BesideFig, Thanalan3),
-                Grown(Mirror, 2, 1, null, null, 1, SunLemonSeeds),
                 [Harvest(T0.AddDays(1), Mirror, 2, 5, 0)]),
             Mirror);
 
         var notRecorded = mirror.Splits.Single(s => s.Partner == Partner.NotRecorded);
-        Assert.Equal((1, 1, 1), (notRecorded.Planted, notRecorded.Harvested, notRecorded.Unmatched));
-        Assert.Equal(new CrossRate(1, 2), notRecorded.Cross);
+        Assert.Equal((2, 2, 1), (notRecorded.Planted, notRecorded.Harvested, notRecorded.Unmatched));
+        Assert.Equal(new CrossRate(1, 3), notRecorded.Cross);
         Assert.Equal(Partner.NotRecorded, mirror.Splits[^1].Partner);
     }
 
@@ -198,14 +200,19 @@ public class YieldSplitTests
     [Fact]
     public void NoPartnerGetsItsOwnRowOnceTheCropSplits()
     {
+        // "no partner" is the most planted and met first, and still comes after the partners; the
+        // partners run most planted first.
         var mirror = Bed(History(
+                Grown(Mirror, 2, 1, Patch((1, Mirror, 1)), Thanalan3, 0, null),
+                Grown(Mirror, 3, 1, Patch((1, Mirror, 1)), Thanalan3, 0, null),
+                Grown(Mirror, 4, 1, Patch((1, Mirror, 1)), Thanalan3, 0, null),
                 Grown(Mirror, 0, 1, BesideKrakka, Thanalan3),
                 Grown(Mirror, 1, 1, BesideFig, Thanalan3),
-                Grown(Mirror, 2, 1, Patch((1, Mirror, 1)), Thanalan3, 0, null)),
+                Grown(Mirror, 5, 1, BesideFig, Thanalan3)),
             Mirror);
 
         Assert.Equal(
-            [Partner.Beside(Krakka), Partner.Beside(Fig), Partner.NoPartner],
+            [Partner.Beside(Fig), Partner.Beside(Krakka), Partner.NoPartner],
             mirror.Splits.Select(s => s.Partner!.Value));
         Assert.Empty(mirror.Partners);
     }
