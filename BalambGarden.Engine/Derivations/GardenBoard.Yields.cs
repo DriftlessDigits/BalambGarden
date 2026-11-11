@@ -14,7 +14,16 @@ public sealed record YieldBook(DateTimeOffset? Since, IReadOnlyList<YieldRow> Be
 /// found no sowing on record (sown before the history began, or a pot whose key moved); their
 /// items and cross seeds still count (ruled 2026-11-11). <see cref="Gathered"/> is the items those harvests yielded, from the
 /// <see cref="GatheredFrom"/> harvests with a yield recorded. Pots carry no <see cref="Cross"/>
-/// and no <see cref="Seeds"/> (pots never cross).</summary>
+/// and no <see cref="Seeds"/> (pots never cross).
+///
+/// <para>The splits (rethink slice 8, rulings 10 and 12): a crop whose paired harvests came from
+/// more than one partner, or from more than one soil, carries <see cref="Splits"/>: one row per
+/// partner, per soil, or per partner and soil when both split, each with its own counts, adding up
+/// to the crop's. A harvest takes its sowing's partner and soil; a harvest with no sowing on record
+/// reads not recorded. Until a crop splits, the partners (beds only) and the soils its plantings
+/// recorded ride <see cref="Partners"/> and <see cref="Soils"/> for the hover; each list is empty
+/// once the crop splits that way. A split row names its <see cref="Partner"/> (null when the crop
+/// does not split by partner) and its <see cref="Soil"/> (null when it does not split by soil).</para></summary>
 public sealed record YieldRow(
     ushort Species,
     bool IsPot,
@@ -26,7 +35,24 @@ public sealed record YieldRow(
     int Gathered,
     int GatheredFrom,
     CrossRate? Cross,
-    IReadOnlyList<SeedShare> Seeds);
+    IReadOnlyList<SeedShare> Seeds)
+{
+    public Partner? Partner { get; init; }
+
+    public SowSoil? Soil { get; init; }
+
+    public IReadOnlyList<YieldRow> Splits { get; init; } = [];
+
+    public IReadOnlyList<PartnerCount> Partners { get; init; } = [];
+
+    public IReadOnlyList<SoilCount> Soils { get; init; } = [];
+}
+
+/// <summary>How many of a crop's plantings were sown beside <see cref="Partner"/> (or with no partner).</summary>
+public sealed record PartnerCount(Partner Partner, int Planted);
+
+/// <summary>How many of a crop's plantings were sown in <see cref="Soil"/> (an item id).</summary>
+public sealed record SoilCount(uint Soil, int Planted);
 
 /// <summary>The harvests that gave a cross seed (<see cref="Crossed"/>) over the harvests whose
 /// cross was heard either way (<see cref="Heard"/>; "not heard" never counts as a miss).
@@ -54,51 +80,61 @@ public static partial class GardenBoard
     /// same container before it, never across containers; a newer sowing in a container ends the
     /// older one unharvested. A sowing still open at the end is growing while the
     /// <paramref name="ledger"/> record of its container still holds that crop alive (its newest
-    /// contents name it, not dead), else lost. Rows run most planted first.</summary>
+    /// contents name it, not dead), else lost. Rows run most planted first. Each bed sowing's
+    /// partner comes from its patch at sow through the crossbreed walk (<see cref="PartnerAtSow"/>),
+    /// its soil from its row; <see cref="YieldRow"/> says when a crop splits.</summary>
     public static YieldBook Yields(GardenHistory history, IReadOnlyList<ClaimedBed> ledger, DomainTables tables)
     {
-        var tallies = new Dictionary<(ushort Species, bool IsPot), Tally>();
-        Tally TallyOf(HistoryEntry e) => tallies.TryGetValue((e.Species, e.IsPot), out var t)
+        var crops = new Dictionary<(ushort Species, bool IsPot), CropTally>();
+        CropTally CropOf(HistoryEntry e) => crops.TryGetValue((e.Species, e.IsPot), out var t)
             ? t
-            : tallies[(e.Species, e.IsPot)] = new Tally();
+            : crops[(e.Species, e.IsPot)] = new CropTally();
 
-        var open = new Dictionary<Container, HistoryEntry>();
+        var open = new Dictionary<Container, (HistoryEntry Sowing, Part Part)>();
         var ordered = history.Entries.OrderBy(e => e.At).ToList();
         foreach (var entry in ordered)
         {
-            var tally = TallyOf(entry);
+            var crop = CropOf(entry);
             var at = Container.Of(entry);
             if (entry.Kind == HistoryKind.Plant)
             {
-                tally.Planted++;
-                open[at] = entry;
+                var part = new Part(
+                    entry.IsPot ? Partner.NotRecorded : PartnerAtSow(entry, tables),
+                    new SowSoil(entry.Soil));
+                crop.Count(part, t => t.Planted++);
+                open[at] = (entry, part);
                 continue;
             }
 
-            var matched = open.TryGetValue(at, out var sowing) && sowing.Species == entry.Species;
-            if (matched)
+            if (open.TryGetValue(at, out var sown) && sown.Sowing.Species == entry.Species)
             {
-                tally.Harvested++;
                 open.Remove(at);
+                crop.Count(sown.Part, t =>
+                {
+                    t.Harvested++;
+                    t.AddHarvest(entry);
+                });
             }
             else
             {
-                tally.Unmatched++;
+                // A harvest with no sowing on record is never "harvested", but what it gave came out
+                // of the ground, so it counts (ruled 2026-11-11); its partner and soil are not on record.
+                crop.Count(Part.NotRecorded, t =>
+                {
+                    t.Unmatched++;
+                    t.AddHarvest(entry);
+                });
             }
-
-            // A harvest with no sowing on record is never "harvested", but what it gave came out
-            // of the ground, so it counts (ruled 2026-11-11).
-            tally.AddHarvest(entry);
         }
 
         var records = ledger.ToLookup(Container.Of);
-        foreach (var (at, sowing) in open)
+        foreach (var (at, sown) in open)
         {
-            if (records[at].Any(record => HoldsAlive(record, sowing.Species)))
-                TallyOf(sowing).Growing++;
+            if (records[at].Any(record => HoldsAlive(record, sown.Sowing.Species)))
+                CropOf(sown.Sowing).Count(sown.Part, t => t.Growing++);
         }
 
-        IReadOnlyList<YieldRow> Section(bool pots) => tallies
+        IReadOnlyList<YieldRow> Section(bool pots) => crops
             .Where(t => t.Key.IsPot == pots)
             .Select(t => t.Value.Row(t.Key.Species, pots))
             .OrderByDescending(r => r.Planted)
@@ -123,9 +159,86 @@ public static partial class GardenBoard
         public static Container Of(ClaimedBed b) => new(b.Estate, b.IsPot, b.PatchOrdinal, b.BedSlot);
     }
 
+    /// <summary>A sowing's partner and soil: the finest split the book keeps.</summary>
+    private readonly record struct Part(Partner Partner, SowSoil Soil)
+    {
+        public static Part NotRecorded => new(Partner.NotRecorded, new SowSoil(null));
+    }
+
+    /// <summary>One crop's tally, whole and per part (partner and soil), each part remembering when
+    /// it was first met.</summary>
+    private sealed class CropTally
+    {
+        private readonly Tally whole = new();
+        private readonly Dictionary<Part, Tally> parts = [];
+
+        /// <summary>Counts the same thing on the whole crop and on one part.</summary>
+        public void Count(Part part, Action<Tally> count)
+        {
+            if (!parts.TryGetValue(part, out var tally))
+                parts[part] = tally = new Tally { FirstMet = parts.Count };
+            count(whole);
+            count(tally);
+        }
+
+        public YieldRow Row(ushort species, bool isPot)
+        {
+            var byPartner = !isPot && Compared(p => p.Partner.Kind == PartnerKind.Beside, p => p.Partner);
+            var bySoil = Compared(p => p.Soil.Item is not null, p => p.Soil);
+
+            // Recorded rows first, most planted first; "no partner" after the partners; a not-recorded
+            // partner or soil last.
+            var splits = byPartner || bySoil
+                ? parts
+                    .GroupBy(p => (Partner: byPartner ? p.Key.Partner : (Partner?)null, Soil: bySoil ? p.Key.Soil : (SowSoil?)null))
+                    .Select(g => (g.Key, Tally: Tally.Sum(g.Select(p => p.Value))))
+                    .OrderBy(s => (s.Key.Partner?.Kind == PartnerKind.NotRecorded ? 1 : 0) + (s.Key.Soil is { Item: null } ? 1 : 0))
+                    .ThenBy(s => s.Key.Partner?.Kind == PartnerKind.NoPartner)
+                    .ThenByDescending(s => s.Tally.Planted)
+                    .ThenBy(s => s.Tally.FirstMet)
+                    .Select(s => s.Tally.Row(species, isPot) with { Partner = s.Key.Partner, Soil = s.Key.Soil })
+                    .ToList()
+                : [];
+
+            return whole.Row(species, isPot) with
+            {
+                Splits = splits,
+                Partners = isPot || byPartner
+                    ? []
+                    : PlantedBy(p => p.Partner.Kind != PartnerKind.NotRecorded, p => p.Partner)
+                        .OrderBy(c => c.Key.Kind == PartnerKind.NoPartner)
+                        .Select(c => new PartnerCount(c.Key, c.Planted))
+                        .ToList(),
+                Soils = bySoil
+                    ? []
+                    : PlantedBy(p => p.Soil.Item is not null, p => p.Soil)
+                        .Select(c => new SoilCount(c.Key.Item!.Value, c.Planted))
+                        .ToList(),
+            };
+        }
+
+        /// <summary>More than one recorded value among the parts holding a harvest paired with its
+        /// sowing: a comparison to make, so the crop splits that way.</summary>
+        private bool Compared<T>(Func<Part, bool> recorded, Func<Part, T> key)
+            => parts.Where(p => p.Value.Harvested > 0 && recorded(p.Key)).Select(p => key(p.Key)).Distinct().Count() > 1;
+
+        /// <summary>Plantings per recorded value, most first, then in the order first met.</summary>
+        private IEnumerable<(T Key, int Planted)> PlantedBy<T>(Func<Part, bool> recorded, Func<Part, T> key)
+            => parts.Where(p => p.Value.Planted > 0 && recorded(p.Key))
+                .GroupBy(p => key(p.Key))
+                .Select(g => (g.Key, Planted: g.Sum(p => p.Value.Planted), FirstMet: g.Min(p => p.Value.FirstMet)))
+                .OrderByDescending(g => g.Planted)
+                .ThenBy(g => g.FirstMet)
+                .Select(g => (g.Key, g.Planted));
+    }
+
     private sealed class Tally
     {
         public int Planted, Harvested, Growing, Unmatched, Gathered, GatheredFrom, Crossed, Heard;
+
+        /// <summary>The order its part was first met in the history (the book's tie-break).</summary>
+        public int FirstMet;
+
         private readonly Dictionary<uint, int> seeds = [];
 
         /// <summary>Adds a harvest's items and its cross seed (heard or not).</summary>
@@ -145,6 +258,28 @@ public static partial class GardenBoard
                 Crossed++;
                 seeds[item] = seeds.GetValueOrDefault(item) + 1;
             }
+        }
+
+        /// <summary>Several parts' tallies as one; it was first met when the first of them was.</summary>
+        public static Tally Sum(IEnumerable<Tally> tallies)
+        {
+            var sum = new Tally { FirstMet = int.MaxValue };
+            foreach (var t in tallies)
+            {
+                sum.Planted += t.Planted;
+                sum.Harvested += t.Harvested;
+                sum.Growing += t.Growing;
+                sum.Unmatched += t.Unmatched;
+                sum.Gathered += t.Gathered;
+                sum.GatheredFrom += t.GatheredFrom;
+                sum.Crossed += t.Crossed;
+                sum.Heard += t.Heard;
+                sum.FirstMet = Math.Min(sum.FirstMet, t.FirstMet);
+                foreach (var (item, n) in t.seeds)
+                    sum.seeds[item] = sum.seeds.GetValueOrDefault(item) + n;
+            }
+
+            return sum;
         }
 
         public YieldRow Row(ushort species, bool isPot) => new(

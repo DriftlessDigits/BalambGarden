@@ -1,0 +1,298 @@
+using BalambGarden.Engine.Census;
+using BalambGarden.Engine.Derivations;
+using BalambGarden.Engine.Domain;
+using BalambGarden.Engine.Ledger;
+using BalambGarden.Engine.Sync;
+using Xunit;
+
+namespace BalambGarden.Engine.Tests.Derivations;
+
+/// <summary>The yield book's splits through the garden board's seam (rethink slice 8, rulings 10
+/// and 12): sowings with their patch at sow and soil go in, a crop's rows by partner and by soil
+/// come out. The partner is worked out from the patch at sow by the crossbreed walk (right, down,
+/// up, left on the patch's grid, first valid partner wins), never stored.</summary>
+public class YieldSplitTests
+{
+    private static readonly DomainTables T = DomainTables.Load();
+    private static readonly DateTimeOffset T0 = DateTimeOffset.Parse("2026-11-07T16:00:00Z");
+
+    // Species indexes from Data/SpeciesIndex.json; item ids from Data/Crops.json and Data/Soils.json.
+    private const ushort Mirror = 17, Krakka = 49, Onion = 50, Fig = 65, SunLemon = 14;
+    private const uint SunLemonSeeds = 7728, KukuruSeeds = 7750;
+    private const uint Thanalan3 = 7766, Shroud3 = 7763, PottingSoil = 16026;
+
+    private static readonly EstateKey Yard = new(340, 11, 32);
+
+    private static int seq;
+
+    /// <summary>A patch at sow: every slot empty but the ones named, each (slot, species, stage).</summary>
+    private static SyncPatchBed[] Patch(params (int Slot, ushort Species, byte Stage)[] beds)
+        => Enumerable.Range(0, GardenBoard.PatchSlots)
+            .Select(slot => beds.FirstOrDefault(b => b.Slot == slot) is { Species: > 0 } b
+                ? new SyncPatchBed(slot, true, b.Species, b.Stage)
+                : new SyncPatchBed(slot, false, 0, 0))
+            .ToArray();
+
+    private static HistoryEntry Plant(DateTimeOffset at, ushort species, int patch, int slot,
+        SyncPatchBed[]? beside = null, uint? soil = null, bool pot = false)
+        => new($"hhbbaa:eraaaa:{++seq}", at, HistoryKind.Plant, species, Yard, pot, patch, pot ? 0 : slot,
+            "hhbbaa", SyncSource.Chain, null, Soil: soil, Patch: beside);
+
+    private static HistoryEntry Harvest(DateTimeOffset at, ushort species, int patch, int slot,
+        int? seedQty = null, uint? seedItem = null, bool pot = false)
+        => new($"hhbbaa:eraaaa:{++seq}", at, HistoryKind.Harvest, species, Yard, pot, patch, pot ? 0 : slot,
+            "hhbbaa", SyncSource.Chain, [new SyncYield(1, 12)], seedQty, seedItem);
+
+    /// <summary>A bed sown with its patch at sow and soil, then harvested with the cross seed as given.</summary>
+    private static HistoryEntry[] Grown(ushort crop, int patch, int slot, SyncPatchBed[]? beside, uint? soil,
+        int? seedQty = 1, uint? seedItem = KukuruSeeds)
+        => [Plant(T0, crop, patch, slot, beside, soil), Harvest(T0.AddDays(3), crop, patch, slot, seedQty, seedItem)];
+
+    private static GardenHistory History(params HistoryEntry[][] rows)
+    {
+        var history = new GardenHistory();
+        foreach (var row in rows.SelectMany(r => r))
+            history.Record(row);
+        return history;
+    }
+
+    private static YieldRow Bed(GardenHistory history, ushort crop, params ClaimedBed[] ledger)
+        => GardenBoard.Yields(history, ledger, T).Beds.Single(r => r.Species == crop);
+
+    // Mirror Apple in slot 1 (top middle): the walk looks right (slot 2), then left (slot 0); slot
+    // 1 has nothing below it (the patch's middle) and nothing above.
+    private static readonly SyncPatchBed[] BesideKrakka = Patch((1, Mirror, 1), (2, Krakka, 4));
+    private static readonly SyncPatchBed[] BesideFig = Patch((1, Mirror, 1), (0, Fig, 4));
+
+    [Fact]
+    public void ACropThatCrossedWithTwoPartnersSplitsIntoARowPerPartner()
+    {
+        // The spec's example: Mirror Apple beside Krakka Root at one estate, beside Old World Fig at
+        // another. Each partner's row carries its own counts, rate and seeds.
+        var mirror = Bed(History(
+                Grown(Mirror, 0, 1, BesideKrakka, Thanalan3, 1, SunLemonSeeds),
+                Grown(Mirror, 1, 1, BesideKrakka, Thanalan3, 0, null),
+                Grown(Mirror, 2, 1, BesideFig, Thanalan3, 1, KukuruSeeds)),
+            Mirror);
+
+        Assert.Equal((3, 3), (mirror.Planted, mirror.Harvested));
+        Assert.Equal([Partner.Beside(Krakka), Partner.Beside(Fig)], mirror.Splits.Select(s => s.Partner!.Value));
+        var krakka = mirror.Splits[0];
+        Assert.Equal((2, 2, new CrossRate(1, 2)), (krakka.Planted, krakka.Harvested, krakka.Cross));
+        Assert.Equal([new SeedShare(SunLemonSeeds, 1, 100)], krakka.Seeds);
+        var fig = mirror.Splits[1];
+        Assert.Equal((1, 1, new CrossRate(1, 1)), (fig.Planted, fig.Harvested, fig.Cross));
+        Assert.Equal([new SeedShare(KukuruSeeds, 1, 100)], fig.Seeds);
+        Assert.All(mirror.Splits, s => Assert.Null(s.Soil));
+    }
+
+    [Fact]
+    public void ACropWithOnePartnerStaysOneRowAndThePartnerRidesTheHover()
+    {
+        var mirror = Bed(History(
+                Grown(Mirror, 0, 1, BesideKrakka, Thanalan3),
+                Grown(Mirror, 1, 1, BesideKrakka, Thanalan3),
+                Grown(Mirror, 2, 1, null, null)),
+            Mirror);
+
+        Assert.Empty(mirror.Splits);
+        Assert.Equal([new PartnerCount(Partner.Beside(Krakka), 2)], mirror.Partners);
+    }
+
+    [Fact]
+    public void AHarvestWhoseSowingHasNoPatchRecordReadsPartnerNotRecorded()
+    {
+        // Two partners split the crop; the sowing from before v0.4.1 (no patch at sow) and the harvest
+        // with no sowing on record at all both land in the not-recorded row, never guessed.
+        var mirror = Bed(History(
+                Grown(Mirror, 0, 1, BesideKrakka, Thanalan3),
+                Grown(Mirror, 1, 1, BesideFig, Thanalan3),
+                Grown(Mirror, 2, 1, null, null, 1, SunLemonSeeds),
+                [Harvest(T0.AddDays(1), Mirror, 2, 5, 0)]),
+            Mirror);
+
+        var notRecorded = mirror.Splits.Single(s => s.Partner == Partner.NotRecorded);
+        Assert.Equal((1, 1, 1), (notRecorded.Planted, notRecorded.Harvested, notRecorded.Unmatched));
+        Assert.Equal(new CrossRate(1, 2), notRecorded.Cross);
+        Assert.Equal(Partner.NotRecorded, mirror.Splits[^1].Partner);
+    }
+
+    [Fact]
+    public void AGrowingSowingBesideASecondPartnerDoesNotSplitTheCrop()
+    {
+        // The split waits for harvests from both partners: until the fig-side Mirror Apple is
+        // harvested there is nothing to compare.
+        var mirror = Bed(History(
+                Grown(Mirror, 0, 1, BesideKrakka, Thanalan3),
+                [Plant(T0, Mirror, 1, 1, BesideFig, Thanalan3)]),
+            Mirror);
+
+        Assert.Empty(mirror.Splits);
+        Assert.Equal(
+            [new PartnerCount(Partner.Beside(Krakka), 1), new PartnerCount(Partner.Beside(Fig), 1)],
+            mirror.Partners);
+    }
+
+    [Theory]
+    // Slot 1 (top middle): right is slot 2, then left is slot 0.
+    [InlineData(1, new[] { 2, Krakka, 0, Fig }, Krakka)]
+    [InlineData(1, new[] { 0, Fig }, Fig)]
+    // Slot 0 (top-left corner): right is slot 1, down is slot 7 (the left side's middle).
+    [InlineData(0, new[] { 7, Fig, 1, Krakka }, Krakka)]
+    [InlineData(0, new[] { 7, Fig }, Fig)]
+    // Slot 6 (bottom-left corner): right is slot 5, then up is slot 7 (the live 11-07 fig sowing's shape).
+    [InlineData(6, new[] { 7, Krakka, 5, Fig }, Fig)]
+    [InlineData(6, new[] { 7, Krakka }, Krakka)]
+    // Slot 3 (right side's middle): down is slot 4 before up, slot 2.
+    [InlineData(3, new[] { 2, Fig, 4, Krakka }, Krakka)]
+    // Slot 7 (left side's middle): down slot 6, up slot 0; slot 1 across the top is no neighbour.
+    [InlineData(7, new[] { 1, Krakka, 0, Fig }, Fig)]
+    public void TheWalkTakesTheFirstPartnerRightDownUpLeft(int slot, int[] beds, int partner)
+    {
+        var patch = Patch([.. beds.Chunk(2).Select(b => (b[0], (ushort)b[1], (byte)2)), (slot, Mirror, 1)]);
+        var mirror = Bed(History([Plant(T0, Mirror, 0, slot, patch, Thanalan3)]), Mirror);
+
+        Assert.Equal(Partner.Beside((ushort)partner), Assert.Single(mirror.Partners).Partner);
+    }
+
+    [Fact]
+    public void TheWalkSkipsEmptyBedsTheSameCropDeadPlantsAndPairsThatCannotCross()
+    {
+        Assert.Empty(T.CrossResults(T.SeedIdBySpeciesIndex(Mirror)!.Value, T.SeedIdBySpeciesIndex(SunLemon)!.Value));
+
+        // Slot 0's two neighbours, each in turn not a partner; the bed beyond the walk is a fig.
+        SyncPatchBed[][] none =
+        [
+            Patch((0, Mirror, 1)),                                    // both empty
+            Patch((0, Mirror, 1), (1, Mirror, 4), (7, Mirror, 2)),    // the same crop
+            Patch((0, Mirror, 1), (1, Krakka, 5), (7, Krakka, 5)),    // dead (stage 5): withered plants never cross
+            Patch((0, Mirror, 1), (1, SunLemon, 4), (7, SunLemon, 4)), // no pair in the table
+            Patch((0, Mirror, 1), (2, Fig, 4), (4, Fig, 4)),          // figs, but not beside slot 0
+        ];
+        foreach (var patch in none)
+        {
+            var mirror = Bed(History([Plant(T0, Mirror, 0, 0, patch, Thanalan3)]), Mirror);
+            Assert.Equal([new PartnerCount(Partner.NoPartner, 1)], mirror.Partners);
+        }
+
+        // A seedling counts: neighbours need only be there at the sow.
+        var seedling = Bed(History([Plant(T0, Mirror, 0, 0, Patch((0, Mirror, 1), (1, Krakka, 0)), Thanalan3)]), Mirror);
+        Assert.Equal([new PartnerCount(Partner.Beside(Krakka), 1)], seedling.Partners);
+    }
+
+    [Fact]
+    public void NoPartnerIsNotASecondPartner()
+    {
+        // Harvests beside Krakka Root and with nothing to cross with: one partner, so one row.
+        var mirror = Bed(History(
+                Grown(Mirror, 0, 1, BesideKrakka, Thanalan3),
+                Grown(Mirror, 1, 1, Patch((1, Mirror, 1)), Thanalan3, 0, null)),
+            Mirror);
+
+        Assert.Empty(mirror.Splits);
+        Assert.Equal(
+            [new PartnerCount(Partner.Beside(Krakka), 1), new PartnerCount(Partner.NoPartner, 1)],
+            mirror.Partners);
+    }
+
+    [Fact]
+    public void NoPartnerGetsItsOwnRowOnceTheCropSplits()
+    {
+        var mirror = Bed(History(
+                Grown(Mirror, 0, 1, BesideKrakka, Thanalan3),
+                Grown(Mirror, 1, 1, BesideFig, Thanalan3),
+                Grown(Mirror, 2, 1, Patch((1, Mirror, 1)), Thanalan3, 0, null)),
+            Mirror);
+
+        Assert.Equal(
+            [Partner.Beside(Krakka), Partner.Beside(Fig), Partner.NoPartner],
+            mirror.Splits.Select(s => s.Partner!.Value));
+        Assert.Empty(mirror.Partners);
+    }
+
+    [Fact]
+    public void OneSoilDoesNotSplitAndRidesTheHover()
+    {
+        var krakka = Bed(History(
+                Grown(Krakka, 0, 1, null, Thanalan3),
+                Grown(Krakka, 1, 1, null, Thanalan3),
+                [Plant(T0, Krakka, 2, 1, null, Shroud3)],
+                Grown(Krakka, 3, 1, null, null)),
+            Krakka);
+
+        // The Shroud sowing is still in the ground: harvests come from one soil only.
+        Assert.Empty(krakka.Splits);
+        Assert.Equal([new SoilCount(Thanalan3, 2), new SoilCount(Shroud3, 1)], krakka.Soils);
+    }
+
+    [Fact]
+    public void TwoSoilsSplitTheCropIntoARowPerSoil()
+    {
+        var krakka = Bed(History(
+                Grown(Krakka, 0, 1, null, Thanalan3),
+                Grown(Krakka, 1, 1, null, Thanalan3),
+                Grown(Krakka, 2, 1, null, Shroud3, 0, null),
+                Grown(Krakka, 3, 1, null, null)),
+            Krakka);
+
+        Assert.Equal(
+            [new SowSoil(Thanalan3), new SowSoil(Shroud3), new SowSoil(null)],
+            krakka.Splits.Select(s => s.Soil!.Value));
+        Assert.Equal((2, new CrossRate(2, 2)), (krakka.Splits[0].Harvested, krakka.Splits[0].Cross));
+        Assert.Equal((1, new CrossRate(0, 1)), (krakka.Splits[1].Harvested, krakka.Splits[1].Cross));
+        Assert.All(krakka.Splits, s => Assert.Null(s.Partner));
+        Assert.Empty(krakka.Soils);
+    }
+
+    [Fact]
+    public void ACropSplitByPartnerAndSoilGetsARowForEachPairHeard()
+    {
+        var mirror = Bed(History(
+                Grown(Mirror, 0, 1, BesideKrakka, Thanalan3),
+                Grown(Mirror, 1, 1, BesideKrakka, Shroud3),
+                Grown(Mirror, 2, 1, BesideFig, Thanalan3)),
+            Mirror);
+
+        Assert.Equal(
+            [
+                (Partner.Beside(Krakka), new SowSoil(Thanalan3)),
+                (Partner.Beside(Krakka), new SowSoil(Shroud3)),
+                (Partner.Beside(Fig), new SowSoil(Thanalan3)),
+            ],
+            mirror.Splits.Select(s => (s.Partner!.Value, s.Soil!.Value)));
+    }
+
+    [Fact]
+    public void PotsSplitBySoilButNeverByPartner()
+    {
+        var book = GardenBoard.Yields(History(
+                [Plant(T0, Onion, 129, 0, soil: PottingSoil, pot: true), Harvest(T0.AddDays(4), Onion, 129, 0, pot: true)],
+                [Plant(T0, Onion, 130, 0, soil: Thanalan3, pot: true), Harvest(T0.AddDays(4), Onion, 130, 0, pot: true)]),
+            [], T);
+
+        var onion = Assert.Single(book.Pots);
+        // One planting each: the soil first met comes first.
+        Assert.Equal([new SowSoil(PottingSoil), new SowSoil(Thanalan3)], onion.Splits.Select(s => s.Soil!.Value));
+        Assert.All(onion.Splits, s => Assert.Null(s.Partner));
+        Assert.Empty(onion.Partners);
+    }
+
+    [Fact]
+    public void SplitRowsAddUpToTheCropRow()
+    {
+        var mirror = Bed(History(
+                Grown(Mirror, 0, 1, BesideKrakka, Thanalan3),
+                Grown(Mirror, 1, 1, BesideFig, Thanalan3),
+                [Plant(T0, Mirror, 2, 1, BesideFig, Thanalan3)],
+                [Plant(T0, Mirror, 3, 1, null, null), Plant(T0.AddDays(1), Mirror, 3, 1, null, null)],
+                [Harvest(T0.AddDays(1), Mirror, 4, 5, 1, SunLemonSeeds)]),
+            Mirror,
+            Seed.Sight(new ClaimedBed { Estate = Yard, MapKey = 102, PatchOrdinal = 2, BedSlot = 1 }, T0.AddDays(1), Mirror, 1));
+
+        Assert.Equal((5, 2, 1, 2, 1), (mirror.Planted, mirror.Harvested, mirror.Growing, mirror.Lost, mirror.Unmatched));
+        Assert.Equal(
+            (mirror.Planted, mirror.Harvested, mirror.Growing, mirror.Lost, mirror.Unmatched, mirror.Gathered),
+            (mirror.Splits.Sum(s => s.Planted), mirror.Splits.Sum(s => s.Harvested), mirror.Splits.Sum(s => s.Growing),
+                mirror.Splits.Sum(s => s.Lost), mirror.Splits.Sum(s => s.Unmatched), mirror.Splits.Sum(s => s.Gathered)));
+    }
+}

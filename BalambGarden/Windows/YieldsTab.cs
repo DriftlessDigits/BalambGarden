@@ -56,9 +56,13 @@ internal static class YieldsTab
         ImGui.TextColored(Palette.TextDim, WindowFormat.YieldsSince(local));
         ImGui.Spacing();
 
-        // One crop column width for both sections, so the numbers line up from beds to pots.
-        var cropWidth = book.Beds.Concat(book.Pots)
-            .Select(r => ImGui.CalcTextSize(Plugin.Tables.SpeciesName(r.Species)).X)
+        // One crop column width for both sections, so the numbers line up from beds to pots; a
+        // split row's name sits indented under its crop.
+        var rows = book.Beds.Concat(book.Pots).ToList();
+        var cropWidth = rows
+            .Select(r => ImGui.CalcTextSize(WindowText.CropName(r.Species)).X)
+            .Concat(rows.SelectMany(r => r.Splits)
+                .Select(s => SplitIndent + ImGui.CalcTextSize(SplitLabel(s)).X))
             .Append(ImGui.CalcTextSize(BedColumns[0]).X)
             .Max();
 
@@ -95,15 +99,36 @@ internal static class YieldsTab
         }
 
         foreach (var row in rows)
+        {
             Row(row, since);
+            foreach (var split in row.Splits)
+                Row(split, since, SplitLabel(split));
+        }
     }
 
-    private static void Row(YieldRow row, DateTimeOffset since)
+    /// <summary>How far a split row's name sits in from its crop's.</summary>
+    private const float SplitIndent = 14f;
+
+    private static string SplitLabel(YieldRow split) => WindowFormat.SplitLabel(split, WindowText.CropName, WindowText.SoilName);
+
+    /// <summary>A crop's row, or with <paramref name="split"/> one of its split rows (rethink slice 8):
+    /// its name dim and indented under the crop, the same columns after it.</summary>
+    private static void Row(YieldRow row, DateTimeOffset since, string? split = null)
     {
         ImGui.TableNextRow();
 
         ImGui.TableNextColumn();
-        ImGui.TextUnformatted(Plugin.Tables.SpeciesName(row.Species));
+        if (split is null)
+        {
+            ImGui.TextUnformatted(WindowText.CropName(row.Species));
+            if (ImGui.IsItemHovered() && WindowFormat.SowingHover(row, WindowText.CropName, WindowText.SoilName) is { } hover)
+                ImGui.SetTooltip(hover);
+        }
+        else
+        {
+            ImGui.SetCursorPosX(ImGui.GetCursorPosX() + SplitIndent);
+            ImGui.TextColored(Palette.TextDim, split);
+        }
 
         Count(row.Planted);
         Count(row.Harvested);

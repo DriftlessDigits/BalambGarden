@@ -384,6 +384,71 @@ public static class WindowFormat
     public static string SeedCounts(IEnumerable<SeedShare> seeds, Func<uint, string> name)
         => string.Join(" · ", seeds.Select(s => $"{name(s.SeedItem)} {s.Harvests}"));
 
+    // ------------------------------------------------------------------ the Yields tab's splits (rethink slice 8)
+
+    /// <summary>A soil by its item name, less the game's "Topsoil" ("Grade 3 Thanalan"; "Potting
+    /// Soil" as the game names it); an item with no name by its id.</summary>
+    public static string SoilName(string? itemName, uint soilItem)
+        => string.IsNullOrWhiteSpace(itemName) ? $"soil {soilItem}"
+            : itemName.EndsWith(" Topsoil", StringComparison.OrdinalIgnoreCase) ? itemName[..^" Topsoil".Length]
+            : itemName;
+
+    /// <summary>A split row's partner: "beside Krakka Root", "no partner" (its patch held nothing
+    /// that crosses with it), "partner not recorded" (no patch at sow on record).</summary>
+    public static string PartnerLabel(Partner partner, Func<ushort, string> crop) => partner.Kind switch
+    {
+        PartnerKind.Beside => $"beside {crop(partner.Species)}",
+        PartnerKind.NoPartner => "no partner",
+        _ => "partner not recorded",
+    };
+
+    /// <summary>A split row's soil: its name, or "soil not recorded".</summary>
+    public static string SoilLabel(SowSoil soil, Func<uint, string> name)
+        => soil.Item is { } item ? name(item) : "soil not recorded";
+
+    /// <summary>A split row's name in the Crop column: its partner, its soil, or both
+    /// ("beside Krakka Root · Grade 3 Thanalan"); with neither on record, "partner and soil not recorded".</summary>
+    public static string SplitLabel(YieldRow split, Func<ushort, string> crop, Func<uint, string> soil)
+    {
+        if (split.Partner is { Kind: PartnerKind.NotRecorded } && split.Soil is { Item: null })
+            return "partner and soil not recorded";
+        var parts = new List<string>();
+        if (split.Partner is { } partner)
+            parts.Add(PartnerLabel(partner, crop));
+        if (split.Soil is { } sown)
+            parts.Add(SoilLabel(sown, soil));
+        return string.Join(" · ", parts);
+    }
+
+    /// <summary>The crop name's hover until it splits (rulings 10 and 12): the partners and soils
+    /// its sowings recorded, by count, and how many recorded neither; null when it has nothing to
+    /// add. "Of 95 planted:\nbeside Krakka Root 12 · beside Old World Fig 12 · partner not recorded
+    /// 71\nGrade 3 Thanalan 24 · soil not recorded 71".</summary>
+    public static string? SowingHover(YieldRow row, Func<ushort, string> crop, Func<uint, string> soil)
+    {
+        if (row.Partners.Count == 0 && row.Soils.Count == 0)
+            return null;
+        var lines = new List<string> { $"Of {row.Planted} planted:" };
+        if (row.Partners.Count > 0)
+            lines.Add(Counts(row.Partners.Select(p => (PartnerLabel(p.Partner, crop), p.Planted)),
+                row.Planted, PartnerLabel(Partner.NotRecorded, crop)));
+        if (row.Soils.Count > 0)
+            lines.Add(Counts(row.Soils.Select(s => (SoilLabel(new SowSoil(s.Soil), soil), s.Planted)),
+                row.Planted, SoilLabel(new SowSoil(null), soil)));
+        return string.Join("\n", lines);
+    }
+
+    /// <summary>"beside Krakka Root 12 · partner not recorded 71": each recorded value's count, and
+    /// the rest of <paramref name="planted"/> under <paramref name="rest"/> when there are any.</summary>
+    private static string Counts(IEnumerable<(string Label, int Planted)> counts, int planted, string rest)
+    {
+        var list = counts.ToList();
+        var left = planted - list.Sum(c => c.Planted);
+        if (left > 0)
+            list.Add((rest, left));
+        return string.Join(" · ", list.Select(c => $"{c.Label} {c.Planted}"));
+    }
+
     // ------------------------------------------------------------------ the History tab (rethink slice 9)
 
     /// <summary>The History tab with nothing on record. The history is read at plugin start, before

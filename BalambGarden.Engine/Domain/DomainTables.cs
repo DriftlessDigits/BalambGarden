@@ -15,6 +15,9 @@ public sealed class DomainTables
     private readonly List<Soil> soils;
     private readonly List<string> nameCollisions = [];
 
+    /// <summary>Every parent pair in the table, both ways round: <see cref="CanCross"/> asks it.</summary>
+    private readonly HashSet<(uint, uint)> crossable;
+
     private DomainTables(
         Dictionary<uint, Crop> crops,
         Dictionary<ushort, uint> seedIdByIndex,
@@ -28,6 +31,9 @@ public sealed class DomainTables
         this.pairsByResult = pairsByResult;
         this.soils = soils;
         indexBySeedId = seedIdByIndex.ToDictionary(kv => kv.Value, kv => kv.Key);
+        crossable = pairsByResult.Values.SelectMany(list => list)
+            .SelectMany(p => new[] { p, (p.Item2, p.Item1) })
+            .ToHashSet();
 
         indexByName = BuildNameIndex(nameByIndex, nameCollisions);
     }
@@ -208,6 +214,10 @@ public sealed class DomainTables
 
     /// <summary>Null for anything that is not a topsoil - inventory hands us arbitrary ids.</summary>
     public Soil? SoilByItemId(uint itemId) => soils.FirstOrDefault(s => s.ItemId == itemId);
+
+    /// <summary>Whether the two seeds, side by side, are a crossbreed pair at all (any result),
+    /// either way round. A set read, cheap enough for every sowing in the history.</summary>
+    public bool CanCross(uint seedA, uint seedB) => crossable.Contains((seedA, seedB));
 
     public IReadOnlyList<(uint ParentA, uint ParentB)> PairsForResult(uint resultSeedId)
         => pairsByResult.GetValueOrDefault(resultSeedId) ?? [];
