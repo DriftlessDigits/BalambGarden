@@ -1698,6 +1698,13 @@ public class MainWindow : Window, IDisposable
             // "Am I on the current build?" is the hot-load question this tab keeps
             // getting asked during field laps - the stamp answers it without a log dive.
             ImGui.TextUnformatted($"build {BuildStamp.Line}");
+            // Household receipts waiting for their bed or pot to be minted here. They land on a
+            // later census mint or relay page (once their history is saved), leave 30 days after
+            // they parked (pruned only when a page or a mint runs), and all go on a phrase
+            // change. A fresh install parks a whole relay window at once, and an estate this
+            // install never visits parks until the prune, so the number levels off rather than
+            // reading zero; one still climbing past 30 days is the sign something is stuck.
+            ImGui.TextUnformatted(WindowFormat.ParkedReceipts(Plugin.Garden.Ledger));
         }
 
         // The sensor filters to beds by DataId, so the old "beds only" toggle is gone -
