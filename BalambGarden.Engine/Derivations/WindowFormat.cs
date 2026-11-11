@@ -214,13 +214,13 @@ public static class WindowFormat
     /// ruled 2026-11-10: "I don't really care about which pot, just where that pot is"): "a pot", "a bed
     /// in patch 2"; more than one, the counts: "4 pots", "2 beds, 1 pot".</summary>
     public static string Containers(ContainerCount count) => count.Total == 1
-        ? count.Pots == 1 ? "a pot" : $"a bed in patch {count.Patch + 1}"
+        ? count.Pots == 1 ? "a pot" : count.Patch is { } patch ? $"a bed in patch {patch + 1}" : "a bed"
         : Counts(count);
 
-    /// <summary>The deadline's hover: "A pot wilts at Sun 2026-11-08 18:14". Caller converts
-    /// <paramref name="at"/> to local time.</summary>
+    /// <summary>The deadline's hover: "A pot wilts at Sun 6:14 pm" (ruled 2026-11-10). Caller
+    /// converts <paramref name="at"/> to local time.</summary>
     public static string FirstToWilt(ContainerCount count, DateTimeOffset at)
-        => $"{Capital(Containers(count))} {(count.Total == 1 ? "wilts" : "wilt")} at {Exact(at)}";
+        => $"{Capital(Containers(count))} {(count.Total == 1 ? "wilts" : "wilt")} at {Clock(at, withDay: true)}";
 
     /// <summary>The card's worst look and what wears it: "worst: 4 pots, wilting". Null while
     /// nothing asks for water.</summary>
@@ -232,6 +232,12 @@ public static class WindowFormat
     public static string WaterFrom(ContainerCount count, bool fromSowing, DateTimeOffset from, DateTimeOffset now)
         => $"{Capital(Containers(count))}: "
            + (fromSowing ? $"sown {Ago(from, now)}, no watering recorded" : $"watered {Ago(from, now)}");
+
+    /// <summary>A pot cell's hover when the game itself showed it wilting: "game shows it wilting"
+    /// on the live read in its room (<paramref name="seenAt"/> null), "seen wilting 12m ago" from
+    /// the sighting its record keeps.</summary>
+    public static string ShownWilt(DateTimeOffset? seenAt, DateTimeOffset now)
+        => seenAt is { } seen ? $"seen wilting {Ago(seen, now)}" : "game shows it wilting";
 
     /// <summary>The water chip's hover: "4 pots due within 24h of the deadline".</summary>
     public static string WaterDue(ContainerCount count, string span)

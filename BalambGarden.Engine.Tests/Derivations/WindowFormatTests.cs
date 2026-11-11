@@ -240,15 +240,23 @@ public class WindowFormatTests
         Assert.Equal("4 pots", WindowFormat.Containers(new ContainerCount(0, 4, null)));
         Assert.Equal("2 beds, 1 pot", WindowFormat.Containers(new ContainerCount(2, 1, null)));
         Assert.Equal("1 bed, 3 pots", WindowFormat.Containers(new ContainerCount(1, 3, 0)));
+        Assert.Equal("a bed", WindowFormat.Containers(new ContainerCount(1, 0, null)));   // no patch known: say less, never "patch "
+    }
+
+    [Fact] // a pot's hover says when the game itself showed it wilting
+    public void APotsHoverSaysWhereItsWiltWasSeen()
+    {
+        Assert.Equal("game shows it wilting", WindowFormat.ShownWilt(seenAt: null, Now));
+        Assert.Equal("seen wilting 12m ago", WindowFormat.ShownWilt(Now.AddMinutes(-12), Now));
     }
 
     [Fact]
     public void TheDeadlineHoverSaysWhatWiltsFirst()
     {
         var at = DateTimeOffset.Parse("2026-11-08T18:14:00-06:00");
-        Assert.Equal($"A pot wilts at {WindowFormat.Exact(at)}", WindowFormat.FirstToWilt(new ContainerCount(0, 1, null), at));
-        Assert.Equal($"A bed in patch 1 wilts at {WindowFormat.Exact(at)}", WindowFormat.FirstToWilt(new ContainerCount(1, 0, 0), at));
-        Assert.Equal($"4 pots wilt at {WindowFormat.Exact(at)}", WindowFormat.FirstToWilt(new ContainerCount(0, 4, null), at));
+        Assert.Equal("A pot wilts at Sun 18:14", WindowFormat.FirstToWilt(new ContainerCount(0, 1, null), at));
+        Assert.Equal("A bed in patch 1 wilts at Sun 18:14", WindowFormat.FirstToWilt(new ContainerCount(1, 0, 0), at));
+        Assert.Equal("4 pots wilt at Sun 18:14", WindowFormat.FirstToWilt(new ContainerCount(0, 4, null), at));
     }
 
     [Fact]

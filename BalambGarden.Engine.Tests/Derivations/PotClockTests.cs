@@ -168,6 +168,18 @@ public class PotClockTests
         Assert.Null(card.PotsWiltingSeenAt);
     }
 
+    [Fact] // the room reads the pot ripe before its record has caught up: a ripe pot never claims
+    public void InTheRoomALiveRipeReadMakesNoWiltClaim()
+    {
+        var pot = Seed.Plant(Pot(Room, 1), Now.AddHours(-30), Krakka, stage: 3);   // clock: wilting
+        var live = new Dictionary<int, PotReading> { [1] = Live(Krakka, 4, wilt: 1) };
+
+        var card = OneCard([pot], new Standing(Room, Inside: true, live));
+
+        Assert.Equal(ContainerLook.Growing, PotCell(card, 1).Look);
+        Assert.Equal(0, card.PotsWilting);
+    }
+
     [Fact] // slice 19's kept sighting still speaks away from the room, over a clock that is fine
     public void AKeptSightingStillMakesAPotWilting()
     {

@@ -461,9 +461,7 @@ internal static class GardenTab
             lines.Add($"ripe ~{WindowFormat.Range(ripe.Earliest.ToLocalTime(), ripe.Latest.ToLocalTime())} {WindowFormat.Mark(ripe.Provenance)}");
 
         // Beds and pots alike run the clock (ruling 23); a pot whose wilt the game showed says so.
-        var shown = !cell.WiltShown ? null
-            : cell.WiltSeenAt is { } seen ? $"seen wilting {WindowFormat.Ago(seen, now)}"
-            : "game shows it wilting";
+        var shown = cell.WiltShown ? WindowFormat.ShownWilt(cell.WiltSeenAt, now) : null;
         if (shown is not null && cell.Look == ContainerLook.Wilting)
             lines.Add($"{shown} - water now");
         else

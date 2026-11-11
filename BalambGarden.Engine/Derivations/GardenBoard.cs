@@ -308,7 +308,7 @@ public static class GardenBoard
                 return cell;
             if (PotWiltRule.Claims(read.Wilt, read.Stage))
                 return cell with { Look = shownLook, WiltShown = true };
-            return read.Stage < PotWiltRule.RipeStage && cell.Look is ContainerLook.Wilting or ContainerLook.Dying
+            return cell.Look is ContainerLook.Wilting or ContainerLook.Dying
                 ? cell with { Look = ContainerLook.Growing }
                 : cell;
         }
