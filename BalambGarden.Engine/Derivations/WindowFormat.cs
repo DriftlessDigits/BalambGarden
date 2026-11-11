@@ -228,10 +228,40 @@ public static class WindowFormat
         => Thirst(thirst) is { } word && count.Total > 0 ? $"worst: {Containers(count)}, {word}" : null;
 
     /// <summary>The water bar's hover: whose clock it is and where it starts. "A pot: sown 1d ago, no
-    /// watering recorded", "A bed in patch 1: watered 20h ago".</summary>
-    public static string WaterFrom(ContainerCount count, bool fromSowing, DateTimeOffset from, DateTimeOffset now)
+    /// watering recorded", "A bed in patch 1: watered 20h ago", and on the seen-fine floor "A pot:
+    /// seen fine 10m ago" (never "watered": a bound, not a receipt).</summary>
+    public static string WaterFrom(ContainerCount count, bool fromSowing, DateTimeOffset from, DateTimeOffset now,
+        bool seenFine = false)
         => $"{Capital(Containers(count))}: "
-           + (fromSowing ? $"sown {Ago(from, now)}, no watering recorded" : $"watered {Ago(from, now)}");
+           + (seenFine ? SeenFine(from, now)
+               : fromSowing ? $"sown {Ago(from, now)}, no watering recorded" : $"watered {Ago(from, now)}");
+
+    /// <summary>When the room last showed a pot fine (rethink slice 21, spec ruling 23): "seen fine 10m ago".</summary>
+    public static string SeenFine(DateTimeOffset at, DateTimeOffset now) => $"seen fine {Ago(at, now)}";
+
+    /// <summary>A pot cell's clock line on the seen-fine floor: what the clock rests on, and what the
+    /// plugin recorded under it. "seen fine 10m ago - no watering recorded", "seen fine 10m ago -
+    /// last watering recorded 2d ago".</summary>
+    public static string FloorClock(DateTimeOffset seenFine, DateTimeOffset? lastTended, DateTimeOffset now)
+        => $"{SeenFine(seenFine, now)} - "
+           + (lastTended is { } tended ? $"last watering recorded {Ago(tended, now)}" : "no watering recorded");
+
+    /// <summary>The headline of a card whose deadline rests on the seen-fine floor: the act, since
+    /// the deadline is the look itself (ruled 2026-11-10: "best thing to do is rewater to be safe").</summary>
+    public const string WaterToBeSafe = "water to be safe";
+
+    /// <summary>The headline's hover on the seen-fine floor: "A pot may wilt any time".</summary>
+    public static string MayWilt(ContainerCount count) => $"{Capital(Containers(count))} may wilt any time";
+
+    /// <summary>A pot cell's water line on the seen-fine floor, in place of "water soon: past three
+    /// quarters of its wilt hours".</summary>
+    public const string MayWiltLine = "may wilt any time - water to be safe";
+
+    /// <summary>A pot cell's water line on the seen-fine floor: <see cref="MayWiltLine"/> through
+    /// its wilting band (and wherever the room's live read shows it fine), the dying line from the
+    /// floor's dying point. Caller converts both instants to local time.</summary>
+    public static string FloorThirstLine(ContainerLook look, DateTimeOffset? diesAt, DateTimeOffset now)
+        => look == ContainerLook.Dying ? ThirstLine(look, diesAt, now)! : MayWiltLine;
 
     /// <summary>A pot cell's hover when the game itself showed it wilting: "game shows it wilting"
     /// on the live read in its room (<paramref name="seenAt"/> null), "seen wilting 12m ago" from

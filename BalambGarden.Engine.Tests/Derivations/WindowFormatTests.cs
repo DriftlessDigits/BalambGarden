@@ -317,4 +317,28 @@ public class WindowFormatTests
     [Fact] // the lanes' day heads read the same on every machine, whatever its culture
     public void DayHeadIsTheWeekdayAndTheDayOfTheMonth()
         => Assert.Equal("Mon 9", WindowFormat.DayHead(DateTimeOffset.Parse("2026-11-09T00:00:00-06:00")));
+
+    [Fact] // rethink slice 21: a pot on the floor says it was seen fine, never "watered" (spec ruling 23: "seen fine 10m ago")
+    public void APotOnTheFloorSaysSeenFine()
+    {
+        Assert.Equal("seen fine 10m ago", WindowFormat.SeenFine(Now.AddMinutes(-10), Now));
+        Assert.Equal("seen fine 10m ago - no watering recorded",
+            WindowFormat.FloorClock(Now.AddMinutes(-10), lastTended: null, Now));
+        Assert.Equal("seen fine 10m ago - last watering recorded 2d ago",
+            WindowFormat.FloorClock(Now.AddMinutes(-10), Now.AddDays(-2), Now));
+        Assert.Equal("A pot: seen fine 10m ago",
+            WindowFormat.WaterFrom(new ContainerCount(0, 1, null), fromSowing: false, Now.AddMinutes(-10), Now, seenFine: true));
+    }
+
+    [Fact] // rethink slice 21 (provisional, slice 14): the act, not the mechanism - "rewater to be safe"
+    public void APotOnTheFloorSaysToWaterToBeSafe()
+    {
+        Assert.Equal("water to be safe", WindowFormat.WaterToBeSafe);
+        Assert.Equal("may wilt any time - water to be safe", WindowFormat.MayWiltLine);
+        Assert.Equal("A pot may wilt any time", WindowFormat.MayWilt(new ContainerCount(0, 1, null)));
+        Assert.Equal("2 pots may wilt any time", WindowFormat.MayWilt(new ContainerCount(0, 2, null)));
+        Assert.Equal("may wilt any time - water to be safe", WindowFormat.FloorThirstLine(ContainerLook.WaterSoon, Now.AddHours(12), Now));
+        Assert.Equal("may wilt any time - water to be safe", WindowFormat.FloorThirstLine(ContainerLook.Growing, Now.AddHours(12), Now));
+        Assert.StartsWith("dying: withers ~", WindowFormat.FloorThirstLine(ContainerLook.Dying, Now.AddHours(12), Now));
+    }
 }

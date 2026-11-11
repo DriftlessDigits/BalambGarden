@@ -68,6 +68,15 @@ public sealed class ClaimedBed
     /// Absent from a file written before it, which loads as no sighting.</summary>
     public DateTimeOffset? WiltSeenAt { get; set; }
 
+    /// <summary>A pot only: the last instant this install's live map read showed it growing and not
+    /// wilting (rethink slice 21, spec ruling 23). A crop that is not wilting was watered within its
+    /// wilt hours, so this floors the water clock (<see cref="Derivations.ClockWiltSource"/>): a
+    /// bound, never a receipt - the plugin still recorded no watering. Written by the census's pot
+    /// sighting below ripe; a wilting read leaves it standing (it is still true); gone with any reset
+    /// whose cut reaches it. Own sightings only. Absent from a file written before it, which loads
+    /// as no floor.</summary>
+    public DateTimeOffset? SeenFineAt { get; set; }
+
     /// <summary>THE FENCE: the instant of the last reset, and why. Only ever moves forward.</summary>
     public DateTimeOffset? PlantingResetAt { get; set; }
     public RebaseReason? PlantingResetReason { get; set; }
@@ -166,8 +175,15 @@ public sealed class ClaimedBed
 
     /// <summary>A LIVE pot read's wilt, already judged by the pot wilt rule: wilting stamps
     /// <see cref="WiltSeenAt"/> with this read; not wilting clears it (the game shows the pot is
-    /// not thirsty, ripe included).</summary>
-    public void SightWilt(DateTimeOffset at, bool wilting) => WiltSeenAt = wilting ? at : null;
+    /// not thirsty, ripe included). Not wilting while <paramref name="growing"/> (below ripe: a
+    /// ripe or dead plant cannot wilt, so its byte proves nothing) also stamps
+    /// <see cref="SeenFineAt"/>, the clock's floor.</summary>
+    public void SightWilt(DateTimeOffset at, bool wilting, bool growing)
+    {
+        WiltSeenAt = wilting ? at : null;
+        if (!wilting && growing)
+            SeenFineAt = at;
+    }
 
     /// <summary>Wire evidence about contents (a household Stage or Ripe receipt). THE RULE lives
     /// here. Fenced: nothing. Older than the newest evidence: agrees -> the stage bracket
@@ -285,7 +301,8 @@ public sealed class ClaimedBed
     /// own read asks, because the game wins and a fence ahead of now is skew. A cut equal to the
     /// fence is allowed and refreshes the reason.
     ///
-    /// <para>A pot's wilt sighting at or before the cut goes with the plant it was about.</para>
+    /// <para>A pot's wilt sighting and seen-fine floor at or before the cut go with the plant they
+    /// were about.</para>
     ///
     /// <para>Tends: at or before the cut, gone. On a sighted species change, a tend AFTER the cut
     /// that named the OLD species also goes - it watered the plant that left (the apple->fig
@@ -327,6 +344,11 @@ public sealed class ClaimedBed
         if (WiltSeenAt is { } w && w <= cut)
         {
             WiltSeenAt = null;
+            removed = true;
+        }
+        if (SeenFineAt is { } f && f <= cut)
+        {
+            SeenFineAt = null;
             removed = true;
         }
         if (LastTended is { } t)

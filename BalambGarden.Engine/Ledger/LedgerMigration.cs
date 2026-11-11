@@ -191,6 +191,7 @@ public static class LedgerMigration
             PlantedAt = bed.PlantedAt, PlantedBy = bed.PlantedBy, PlantedSpecies = bed.PlantedSpecies,
             LastTended = bed.LastTended, LastTendedBy = bed.LastTendedBy, LastTendedSpecies = bed.LastTendedSpecies,
             WiltSeenAt = bed.WiltSeenAt,
+            SeenFineAt = bed.SeenFineAt,
             PlantingResetAt = bed.PlantingResetAt, PlantingResetReason = bed.PlantingResetReason,
             LegacyRing = bed.LegacyRing,
         };
@@ -204,7 +205,8 @@ public static class LedgerMigration
     /// reset, and then the merged record is TRIMMED at that fence - a twin's memory of a plant
     /// the other record already saw leave does not come back (pass-2 #9). WireEntity is kept
     /// from whichever side minted one. A pot's wilt sighting takes the newer one, unless the
-    /// merged watering is newer still (it answered the sighting).</summary>
+    /// merged watering is newer still (it answered the sighting); its seen-fine floor takes the
+    /// newer one (both are true bounds; the later is the tighter).</summary>
     private static ClaimedBed Combine(ClaimedBed keep, ClaimedBed other, EstateKey canonical)
     {
         var newerPlant = Newer(keep.PlantedAt, other.PlantedAt) == other.PlantedAt && other.PlantedAt is not null ? other : keep;
@@ -222,6 +224,7 @@ public static class LedgerMigration
             PlantedAt = newerPlant.PlantedAt, PlantedBy = newerPlant.PlantedBy, PlantedSpecies = newerPlant.PlantedSpecies,
             LastTended = newerTend.LastTended, LastTendedBy = newerTend.LastTendedBy, LastTendedSpecies = newerTend.LastTendedSpecies,
             WiltSeenAt = Newer(keep.WiltSeenAt, other.WiltSeenAt) is { } wilt && !(newerTend.LastTended > wilt) ? wilt : null,
+            SeenFineAt = Newer(keep.SeenFineAt, other.SeenFineAt),
             PlantingResetAt = newerReset.PlantingResetAt, PlantingResetReason = newerReset.PlantingResetReason,
         };
         foreach (var (stage, seen) in keep.StageSeen.Concat(other.StageSeen))
@@ -246,6 +249,7 @@ public static class LedgerMigration
         }
         if (bed.LastTended is { } t && t <= fence) { bed.LastTended = null; bed.LastTendedBy = null; bed.LastTendedSpecies = 0; }
         if (bed.WiltSeenAt is { } w && w <= fence) bed.WiltSeenAt = null;
+        if (bed.SeenFineAt is { } f && f <= fence) bed.SeenFineAt = null;
     }
 
     private static DateTimeOffset? Newer(DateTimeOffset? a, DateTimeOffset? b)

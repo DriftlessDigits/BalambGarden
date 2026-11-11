@@ -154,7 +154,8 @@ public sealed class CensusEngine(LedgerStore ledger)
 
             bed.Sight(at, reading.SpeciesIndex, reading.Stage, ObservationSource.MapSighting);
             if (isPot)
-                bed.SightWilt(at, PotWiltRule.Claims(reading.Wilt, reading.Stage));
+                bed.SightWilt(at, PotWiltRule.Claims(reading.Wilt, reading.Stage),
+                    growing: reading.Stage < GardenStage.Ripe);
             count++;
         }
         return count;
