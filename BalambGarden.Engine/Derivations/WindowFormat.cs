@@ -440,10 +440,25 @@ public static class WindowFormat
     public static string HistoryWhere(string estate, HistoryEntry row)
         => row.IsPot ? $"{estate}, pot" : $"{estate}, patch {row.PatchOrdinal + 1}, bed {row.BedSlot + 1}";
 
-    /// <summary>Whose hand: "you" for this install's, "household" for every other until the labels land.</summary>
-    public static string HistoryHand(HistoryEntry row) => row.IsOwn ? "you" : Household;
+    /// <summary>Whose hand a row is (<see cref="HandName"/>).</summary>
+    public static string HistoryHand(HistoryEntry row, IReadOnlyDictionary<string, string> aliases)
+        => HandName(new Hand(row.By), aliases);
 
-    /// <summary>What every hand but this install's reads without a label.</summary>
+    /// <summary>A hand as every screen names it (spec ruling 15, rethink slice 11): "you" for this
+    /// install's; a household hand by the alias the player gave it in the settings, else "household"
+    /// (<see cref="HandPick.Of"/>).</summary>
+    public static string HandName(Hand hand, IReadOnlyDictionary<string, string> aliases)
+        => HandPick.Of(hand, aliases) switch
+        {
+            { Own: true } => You,
+            { Alias: { } alias } => alias,
+            _ => Household,
+        };
+
+    /// <summary>What this install's own hand reads.</summary>
+    public const string You = "you";
+
+    /// <summary>What every hand but this install's reads without an alias.</summary>
     public const string Household = "household";
 
     /// <summary>The Yield cell and whether it draws dim: blank on a plant; the items gathered when
@@ -475,12 +490,14 @@ public static class WindowFormat
     /// <summary>The crop filter's first line, which clears it.</summary>
     public const string AllCrops = "All crops";
 
-    /// <summary>The hand filter's lines: "All hands", "You" (this install), "Household" (every other hand).</summary>
-    public static string HandChoice(bool? own) => own switch
+    /// <summary>The hand filter's lines: "All hands", "You" (this install), each alias as typed
+    /// ("Kupo"), "Household" (every household hand with no alias).</summary>
+    public static string HandChoice(HandPick? pick) => pick switch
     {
         null => "All hands",
-        true => "You",
-        false => "Household",
+        { Own: true } => "You",
+        { Alias: { } alias } => alias,
+        _ => "Household",
     };
 
     /// <summary>The kind filter's lines: "Plants and harvests", "Plants", "Harvests".</summary>

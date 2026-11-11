@@ -508,16 +508,36 @@ public class WindowFormatTests
         Assert.Equal("Mama's Place, pot", WindowFormat.HistoryWhere("Mama's Place", HistoryRow(HistoryKind.Plant, pot: true, patch: 131)));
         Assert.Equal("Ward 4 Plot 51, patch 1, bed 2", WindowFormat.HistoryWhere("Ward 4 Plot 51", HistoryRow(HistoryKind.Plant, patch: 0, slot: 1)));
 
-        Assert.Equal("household", WindowFormat.HistoryHand(HistoryRow(HistoryKind.Plant)));
-        Assert.Equal("you", WindowFormat.HistoryHand(HistoryRow(HistoryKind.Plant, by: Hand.OwnSlug)));
+        Assert.Equal("household", WindowFormat.HistoryHand(HistoryRow(HistoryKind.Plant, by: "jw9cdj"), NoAliases));
+        Assert.Equal("you", WindowFormat.HistoryHand(HistoryRow(HistoryKind.Plant, by: Hand.OwnSlug), NoAliases));
+        Assert.Equal("Kupo", WindowFormat.HistoryHand(HistoryRow(HistoryKind.Plant, by: "jw9cdj"), KupoAlias)); // rethink slice 11
+        Assert.Equal("household", WindowFormat.HistoryHand(HistoryRow(HistoryKind.Plant, by: "q8m2zz"), KupoAlias));
     }
+
+    // Hands by alias (rethink slice 11, spec ruling 15; on screen a "nickname"). Each expected line is
+    // the plan's literal text, never rebuilt with the format's own helpers.
+
+    private static readonly Dictionary<string, string> NoAliases = [];
+    private static readonly Dictionary<string, string> KupoAlias = new() { ["jw9cdj"] = "Kupo" };
+
+    [Fact] // spec ruling 15: a household hand reads its alias, else "household"; this install's reads "you"
+    public void AHandReadsItsAliasElseHouseholdAndYoursReadsYou()
+    {
+        Assert.Equal("Kupo", WindowFormat.HandName(new Hand("jw9cdj"), KupoAlias));
+        Assert.Equal("household", WindowFormat.HandName(new Hand("q8m2zz"), KupoAlias));
+        Assert.Equal("household", WindowFormat.HandName(new Hand("jw9cdj"), NoAliases));
+        Assert.Equal("you", WindowFormat.HandName(Hand.Own, KupoAlias));
+        Assert.Equal("you", WindowFormat.HandName(Hand.Own, new Dictionary<string, string> { [Hand.OwnSlug] = "Kupo" })); // the own hand takes none
+        Assert.Equal("household", WindowFormat.HandName(new Hand("jw9cdj"), new Dictionary<string, string> { ["jw9cdj"] = "  " })); // a blank entry is none
+    }
+
 
     [Fact] // the conductor's check, 2026-11-11: an own act, as the receipt log hands it to the history, reads "you"
     public void AnOwnActFromTheReceiptLogReadsYou()
     {
         var receipt = new LoggedReceipt(7, "eraaaa", SyncKind.Harvest, SyncSource.Chain, DateTimeOffset.Parse("2026-11-07T16:47:00Z"),
             FcEstate, false, PatchOrdinal: 2, BedSlot: 6, PatchId: 1234, PotKey: -1, Data: new SyncData(Species: 49));
-        Assert.Equal("you", WindowFormat.HistoryHand(HistoryEntry.FromOwn(receipt, "k7f3qx")!));
+        Assert.Equal("you", WindowFormat.HistoryHand(HistoryEntry.FromOwn(receipt, "k7f3qx")!, KupoAlias));
     }
 
     [Fact] // a plant has no yield; "-" = not heard; a number = heard
@@ -548,7 +568,9 @@ public class WindowFormatTests
     {
         Assert.Equal("All estates", WindowFormat.AllEstates);
         Assert.Equal("All crops", WindowFormat.AllCrops);
-        Assert.Equal(["All hands", "You", "Household"], new[] { WindowFormat.HandChoice(null), WindowFormat.HandChoice(true), WindowFormat.HandChoice(false) });
+        Assert.Equal(["All hands", "You", "Household"],
+            new[] { WindowFormat.HandChoice(null), WindowFormat.HandChoice(HandPick.You), WindowFormat.HandChoice(HandPick.Household) });
+        Assert.Equal("Kupo", WindowFormat.HandChoice(HandPick.Named("Kupo"))); // rethink slice 11: an alias's own line
         Assert.Equal(["Plants and harvests", "Plants", "Harvests"],
             new[] { WindowFormat.KindChoice(null), WindowFormat.KindChoice(HistoryKind.Plant), WindowFormat.KindChoice(HistoryKind.Harvest) });
     }

@@ -148,4 +148,14 @@ public class ForeignHandsTests
         Assert.False(Aliases.Set(aliases, Hand.Own, "me"));
         Assert.Empty(aliases);
     }
+
+    [Fact] // rethink slice 11, the read rule: a hand's alias, none for the own hand or a blank entry (a hand-edited config)
+    public void AnAliasIsReadForAHouseholdHandOnly()
+    {
+        var aliases = new Dictionary<string, string> { ["jw9cdj"] = "the laptop", [Hand.OwnSlug] = "me", ["k7f3qx"] = " " };
+        Assert.Equal("the laptop", Aliases.Of(aliases, new Hand("jw9cdj")));
+        Assert.Null(Aliases.Of(aliases, Hand.Own));
+        Assert.Null(Aliases.Of(aliases, new Hand("k7f3qx")));
+        Assert.Null(Aliases.Of(aliases, new Hand("zz0000")));
+    }
 }
