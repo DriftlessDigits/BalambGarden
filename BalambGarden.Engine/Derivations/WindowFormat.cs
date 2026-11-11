@@ -477,11 +477,11 @@ public static class WindowFormat
     /// <summary>The section with no foreign hand on record. True with sync off as well: nothing has
     /// been heard.</summary>
     public const string NoForeignHands =
-        "No household hands heard yet. Each install that gardens with you through household sync shows up here to be named.";
+        "No household hands heard yet. Anyone who gardens with you through household sync shows up here to be named.";
 
     /// <summary>The alias box's hover.</summary>
     public const string AliasHover = "Your name for this hand. Left empty, it reads \"household\".\n"
-        + "Kept in this install's settings only, never sent.\n"
+        + "Kept in your settings only, never sent.\n"
         + "Changing the household phrase clears every name.";
 
     /// <summary>The slug's hover (on screen, "the tag").</summary>

@@ -553,10 +553,10 @@ public class WindowFormatTests
         Assert.Equal("household", WindowFormat.Household);
         Assert.Equal("Household hands", WindowFormat.ForeignHandsHeading);
         Assert.Equal("Name the others who garden with you.", WindowFormat.HandsIntro);
-        Assert.Equal("No household hands heard yet. Each install that gardens with you through household sync shows up here to be named.",
+        Assert.Equal("No household hands heard yet. Anyone who gardens with you through household sync shows up here to be named.",
             WindowFormat.NoForeignHands);
         Assert.Equal("Your name for this hand. Left empty, it reads \"household\".\n"
-            + "Kept in this install's settings only, never sent.\n"
+            + "Kept in your settings only, never sent.\n"
             + "Changing the household phrase clears every name.", WindowFormat.AliasHover);
         Assert.Equal("The tag its receipts carry: a random code, never a name.", WindowFormat.SlugHover);
     }
