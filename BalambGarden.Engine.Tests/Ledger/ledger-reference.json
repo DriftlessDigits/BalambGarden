@@ -1,0 +1,126 @@
+{
+  "Version": 4,
+  "Beds": [
+    {
+      "Estate": {
+        "TerritoryId": 340,
+        "Ward": 11,
+        "Plot": 32,
+        "Room": -1,
+        "IsApartment": false,
+        "ApartmentDivision": -1,
+        "IsIndoorOnly": false
+      },
+      "MapKey": 110,
+      "PatchOrdinal": 0,
+      "BedSlot": 3,
+      "IsPot": false,
+      "ClaimedAt": "2026-11-01T18:00:00+00:00",
+      "WireEntity": "entity-bed",
+      "Latest": {
+        "At": "2026-11-03T00:00:00+00:00",
+        "SpeciesIndex": 65,
+        "Stage": 2,
+        "Source": "MapSighting"
+      },
+      "PlantedAt": "2026-11-01T18:00:00+00:00",
+      "PlantedBy": "hhbbaa",
+      "PlantedSpecies": 65,
+      "StageSeen": {
+        "1": {
+          "FirstSeen": "2026-11-01T19:00:00+00:00",
+          "LastSeen": "2026-11-01T19:00:00+00:00"
+        },
+        "2": {
+          "FirstSeen": "2026-11-03T00:00:00+00:00",
+          "LastSeen": "2026-11-03T00:00:00+00:00"
+        }
+      },
+      "LastTended": "2026-11-03T01:00:00+00:00",
+      "LastTendedBy": "own",
+      "LastTendedSpecies": 65,
+      "PlantingResetAt": "2026-11-01T18:00:00+00:00",
+      "PlantingResetReason": "PlantReceipt"
+    },
+    {
+      "Estate": {
+        "TerritoryId": 340,
+        "Ward": 11,
+        "Plot": 32,
+        "Room": 0,
+        "IsApartment": false,
+        "ApartmentDivision": -1,
+        "IsIndoorOnly": false
+      },
+      "MapKey": 4,
+      "PatchOrdinal": 4,
+      "BedSlot": 0,
+      "IsPot": true,
+      "ClaimedAt": "2026-11-01T18:00:00+00:00",
+      "WireEntity": "entity-pot",
+      "Latest": {
+        "At": "2026-11-03T20:00:00+00:00",
+        "SpeciesIndex": 49,
+        "Stage": 3,
+        "Source": "MapSighting"
+      },
+      "PlantedAt": "2026-11-01T20:00:00+00:00",
+      "PlantedBy": "own",
+      "PlantedSpecies": 49,
+      "StageSeen": {
+        "2": {
+          "FirstSeen": "2026-11-03T10:00:00+00:00",
+          "LastSeen": "2026-11-03T10:00:00+00:00"
+        },
+        "3": {
+          "FirstSeen": "2026-11-03T20:00:00+00:00",
+          "LastSeen": "2026-11-03T20:00:00+00:00"
+        }
+      },
+      "LastTended": "2026-11-01T21:00:00+00:00",
+      "LastTendedBy": "own",
+      "LastTendedSpecies": 49,
+      "WiltSeenAt": "2026-11-03T20:00:00+00:00",
+      "SeenFineAt": "2026-11-03T10:00:00+00:00",
+      "PlantingResetAt": "2026-11-01T20:00:00+00:00",
+      "PlantingResetReason": "PlantReceipt"
+    }
+  ],
+  "Bindings": {
+    "340:11:32:-1#0": 110
+  },
+  "Estates": [
+    {
+      "Key": {
+        "TerritoryId": 340,
+        "Ward": 11,
+        "Plot": 32,
+        "Room": -1,
+        "IsApartment": false,
+        "ApartmentDivision": -1,
+        "IsIndoorOnly": false
+      },
+      "Nickname": "Home",
+      "FirstSeen": "2026-11-01T18:00:00+00:00",
+      "LastVisited": "2026-11-04T18:00:00+00:00"
+    }
+  ],
+  "RelayCursor": "4242",
+  "ForeignHold": [
+    {
+      "Receipt": {
+        "id": "hhbbaa:eraaaa:7",
+        "entity": "entity-elsewhere",
+        "entityType": "Bed",
+        "kind": "Plant",
+        "at": "2026-11-01T22:00:00+00:00",
+        "source": "Chain",
+        "data": {
+          "species": 65,
+          "soil": 16
+        }
+      },
+      "ParkedAt": "2026-11-01T23:00:00+00:00"
+    }
+  ]
+}
