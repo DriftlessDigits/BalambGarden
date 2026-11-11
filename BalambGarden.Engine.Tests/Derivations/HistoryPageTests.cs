@@ -17,7 +17,7 @@ public class HistoryPageTests
     // Species indexes from Data/SpeciesIndex.json.
     private const ushort Mirror = 17, Krakka = 49, Onion = 50;
 
-    private static readonly EstateKey Fc = new(340, 11, 56), Mama = new(340, 11, 31), Unnamed = new(641, 3, 50);
+    private static readonly EstateKey Fc = new(340, 11, 56), Mama = new(340, 11, 31), Unnamed = new(641, 3, 50), Unknown = new(641, 3, 49);
 
     /// <summary>Six hours behind UTC, no daylight saving: the household's November clock.</summary>
     private static readonly TimeZoneInfo Cst = TimeZoneInfo.CreateCustomTimeZone("test-cst", TimeSpan.FromHours(-6), "test-cst", "test-cst");
@@ -89,14 +89,15 @@ public class HistoryPageTests
         ], lines);
     }
 
-    [Fact] // each row carries its estate's name; an estate with no name set reads its label
+    [Fact] // each row carries its estate's name; an estate with no name set, or none in the ledger, reads its label
     public void RowsNameTheirEstate()
     {
         var page = Page(History(
             Row("2026-11-07T10:00:00Z", HistoryKind.Plant, estate: Mama),
-            Row("2026-11-07T11:00:00Z", HistoryKind.Plant, estate: Unnamed)));
+            Row("2026-11-07T11:00:00Z", HistoryKind.Plant, estate: Unnamed),
+            Row("2026-11-07T12:00:00Z", HistoryKind.Plant, estate: Unknown)));
 
-        Assert.Equal(["Ward 4 Plot 51", "Mama's Place"], page.Lines.OfType<HistoryRowLine>().Select(l => l.Estate).ToArray());
+        Assert.Equal(["Ward 4 Plot 50", "Ward 4 Plot 51", "Mama's Place"], page.Lines.OfType<HistoryRowLine>().Select(l => l.Estate).ToArray());
     }
 
     [Fact] // the four filters through the existing history filter; the count is over the whole record
