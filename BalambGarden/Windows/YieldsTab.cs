@@ -118,9 +118,13 @@ internal static class YieldsTab
         ImGui.TableNextRow();
 
         ImGui.TableNextColumn();
+        var onion = split is null && GardenBoard.IsOnion(row.Species);
         if (split is null)
         {
-            ImGui.TextUnformatted(Plugin.Tables.SpeciesName(row.Species));
+            if (onion)
+                ImGui.TextColored(Palette.Onion, Plugin.Tables.SpeciesName(row.Species));
+            else
+                ImGui.TextUnformatted(Plugin.Tables.SpeciesName(row.Species));
             if (ImGui.IsItemHovered() && WindowFormat.PartnerHover(row, Plugin.Tables.SpeciesName) is { } hover)
                 ImGui.SetTooltip(hover);
         }
@@ -136,7 +140,7 @@ internal static class YieldsTab
             ImGui.SetTooltip(WindowFormat.UnmatchedHover(row.Unmatched, since, row.IsPot));
         Count(row.Growing);
         Count(row.Lost);
-        Count(row.Gathered);
+        Count(row.Gathered, onion);
         if (row.GatheredFrom > 0 && ImGui.IsItemHovered())
             ImGui.SetTooltip(WindowFormat.GatheredHover(row.GatheredFrom));
 
@@ -164,10 +168,14 @@ internal static class YieldsTab
         }
     }
 
-    /// <summary>A count in the next cell, dim at zero.</summary>
-    private static void Count(int n)
+    /// <summary>A count in the next cell, dim at zero; with <paramref name="onion"/>, gold above zero
+    /// (the onion row's gathered count, rethink slice 12).</summary>
+    private static void Count(int n, bool onion = false)
     {
         ImGui.TableNextColumn();
-        WindowText.Text(n.ToString(), dim: n == 0);
+        if (onion && n > 0)
+            ImGui.TextColored(Palette.Onion, n.ToString());
+        else
+            WindowText.Text(n.ToString(), dim: n == 0);
     }
 }

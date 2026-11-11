@@ -45,8 +45,12 @@ internal static class HistoryTab
     private static List<Line> lines = [];
     private static float[] widths = [];
 
-    /// <summary>A day heading (<see cref="Day"/>) or a row's cells, each with whether it draws dim.</summary>
-    private sealed record Line(string? Day, (string Text, bool Dim)[] Cells);
+    /// <summary>A day heading (<see cref="Day"/>) or a row's cells, each with whether it draws dim;
+    /// <see cref="Onion"/> = an onion harvest, whose crop and heard yield draw gold.</summary>
+    private sealed record Line(string? Day, (string Text, bool Dim)[] Cells, bool Onion = false);
+
+    /// <summary>The cells an onion harvest draws gold: its crop, and its yield when heard.</summary>
+    private static readonly int CropColumn = Array.IndexOf(Columns, "Crop");
 
     public static void Draw()
     {
@@ -133,7 +137,7 @@ internal static class HistoryTab
             (WindowFormat.HistoryHand(row.Entry, aliases), false),
             WindowFormat.HistoryYield(row.Entry),
             WindowFormat.HistoryCross(row.Entry, WindowText.SeedName),
-        ]),
+        ], GardenBoard.IsOnionHarvest(row.Entry)),
         _ => throw new ArgumentOutOfRangeException(nameof(line)),
     };
 
@@ -254,7 +258,10 @@ internal static class HistoryTab
                 continue;
             if (c == YieldColumn)
                 RightAlign(text, c);
-            WindowText.Text(text, dim);
+            if (line.Onion && !dim && (c == CropColumn || c == YieldColumn))
+                ImGui.TextColored(Palette.Onion, text);
+            else
+                WindowText.Text(text, dim);
         }
     }
 
