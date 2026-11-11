@@ -528,6 +528,7 @@ public class WindowFormatTests
         Assert.Equal("household", WindowFormat.HandName(new Hand("jw9cdj"), NoNicknames));
         Assert.Equal("you", WindowFormat.HandName(Hand.Own, Nicknames));
         Assert.Equal("you", WindowFormat.HandName(Hand.Own, new Dictionary<string, string> { [Hand.OwnSlug] = "Kupo" })); // the own hand takes none
+        Assert.Equal("household", WindowFormat.HandName(new Hand("jw9cdj"), new Dictionary<string, string> { ["jw9cdj"] = "  " })); // a blank entry is none
     }
 
     [Fact] // a watering by a household hand names it; yours and one whose hand is not on record name none
