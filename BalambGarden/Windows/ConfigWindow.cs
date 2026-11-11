@@ -1,7 +1,11 @@
 using System;
+using System.Collections.Generic;
 using System.Numerics;
+using BalambGarden.Engine.Derivations;
+using BalambGarden.Engine.Ledger;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface;
+using Dalamud.Interface.Utility;
 using Dalamud.Interface.Utility.Raii;
 using Dalamud.Interface.Windowing;
 
@@ -16,7 +20,7 @@ public class ConfigWindow : Window, IDisposable
         Flags = ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoScrollbar |
                 ImGuiWindowFlags.NoScrollWithMouse;
 
-        Size = new Vector2(400, 500);
+        Size = new Vector2(Width, MinHeight);
         SizeCondition = ImGuiCond.Always;
 
         configuration = Plugin.Configuration;
@@ -24,8 +28,17 @@ public class ConfigWindow : Window, IDisposable
 
     public void Dispose() { }
 
+    private const float Width = 400f, MinHeight = 500f;
+
+    /// <summary>The height the last frame's content needed, unscaled. The foreign hands section
+    /// grows with the hands on record and the window has no scrollbar, so it grows past
+    /// <see cref="MinHeight"/> to fit rather than clip a row.</summary>
+    private float contentHeight = MinHeight;
+
     public override void PreDraw()
     {
+        Size = new Vector2(Width, Math.Max(MinHeight, contentHeight));
+
         // Flags must be added or removed before Draw() is being called, or they won't apply
         if (configuration.IsConfigWindowMovable)
         {
@@ -42,6 +55,8 @@ public class ConfigWindow : Window, IDisposable
         DrawBehaviour();
         ImGui.Separator();
         DrawSync();
+        ImGui.Separator();
+        DrawHands();
         ImGui.Separator();
         DrawSensing();
         ImGui.Separator();
@@ -74,6 +89,8 @@ public class ConfigWindow : Window, IDisposable
             configuration.JitterMS = jitter;
             configuration.Save();
         }
+
+        contentHeight = (ImGui.GetCursorPosY() + ImGui.GetStyle().WindowPadding.Y) / ImGuiHelpers.GlobalScale;
     }
 
     // Fingerprint memo: HKDF twice per frame would be pure waste, and the value only
@@ -167,6 +184,62 @@ public class ConfigWindow : Window, IDisposable
                 $"{fingerprint}\n"
                 + "Debug identity only (how the relay files your rows) - nothing to\n"
                 + "configure anywhere. It cannot be turned back into the phrase.");
+    }
+
+    /// <summary>The household's hands, rebuilt when a history row lands or once a second (the ledger's
+    /// planted-by and tended-by carry no change signal); the window is open rarely and briefly.</summary>
+    private IReadOnlyList<SeenHand> hands = [];
+    private int handsRows = -1;
+    private DateTime handsAt;
+
+    /// <summary>Aliases for foreign hands (rethink slice 10, spec ruling 15): every tag the ledger or
+    /// the history holds but this install's own, each with a box for what this player calls it. The
+    /// labels stay in this config (<see cref="Configuration.HandAliases"/>); the one write rule is
+    /// <see cref="Aliases.Set"/>; a phrase change clears them all (<see cref="DrawSync"/>). Every
+    /// sentence is <see cref="WindowFormat"/>'s.</summary>
+    private void DrawHands()
+    {
+        ImGui.Text("Household hands");
+
+        var history = Plugin.Garden.History;
+        if (handsRows != history.Entries.Count || DateTime.UtcNow - handsAt > TimeSpan.FromSeconds(1))
+        {
+            hands = GardenBoard.ForeignHands(Plugin.Garden.Ledger.Beds, history, Plugin.Garden.Ledger.Estates,
+                TimeZoneInfo.Local);
+            handsRows = history.Entries.Count;
+            handsAt = DateTime.UtcNow;
+        }
+
+        if (hands.Count == 0)
+        {
+            DimWrapped(WindowFormat.NoForeignHands);
+            return;
+        }
+
+        DimWrapped(WindowFormat.HandsIntro);
+        foreach (var hand in hands)
+        {
+            var label = configuration.HandAliases.GetValueOrDefault(hand.Slug, "");
+            ImGui.SetNextItemWidth(180f);
+            ImGui.InputTextWithHint($"##hand-{hand.Slug}", WindowFormat.Household, ref label, 24);
+            if (ImGui.IsItemDeactivatedAfterEdit() && Aliases.Set(configuration.HandAliases, hand.Slug, label))
+                configuration.Save();
+            if (ImGui.IsItemHovered())
+                ImGui.SetTooltip(WindowFormat.AliasHover);
+
+            ImGui.SameLine();
+            ImGui.TextColored(Palette.TextDim, hand.Slug);
+            if (ImGui.IsItemHovered())
+                ImGui.SetTooltip(WindowFormat.SlugHover);
+
+            DimWrapped(WindowFormat.HandSeen(hand, Plugin.Tables.SpeciesName));
+        }
+    }
+
+    private static void DimWrapped(string text)
+    {
+        using var dim = ImRaii.PushColor(ImGuiCol.Text, Palette.TextDim);
+        ImGui.TextWrapped(text);
     }
 
     /// <summary>How far the dashboard's patch sweep reaches. Wider finds a far corner of a
