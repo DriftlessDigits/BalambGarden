@@ -261,5 +261,14 @@ public class YieldSplitTests
             (mirror.Planted, mirror.Harvested, mirror.Growing, mirror.Lost, mirror.Unmatched, mirror.Gathered),
             (mirror.Splits.Sum(s => s.Planted), mirror.Splits.Sum(s => s.Harvested), mirror.Splits.Sum(s => s.Growing),
                 mirror.Splits.Sum(s => s.Lost), mirror.Splits.Sum(s => s.Unmatched), mirror.Splits.Sum(s => s.Gathered)));
+
+        // Each row's own counts: the fig-side sowing still in the ground grows on the fig row.
+        Assert.Equal(
+            [
+                (Partner.Beside(Fig), 2, 1, 1, 0, 0),
+                (Partner.Beside(Krakka), 1, 1, 0, 0, 0),
+                (Partner.NotRecorded, 2, 0, 0, 2, 1),
+            ],
+            mirror.Splits.Select(s => (s.Partner!.Value, s.Planted, s.Harvested, s.Growing, s.Lost, s.Unmatched)));
     }
 }
