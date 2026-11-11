@@ -130,7 +130,7 @@ public class OnionMarkTests
             Row(HistoryKind.Plant, Krakka, patch: 8),
             Row(HistoryKind.Harvest, Krakka, patch: 8, qty: 9, at: T0.AddDays(10))), [], T);
 
-        Assert.Equal(7, book.Onions.Onions);
+        Assert.Equal(7, book.Trophy.Onions);
     }
 
     [Fact] // the trophy's seeds are the onion seeds every cross gave, by quantity; another seed never counts
@@ -141,7 +141,7 @@ public class OnionMarkTests
         var book = GardenBoard.Yields(History(
             Cross(onionSeed, 2), Cross(onionSeed, 1), Cross(otherSeed, 5), Cross(null, 0)), [], T);
 
-        Assert.Equal(new OnionTally(0, 3), book.Onions);
+        Assert.Equal(new OnionTally(0, 3), book.Trophy);
     }
 
     /// <summary>A Royal Kukuru bed harvest (no sowing on record) whose cross gave <paramref name="qty"/> of <paramref name="seed"/>.</summary>
@@ -153,6 +153,6 @@ public class OnionMarkTests
     public void ATallyWithNoOnionsIsEmpty()
     {
         var book = GardenBoard.Yields(History(Row(HistoryKind.Plant, GardenBoard.GoalCrop, patch: 7)), [], T);
-        Assert.Equal(new OnionTally(0, 0), book.Onions);
+        Assert.Equal(new OnionTally(0, 0), book.Trophy);
     }
 }

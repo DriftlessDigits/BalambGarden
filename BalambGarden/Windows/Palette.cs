@@ -41,8 +41,9 @@ internal static class Palette
     public static readonly Vector4 RipeInk = new(0.52f, 0.72f, 1f, 1f);
     public static readonly Vector4 RipeStripe = new(0.12f, 0.26f, 0.50f, 1f);
 
-    /// <summary>Onion: gold, the goal crop's harvest (rethink slice 12) - nothing else. An ink only,
-    /// with no fill: the crop name and its yield on the History and Yields tabs. A pure gold, more
+    /// <summary>Onion: gold, the goal crop's harvest (rethink slice 12) - nothing else: an onion
+    /// harvest's crop name and yield on the History tab, the onion row's name and gathered count on
+    /// the Yields tab, and the trophy line over it with its two sparkles. A pure gold, more
     /// yellow and more saturated than <see cref="WaterSoonInk"/>'s amber, so the two read apart.</summary>
     public static readonly Vector4 OnionInk = new(1f, 0.84f, 0f, 1f);
 

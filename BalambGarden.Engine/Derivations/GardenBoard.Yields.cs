@@ -6,10 +6,10 @@ namespace BalambGarden.Engine.Derivations;
 
 /// <summary>The Yields tab's whole content (rethink slice 7, rulings 6-9): per crop, beds and pots
 /// apart, all time from <see cref="Since"/>. Null <see cref="Since"/> = no history yet.
-/// <see cref="Onions"/> is the trophy line's count over the tables (rethink slice 12, ruling 14).</summary>
+/// <see cref="Trophy"/> is the trophy line's count over the tables (rethink slice 12, ruling 14).</summary>
 public sealed record YieldBook(DateTimeOffset? Since, IReadOnlyList<YieldRow> Beds, IReadOnlyList<YieldRow> Pots)
 {
-    public OnionTally Onions { get; init; } = new(0, 0);
+    public OnionTally Trophy { get; init; } = new(0, 0);
 }
 
 /// <summary>The goal crop's tally, all time: <see cref="Onions"/> = the onions every onion harvest
@@ -152,7 +152,7 @@ public static partial class GardenBoard
         var onionSeed = tables.SeedIdBySpeciesIndex(GoalCrop);
         return new YieldBook(ordered.Count > 0 ? ordered[0].At : null, beds, pots)
         {
-            Onions = new OnionTally(
+            Trophy = new OnionTally(
                 Onions: beds.Concat(pots).Where(r => IsGoalCrop(r.Species)).Sum(r => r.Gathered),
                 Seeds: ordered.Where(e => e.Kind == HistoryKind.Harvest && e.SeedItem is { } seed && seed == onionSeed)
                     .Sum(e => e.SeedQty ?? 0)),

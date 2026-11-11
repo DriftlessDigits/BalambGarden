@@ -48,7 +48,7 @@ internal static class YieldsTab
             book = GardenBoard.Yields(history, Plugin.Garden.Census.LedgerBeds, Plugin.Tables);
             bookRows = history.Entries.Count;
             bookAt = DateTime.UtcNow;
-            trophy = WindowFormat.OnionTrophy(book.Onions);
+            trophy = WindowFormat.OnionTrophy(book.Trophy);
         }
 
         ImGui.Spacing();
@@ -119,8 +119,19 @@ internal static class YieldsTab
     private const float TrophyScale = 1.4f;
 
     /// <summary>The shimmer's band, soft-edged: three clipped copies of the line in the shine ink,
-    /// each a share of the band's width and an alpha; the narrower ones sit over the wider.</summary>
-    private static readonly (float Width, float Alpha)[] ShineBands = [(1f, 0.30f), (0.6f, 0.35f), (0.3f, 0.45f)];
+    /// each a share of the band's width and an alpha; the narrower ones sit over the wider. The inks
+    /// are worked out once, not per frame.</summary>
+    private static readonly (float Width, uint Ink)[] ShineBands =
+    [
+        (1f, ImGui.ColorConvertFloat4ToU32(Palette.OnionShine with { W = 0.30f })),
+        (0.6f, ImGui.ColorConvertFloat4ToU32(Palette.OnionShine with { W = 0.35f })),
+        (0.3f, ImGui.ColorConvertFloat4ToU32(Palette.OnionShine with { W = 0.45f })),
+    ];
+
+    // The trophy line's sparkles, in line heights: the text sits LeadIn in from the line's start;
+    // a big sparkle Big from the text's edge, radius BigRadius; a small one Small out, radius
+    // SmallRadius. The space kept for the line reaches the small sparkles' outer tips.
+    private const float LeadIn = 1.1f, Big = 0.6f, BigRadius = 0.42f, Small = 0.95f, SmallRadius = 0.18f;
 
     /// <summary>The trophy line (rethink slice 12): the onion tally over the tables, in the onion
     /// ink, larger than a row, a gold sparkle either side, and a slow shimmer crossing it
@@ -135,7 +146,7 @@ internal static class YieldsTab
         var size = ImGui.CalcTextSize(line);
         var h = size.Y;
         var start = ImGui.GetCursorScreenPos();
-        var at = start + new Vector2(h * 1.1f, 0f);
+        var at = start + new Vector2(h * LeadIn, 0f);
         var gold = ImGui.ColorConvertFloat4ToU32(Palette.OnionInk);
 
         draw.AddText(at, gold, line);
@@ -143,20 +154,20 @@ internal static class YieldsTab
         {
             var x = at.X + centre * size.X;
             var half = TrophyShimmer.HalfWidth * size.X;
-            foreach (var (width, alpha) in ShineBands)
+            foreach (var (width, ink) in ShineBands)
             {
                 draw.PushClipRect(new Vector2(x - half * width, at.Y), new Vector2(x + half * width, at.Y + h), true);
-                draw.AddText(at, ImGui.ColorConvertFloat4ToU32(Palette.OnionShine with { W = alpha }), line);
+                draw.AddText(at, ink, line);
                 draw.PopClipRect();
             }
         }
 
-        Sparkle(draw, at + new Vector2(-h * 0.6f, h * 0.5f), h * 0.42f, gold);
-        Sparkle(draw, at + new Vector2(-h * 0.95f, h * 0.15f), h * 0.18f, gold);
-        Sparkle(draw, at + new Vector2(size.X + h * 0.6f, h * 0.5f), h * 0.42f, gold);
-        Sparkle(draw, at + new Vector2(size.X + h * 0.95f, h * 0.85f), h * 0.18f, gold);
+        Sparkle(draw, at + new Vector2(-h * Big, h * 0.5f), h * BigRadius, gold);
+        Sparkle(draw, at + new Vector2(-h * Small, h * 0.15f), h * SmallRadius, gold);
+        Sparkle(draw, at + new Vector2(size.X + h * Big, h * 0.5f), h * BigRadius, gold);
+        Sparkle(draw, at + new Vector2(size.X + h * Small, h * 0.85f), h * SmallRadius, gold);
 
-        ImGui.Dummy(new Vector2(size.X + h * 2.2f, h));
+        ImGui.Dummy(new Vector2(size.X + h * (LeadIn + Small + SmallRadius), h));
         ImGui.SetWindowFontScale(1f);
         ImGui.Spacing();
     }

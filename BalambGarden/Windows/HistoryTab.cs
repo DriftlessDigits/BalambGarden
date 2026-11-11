@@ -129,13 +129,14 @@ internal static class HistoryTab
     private static Line ToLine(HistoryLine line, Dictionary<string, string> aliases) => line switch
     {
         HistoryDayLine day => new Line(WindowFormat.HistoryDay(day.Day), []),
-        HistoryRowLine row => RowLine(row.Entry, row, aliases),
+        HistoryRowLine row => RowLine(row, aliases),
         _ => throw new ArgumentOutOfRangeException(nameof(line)),
     };
 
     /// <summary>A row's cells: an onion harvest's crop, and its yield when heard, wear the onion mark.</summary>
-    private static Line RowLine(HistoryEntry entry, HistoryRowLine row, Dictionary<string, string> aliases)
+    private static Line RowLine(HistoryRowLine row, Dictionary<string, string> aliases)
     {
+        var entry = row.Entry;
         var onion = GardenBoard.IsGoalCropHarvest(entry);
         var (yield, yieldDim) = WindowFormat.HistoryYield(entry);
         var (cross, crossDim) = WindowFormat.HistoryCross(entry, WindowText.SeedName);
