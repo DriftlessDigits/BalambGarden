@@ -159,7 +159,7 @@ public sealed record LaneMark(
 /// worked out from the ledger, the access roster, the domain tables and the clock. Pure - the
 /// window draws what this returns and holds no rule of its own.
 /// </summary>
-public static class GardenBoard
+public static partial class GardenBoard
 {
     /// <summary>Every outdoor patch is eight beds.</summary>
     public const int PatchSlots = 8;
