@@ -651,8 +651,8 @@ public class WindowFormatTests
         => new($"hhbbaa:eraaaa:{counter}", entity, SyncEntityType.Bed, SyncKind.Tend, ParkedAt,
             SyncSource.Chain, new SyncData(Species: 50));
 
-    [Fact] // an empty hold reads as zero, never as a missing line
-    public void TheParkedCountReadsZeroOnAnEmptyHold()
+    [Fact] // none parked reads as zero, never as a missing line
+    public void TheParkedCountReadsZeroWithNoneParked()
         => Assert.Equal("parked receipts: 0", WindowFormat.ParkedReceipts(new LedgerStore()));
 
     [Fact] // the count is the ledger's parked list, each receipt once however often its page re-arrives

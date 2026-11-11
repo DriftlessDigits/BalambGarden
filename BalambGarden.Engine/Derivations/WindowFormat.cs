@@ -558,10 +558,11 @@ public static class WindowFormat
                + $"{ShortDay(last.LocalAt)} {Clock(last.LocalAt, withDay: false)}.";
     }
 
-    /// <summary>The Recon tab's instrument line (Debug builds only): how many household receipts the
-    /// ledger holds parked, waiting for their bed or pot to be minted here, "parked receipts: 3". Zero
-    /// reads "parked receipts: 0", never a missing line, so a growing hold shows as a number that
-    /// climbs. The number form needs no singular.</summary>
+    /// <summary>The one member here no player reads: the Recon tab's instrument line, drawn only in Debug
+    /// builds (kept here for its literal-text test). How many household receipts the ledger keeps parked,
+    /// waiting for their bed or pot to be minted here, "parked receipts: 3"; none reads "parked receipts:
+    /// 0", never a missing line. The number form needs no singular. Takes the ledger, not a count, so the
+    /// tests pin which list it counts.</summary>
     public static string ParkedReceipts(LedgerStore ledger)
         => $"parked receipts: {ledger.ForeignHold.Count}";
 }
