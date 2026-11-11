@@ -280,7 +280,7 @@ A run across many beds (Tend All, Water Patch): it skips only what the live map 
 _Avoid_: tend all (the button), batch tend, mass water
 
 **Yield book**:
-The Yields tab's content: per crop, beds and pots apart, every sowing in the history sorted into harvested (a harvest paired with its sowing in the same container), growing (the ledger still holds it alive) and lost (the rest), plus what was gathered and, for beds, the cross rate and the seed shares. All time, from the history's first day. A harvest whose sowing is not on record is never "harvested". It replaced Tips (advisory sentences over the plantings, retired 2026-11-08: never opened).
+The Yields tab's content: per crop, beds and pots apart, every sowing in the history sorted into harvested (a harvest paired with its sowing in the same container), growing (the ledger still holds it alive) and lost (the rest), plus what was gathered and, for beds, the cross rate and the seed shares. All time, from the history's first day. A harvest whose sowing is not on record is never "harvested". A bed crop harvested beside two or more partners splits into a row per **Partner**; soil splits nothing. It replaced Tips (advisory sentences over the plantings, retired 2026-11-08: never opened).
 _Avoid_: tips (retired), stats, scoreboard, pipeline view
 
 **Cross rate**:
