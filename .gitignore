@@ -4,3 +4,5 @@ bin/
 *.user
 # Local planning/working docs - never ship
 .superpowers/
+# A ledger reference test that failed writes what it got here (LedgerReferenceTests)
+*.received.json
