@@ -33,6 +33,9 @@ internal static class YieldsTab
     private static int bookRows = -1;
     private static DateTime bookAt;
 
+    /// <summary>The trophy line's words, built with the book (never per frame); null = no line.</summary>
+    private static string? trophy;
+
     public static void Draw()
     {
         using var tab = ImRaii.TabItem("Yields###yields");
@@ -45,6 +48,7 @@ internal static class YieldsTab
             book = GardenBoard.Yields(history, Plugin.Garden.Census.LedgerBeds, Plugin.Tables);
             bookRows = history.Entries.Count;
             bookAt = DateTime.UtcNow;
+            trophy = WindowFormat.OnionTrophy(book.Onions);
         }
 
         ImGui.Spacing();
@@ -54,7 +58,7 @@ internal static class YieldsTab
             return;
         }
 
-        if (WindowFormat.OnionTrophy(book.Onions) is { } trophy)
+        if (trophy is not null)
             Trophy(trophy);
 
         var local = since.ToLocalTime();
@@ -114,14 +118,57 @@ internal static class YieldsTab
     /// <summary>How much larger the trophy line draws than the tab's text.</summary>
     private const float TrophyScale = 1.4f;
 
+    /// <summary>The shimmer's band, soft-edged: three clipped copies of the line in the shine ink,
+    /// each a share of the band's width and an alpha; the narrower ones sit over the wider.</summary>
+    private static readonly (float Width, float Alpha)[] ShineBands = [(1f, 0.30f), (0.6f, 0.35f), (0.3f, 0.45f)];
+
     /// <summary>The trophy line (rethink slice 12): the onion tally over the tables, in the onion
-    /// ink and larger than a row. It lives on this tab only; nothing announces it.</summary>
+    /// ink, larger than a row, a gold sparkle either side, and a slow shimmer crossing it
+    /// (<see cref="TrophyShimmer"/>, off ImGui's own clock, so opening the tab starts nothing). It
+    /// lives on this tab only; nothing announces it. Per frame it adds the line's text run, up to three
+    /// clipped copies of it while the band crosses, and four sparkle shapes; it builds no string and
+    /// keeps nothing between frames (the words are built with the book).</summary>
     private static void Trophy(string line)
     {
         ImGui.SetWindowFontScale(TrophyScale);
-        ImGui.TextColored(Palette.OnionInk, line);
+        var draw = ImGui.GetWindowDrawList();
+        var size = ImGui.CalcTextSize(line);
+        var h = size.Y;
+        var start = ImGui.GetCursorScreenPos();
+        var at = start + new Vector2(h * 1.1f, 0f);
+        var gold = ImGui.ColorConvertFloat4ToU32(Palette.OnionInk);
+
+        draw.AddText(at, gold, line);
+        if (TrophyShimmer.Centre(ImGui.GetTime()) is { } centre)
+        {
+            var x = at.X + centre * size.X;
+            var half = TrophyShimmer.HalfWidth * size.X;
+            foreach (var (width, alpha) in ShineBands)
+            {
+                draw.PushClipRect(new Vector2(x - half * width, at.Y), new Vector2(x + half * width, at.Y + h), true);
+                draw.AddText(at, ImGui.ColorConvertFloat4ToU32(Palette.OnionShine with { W = alpha }), line);
+                draw.PopClipRect();
+            }
+        }
+
+        Sparkle(draw, at + new Vector2(-h * 0.6f, h * 0.5f), h * 0.42f, gold);
+        Sparkle(draw, at + new Vector2(-h * 0.95f, h * 0.15f), h * 0.18f, gold);
+        Sparkle(draw, at + new Vector2(size.X + h * 0.6f, h * 0.5f), h * 0.42f, gold);
+        Sparkle(draw, at + new Vector2(size.X + h * 0.95f, h * 0.85f), h * 0.18f, gold);
+
+        ImGui.Dummy(new Vector2(size.X + h * 2.2f, h));
         ImGui.SetWindowFontScale(1f);
         ImGui.Spacing();
+    }
+
+    /// <summary>A four-point sparkle centred on <paramref name="centre"/>: two thin diamonds crossed.</summary>
+    private static void Sparkle(ImDrawListPtr draw, Vector2 centre, float radius, uint colour)
+    {
+        var waist = radius * 0.28f;
+        draw.AddQuadFilled(centre + new Vector2(0f, -radius), centre + new Vector2(waist, 0f),
+            centre + new Vector2(0f, radius), centre + new Vector2(-waist, 0f), colour);
+        draw.AddQuadFilled(centre + new Vector2(-radius, 0f), centre + new Vector2(0f, -waist),
+            centre + new Vector2(radius, 0f), centre + new Vector2(0f, waist), colour);
     }
 
     /// <summary>How far a split row's name sits in from its crop's.</summary>

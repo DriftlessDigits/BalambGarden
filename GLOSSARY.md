@@ -300,7 +300,7 @@ A chain of crossbreed recipes whose outputs feed the next recipe's inputs across
 _Avoid_: chain (that is a run), recipe tree, cross plan
 
 **Onion mark**:
-The gold the pipeline's goal crop wears, Thavnairian Onion only: on the History tab an onion harvest's crop name and its yield when heard, on the Yields tab the onion row's name and its gathered count above zero (never a split row). A sowing, another onion (Onion Prince, Wild Onion Set) and a yield not heard take none. It is the only celebration: nothing speaks unprompted.
+The gold the pipeline's goal crop wears, Thavnairian Onion only: on the History tab an onion harvest's crop name and its yield when heard, on the Yields tab the onion row's name and its gathered count above zero (never a split row), and over the tables the **trophy line** ("6 onions harvested, 3 seeds gathered": the onions gathered and the onion seeds won from crosses) between two gold sparkles, a slow shimmer crossing it. A sowing, another onion (Onion Prince, Wild Onion Set) and a yield not heard take none. It is the only celebration and lives on the tab you open: nothing speaks unprompted.
 _Avoid_: badge, notification, highlight (a hover's), goal (alone: say goal crop)
 
 **Rollup**:
@@ -312,7 +312,7 @@ The Garden tab's small picture of an estate: each patch with its eight beds wher
 _Avoid_: map, mini-map, heatmap, grid
 
 **Palette**:
-The one home of the plugin's colours, each named by the one thing it means under the colour map: growing (a green ramp by stage), water soon, wilting, dying, ripe, empty, dead (the earth of empty under a cross), onion (gold, the **Onion mark**), and the no-claim greys (unclaimed, unread, a water clock that is fine); plus plain and dim text and the structure greys of frames, rules and chips. A screen picks a meaning, never a value; what colour does not carry (not heard, provenance, status) goes to line style, glyphs and words.
+The one home of the plugin's colours, each named by the one thing it means under the colour map: growing (a green ramp by stage), water soon, wilting, dying, ripe, empty, dead (the earth of empty under a cross), onion (gold and its shine, the **Onion mark**), and the no-claim greys (unclaimed, unread, a water clock that is fine); plus plain and dim text and the structure greys of frames, rules and chips. A screen picks a meaning, never a value; what colour does not carry (not heard, provenance, status) goes to line style, glyphs and words.
 _Avoid_: theme (ImGui's own style), colour scheme, color constants
 
 **Patch strip**:
