@@ -441,9 +441,10 @@ public static class WindowFormat
             ? $"{shown} of {total} {(shown == 1 ? "matches" : "match")}"
             : $"{total} on record since {ShortDay(since)}";
 
-    /// <summary>A day's heading over its rows: "SAT NOV 7". Caller converts to local time first.</summary>
-    public static string HistoryDay(DateTimeOffset day)
-        => day.ToString("ddd MMM d", CultureInfo.InvariantCulture).ToUpperInvariant();
+    /// <summary>A day's heading, open or folded, with how many it holds under the filters: "SAT OCT 31 ·
+    /// 118" (rethink slice 24, ruled from the picture). Caller passes the day's local midnight.</summary>
+    public static string HistoryDay(DateTimeOffset day, int count)
+        => $"{day.ToString("ddd MMM d", CultureInfo.InvariantCulture).ToUpperInvariant()} · {count}";
 
     /// <summary>A row's time of day in the reader's clock: "6:18 pm". Caller converts to local time first.</summary>
     public static string HistoryTime(DateTimeOffset at) => Clock(at, withDay: false);

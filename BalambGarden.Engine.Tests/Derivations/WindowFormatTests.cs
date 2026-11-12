@@ -503,11 +503,19 @@ public class WindowFormatTests
         Assert.Equal("No plants or harvests match these filters.", WindowFormat.NoHistoryMatch);
     }
 
+    [Fact] // the folding day's heading, as ruled from the picture (rethink slice 24): its day, then how many it holds
+    public void TheHistoryDayHeadingCarriesItsCountAsRuled()
+    {
+        Assert.Equal("SAT OCT 31 · 118", WindowFormat.HistoryDay(DateTimeOffset.Parse("2026-10-31T00:00:00-05:00"), 118));
+        Assert.Equal("SAT NOV 7 · 117", WindowFormat.HistoryDay(DateTimeOffset.Parse("2026-11-07T00:00:00-06:00"), 117));
+        Assert.Equal("SUN NOV 1 · 2", WindowFormat.HistoryDay(DateTimeOffset.Parse("2026-11-01T00:00:00-05:00"), 2));
+        Assert.Equal("WED NOV 11 · 1", WindowFormat.HistoryDay(DateTimeOffset.Parse("2026-11-11T00:00:00-06:00"), 1));
+    }
+
     [Fact]
-    public void TheHistoryDayHeadingAndTimeReadAsTheMock()
+    public void TheHistoryTimeReadsAsTheMock()
     {
         var at = DateTimeOffset.Parse("2026-11-07T18:18:00-06:00");
-        Assert.Equal("SAT NOV 7", WindowFormat.HistoryDay(at));
         Assert.Equal("18:18", WindowFormat.HistoryTime(at));
         try
         {
