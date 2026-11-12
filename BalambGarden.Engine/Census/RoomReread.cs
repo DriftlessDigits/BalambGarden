@@ -1,19 +1,20 @@
-using BalambGarden.Engine.Census;
+using BalambGarden.Engine.Sensing;
 
-namespace BalambGarden.Engine.Sensing;
+namespace BalambGarden.Engine.Census;
 
 /// <summary>Where a map read reads: one estate, and which side of its front door. The two sides
 /// are different maps (the yard's beds, the house's pots), read by different code paths.</summary>
 public sealed record RoomSide(EstateKey Estate, bool Inside);
 
 /// <summary>What armed a re-read: arriving (a zone line or the front door) or a gardening line
-/// from the player's own hands at a bed or pot.</summary>
+/// from the own hand at a bed or pot.</summary>
 public enum RereadCause { Arrival, GardenLine }
 
 /// <summary>A re-read that is due: what armed it, for which place, and when.</summary>
 public sealed record RereadDue(RereadCause Cause, RoomSide Side, DateTimeOffset ArmedAt);
 
-/// <summary>When the census reads the side underfoot AGAIN (rethink slice 25). The game's map can
+/// <summary>When the census reads the side underfoot AGAIN (rethink slice 25): the census's own
+/// read policy, beside the pump that runs it. The game's map can
 /// stand a stage behind on arrival and catch up by itself (pot 131, FC Estate, 2026-11-11: stage 3
 /// at the 19:24:59 arrival read, stage 4 in the game's own map at 19:27:58, nothing touched; on
 /// 2026-11-03 a read 7 s after arrival was current), and a hand disposal prints a line nothing
@@ -23,10 +24,10 @@ public sealed record RereadDue(RereadCause Cause, RoomSide Side, DateTimeOffset 
 /// <para>NEVER IN AN ACT'S LAG. The map shows an act a beat late: a watered pot's wilt flag stays
 /// up, a fresh sowing reads empty. A census read in that beat would keep a wilt sighting newer than
 /// the watering, or reset the sowing as emptied. So a due read waits while the caller is busy (a
-/// verb running, a sowing waiting for its seed) and for <see cref="Quiet"/> after any receipt of
-/// the player's own; held reads then run as one.</para>
+/// verb running, a sowing waiting for its seed) and for <see cref="Quiet"/> after any own-hand
+/// receipt; held reads then run as one.</para>
 ///
-/// <para>A READ BELONGS TO THE PLACE THAT ARMED IT. Every pending read carries its place; asked
+/// <para>A READ BELONGS TO THE PLACE THAT ARMED IT. Every read still due carries its place; asked
 /// anywhere else (or nowhere: loading, logout) the schedule drops them all, so a read armed in one
 /// room can never run in the next and be booked there. Arriving somewhere replaces the schedule;
 /// a line heard somewhere else starts that place's.</para>
@@ -42,16 +43,16 @@ public sealed class RoomReread
     /// <summary>The reads after a gardening line: the map zeroes or changes a beat after the line.</summary>
     public static readonly IReadOnlyList<TimeSpan> AfterLine = [TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(6)];
 
-    /// <summary>No re-read this soon after a receipt of the player's own. Unmeasured: the pot chain
-    /// gives a watering's flag 6 s to clear (and sometimes it takes longer), a hand sow's seed shows
-    /// within 2.8 s; this sits above both.</summary>
+    /// <summary>No re-read this soon after an own-hand receipt. Set above the two lags on record: the
+    /// pot chain gives a watering's flag 6 s to clear (and it sometimes takes longer), and a hand
+    /// sow's seed showed within 2.8 s; the re-read's own lag has never been timed.</summary>
     public static readonly TimeSpan Quiet = TimeSpan.FromSeconds(15);
 
     private RoomSide? side;
     private readonly List<(DateTimeOffset At, RereadCause Cause, DateTimeOffset ArmedAt)> due = [];
 
-    /// <summary>Whether any read is still pending or held.</summary>
-    public bool Any => due.Count > 0;
+    /// <summary>Whether any read is still due (waiting for its time, or held).</summary>
+    public bool Armed => due.Count > 0;
 
     /// <summary>The arrival read at <paramref name="side"/> has answered: its reads replace any others.</summary>
     public void Arrived(RoomSide side, DateTimeOffset at)
@@ -75,7 +76,7 @@ public sealed class RoomReread
             due.Add((at + after, RereadCause.GardenLine, at));
     }
 
-    /// <summary>Drops every pending and held read.</summary>
+    /// <summary>Drops every read still due.</summary>
     public void Clear()
     {
         due.Clear();
@@ -142,10 +143,16 @@ public sealed class RoomReread
         IReadOnlyDictionary<int, IReadOnlyList<BedReading>> before, IReadOnlyDictionary<int, IReadOnlyList<BedReading>> after)
     {
         var lines = new List<string>();
-        foreach (var key in after.Keys.Order())
+        foreach (var key in before.Keys.Union(after.Keys).Order())
         {
             var had = before.GetValueOrDefault(key);
-            foreach (var bed in after[key])
+            if (!after.TryGetValue(key, out var beds))
+            {
+                if (had is not null && had.Any(b => b.Occupied))
+                    lines.Add($"map key {key}: gone from the map");
+                continue;
+            }
+            foreach (var bed in beds)
             {
                 var old = had?.FirstOrDefault(b => b.Slot == bed.Slot);
                 if (Content(old?.Occupied ?? false, old?.SpeciesIndex ?? 0, old?.Stage ?? 0, bed.Occupied, bed.SpeciesIndex, bed.Stage) is { } content)

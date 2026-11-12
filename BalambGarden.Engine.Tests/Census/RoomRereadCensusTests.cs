@@ -161,19 +161,20 @@ public class RoomRereadCensusTests
     [Fact]
     public void AReReadSaysWhatChangedOnThePots()
     {
+        // Keys go in highest first: the lines must come out by key, lowest first.
         var before = new Dictionary<int, PotReading>
         {
-            [131] = Decode(Pot131Stale),
-            [0] = Decode(KrakkaDead),
             [392] = Decode("32 00 04 00 01" + Pot131Ripe[14..]),
+            [131] = Decode(Pot131Stale),
             [7] = Decode(Pot131Ripe),
+            [0] = Decode(KrakkaDead),
         };
         var after = new Dictionary<int, PotReading>
         {
-            [131] = Decode(Pot131Ripe),
-            [0] = Decode(Zeroed),
             [392] = Decode("32 00 04 00 00" + Pot131Ripe[14..]),
+            [131] = Decode(Pot131Ripe),
             [5] = Decode("32 00 01 00 00" + Pot131Ripe[14..]),
+            [0] = Decode(Zeroed),
         };
 
         Assert.Equal(
@@ -201,10 +202,10 @@ public class RoomRereadCensusTests
                 6 => new BedReading(6, (ushort)(occupied7 ? Onion : 0), (byte)(occupied7 ? 2 : 0), 0, occupied7),
                 _ => new BedReading(slot, 0, 0, 0, false),
             }).ToList();
-        var before = new Dictionary<int, IReadOnlyList<BedReading>> { [1313] = Patch(2, occupied7: true) };
+        var before = new Dictionary<int, IReadOnlyList<BedReading>> { [1313] = Patch(2, occupied7: true), [1293] = Patch(1, occupied7: false) };
         var after = new Dictionary<int, IReadOnlyList<BedReading>> { [1313] = Patch(3, occupied7: false) };
 
-        Assert.Equal(["map key 1313 bed 3: stage 2 -> 3", "map key 1313 bed 7: emptied"],
+        Assert.Equal(["map key 1293: gone from the map", "map key 1313 bed 3: stage 2 -> 3", "map key 1313 bed 7: emptied"],
             RoomReread.Changes(before, after));
     }
 }

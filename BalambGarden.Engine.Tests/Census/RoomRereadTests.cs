@@ -1,8 +1,7 @@
 using BalambGarden.Engine.Census;
-using BalambGarden.Engine.Sensing;
 using Xunit;
 
-namespace BalambGarden.Engine.Tests.Sensing;
+namespace BalambGarden.Engine.Tests.Census;
 
 /// <summary>Rethink slice 25: the room is read again when it changes. The game's map can be a stage
 /// behind on arrival and catch up by itself (pot 131, FC Estate, 2026-11-11: stage 3 at the 19:24:59
@@ -44,7 +43,7 @@ public class RoomRereadTests
         var reads = Reads(reread, Arrival, Arrival.AddMinutes(10));
 
         Assert.Equal([At("19:25:04"), At("19:25:14"), At("19:25:29"), At("19:25:59")], reads);
-        Assert.False(reread.Any);
+        Assert.False(reread.Armed);
     }
 
     [Fact]
@@ -68,7 +67,7 @@ public class RoomRereadTests
         reread.Clear();
 
         Assert.Empty(Reads(reread, Arrival, Arrival.AddMinutes(10)));
-        Assert.False(reread.Any);
+        Assert.False(reread.Armed);
     }
 
     [Fact]
@@ -121,7 +120,7 @@ public class RoomRereadTests
         var reads = Reads(reread, line, line.AddMinutes(1), lastOwnReceipt: line);
 
         Assert.Equal([At("19:30:15")], reads);
-        Assert.False(reread.Any);
+        Assert.False(reread.Armed);
     }
 
     [Fact]
@@ -143,7 +142,23 @@ public class RoomRereadTests
         var reread = new RoomReread();
 
         Assert.Null(reread.Take(House, Arrival, busy: false, lastOwnReceipt: null));
-        Assert.False(reread.Any);
+        Assert.False(reread.Armed);
+    }
+
+    [Fact]
+    public void HeldReadsAsOneCarryTheEarliestDueOnesCauseWhicheverWasArmedFirst()
+    {
+        var reread = new RoomReread();
+        reread.Arrived(House, Arrival);                 // its 15 s read falls due at 19:25:14
+        Assert.NotNull(reread.Take(House, At("19:25:04"), busy: false, lastOwnReceipt: null));
+        var line = At("19:25:10");                    // armed later, due EARLIER: 19:25:12
+        reread.LineHeard(House, line);
+
+        // A verb runs 19:25:11-19:25:40, holding the line's 19:25:12 and 19:25:16 and the arrival's 19:25:14 and 19:25:29.
+        Assert.Null(reread.Take(House, At("19:25:30"), busy: true, lastOwnReceipt: null));
+        var held = reread.Take(House, At("19:25:40"), busy: false, lastOwnReceipt: null);
+
+        Assert.Equal(new RereadDue(RereadCause.GardenLine, House, line), held);
     }
 
     // ---- leaving (the player, 2026-11-11: "what if I leave after 45 seconds?"): a read never runs, and never
@@ -162,7 +177,7 @@ public class RoomRereadTests
         var reads = Reads(reread, Arrival, Arrival.AddMinutes(10), here: Where);
 
         Assert.Equal([At("19:25:04"), At("19:25:14"), At("19:25:29")], reads);
-        Assert.False(reread.Any);
+        Assert.False(reread.Armed);
     }
 
     [Fact]
@@ -177,7 +192,7 @@ public class RoomRereadTests
             here: t => t < left ? House : new RoomSide(Other, Inside: false));
 
         Assert.Empty(reads);
-        Assert.False(reread.Any);
+        Assert.False(reread.Armed);
     }
 
     [Fact]
