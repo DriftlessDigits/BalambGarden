@@ -9,7 +9,7 @@ public sealed record SpeciesRipe(ushort SpeciesIndex, EtaWindow Window);
 public sealed record PatchRollup(
     EstateKey Estate, int PatchOrdinal, bool IsPots,
     int Claimed, int Ripe, int Due, int Overdue, int Danger, int Unknown,
-    EtaWindow? NextRipe, IReadOnlyList<SpeciesRipe> RipeBySpecies);
+    EtaWindow? NextRipe, IReadOnlyList<SpeciesRipe> RipeBySpecies, int RipeByClock = 0);
 
 public static class Rollups
 {
@@ -17,22 +17,29 @@ public static class Rollups
     /// (UI ruling 2026-08-15), whatever per-pot ordinals the ledger rows hold.</summary>
     public const int PotsOrdinal = -1;
 
+    /// <summary>A planting the plugin saw sown counts by what the card believes of it (spec ruling
+    /// 24, <see cref="GardenBoard.Believe"/>): ripe by the clock counts ripe (and in
+    /// <see cref="PatchRollup.RipeByClock"/>) and asks for no water; dead by the clock asks for none
+    /// either. <paramref name="held"/> as the board's.</summary>
     public static IReadOnlyList<PatchRollup> ForEstate(
         EstateKey estate, IReadOnlyList<ClaimedBed> beds, DomainTables tables,
-        IWiltSource wilt, DateTimeOffset now)
+        IWiltSource wilt, DateTimeOffset now, Func<ClaimedBed, bool>? held = null)
     {
         return beds
             .Where(b => b.Estate == estate)
             .GroupBy(b => (PatchOrdinal: b.IsPot ? PotsOrdinal : b.PatchOrdinal, IsPot: b.IsPot))
             .Select(g =>
             {
-                int ripe = 0, due = 0, overdue = 0, danger = 0, unknown = 0;
+                int ripe = 0, due = 0, overdue = 0, danger = 0, unknown = 0, ripeByClock = 0;
                 var ripeBySpecies = new Dictionary<ushort, EtaWindow>();
                 foreach (var bed in g)
                 {
                     var latest = bed.Latest;
-                    var isRipe = latest?.Stage == 4;
+                    var belief = GardenBoard.Believe(bed, tables, now, held?.Invoke(bed) ?? false);
+                    var isRipe = belief is null ? latest?.Stage == 4 : belief.State == PlantState.Ripe;
                     if (isRipe) ripe++;
+                    if (isRipe && belief is { ByClock: true }) ripeByClock++;
+                    var noWaterClaim = belief?.State is PlantState.Ripe or PlantState.Dead || belief is { OutlivedClock: true };
 
                     var crop = latest is null ? null : tables.CropBySpeciesIndex(latest.SpeciesIndex);
                     // A pot's water state is deliberately out of the thirst counts: no pot
@@ -40,7 +47,7 @@ public static class Rollups
                     // only - whether that is a pot mechanic or a flower oddity is exactly
                     // what the dry-vs-watered twins labs are running to decide (08-15).
                     // Until they report, NotApplicable asserts nothing either way.
-                    var state = bed.IsPot ? WaterState.NotApplicable
+                    var state = bed.IsPot || noWaterClaim ? WaterState.NotApplicable
                         : crop is null ? WaterState.Unknown
                         : wilt.StateFor(bed, crop, now);
                     switch (state)
@@ -57,8 +64,8 @@ public static class Rollups
                     if (!isRipe && latest is not null
                         && tables.GrowHours(latest.SpeciesIndex) is { } growHours
                         && StageModel.RipeWindow(bed, growHours)?.Window is { } window
-                        && (!ripeBySpecies.TryGetValue(latest.SpeciesIndex, out var held)
-                            || window.Earliest < held.Earliest))
+                        && (!ripeBySpecies.TryGetValue(latest.SpeciesIndex, out var kept)
+                            || window.Earliest < kept.Earliest))
                         ripeBySpecies[latest.SpeciesIndex] = window;
                 }
 
@@ -68,7 +75,7 @@ public static class Rollups
                     .ToList();
                 return new PatchRollup(estate, g.Key.PatchOrdinal, g.Key.IsPot,
                     g.Count(), ripe, due, overdue, danger, unknown,
-                    speciesRipe.Count == 0 ? null : speciesRipe[0].Window, speciesRipe);
+                    speciesRipe.Count == 0 ? null : speciesRipe[0].Window, speciesRipe, ripeByClock);
             })
             .OrderBy(r => r.IsPots).ThenBy(r => r.PatchOrdinal)
             .ToList();

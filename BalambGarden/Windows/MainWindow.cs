@@ -189,7 +189,8 @@ public class MainWindow : Window, IDisposable
     {
         var verdict = Verdicts.ForGarden(
             estates, Plugin.Garden.Census.LedgerBeds, Plugin.Tables, Plugin.Garden.Wilt, now,
-            w => WindowFormat.Coarse(w.Earliest.ToLocalTime(), w.Latest.ToLocalTime(), now.ToLocalTime()));
+            w => WindowFormat.Coarse(w.Earliest.ToLocalTime(), w.Latest.ToLocalTime(), now.ToLocalTime()),
+            CensusPump.Looks.Holds);
 
         ImGui.Text(verdict.Text);
 

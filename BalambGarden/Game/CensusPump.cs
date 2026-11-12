@@ -115,9 +115,9 @@ internal static class CensusPump
                     && Plugin.Garden.Ledger.Beds.Any(b => b.Estate == estate && b.IsPot == inside))
                     return;
                 announcedInside = inside;
-                // The side now underfoot gets its own re-reads.
+                // The side now underfoot gets its own re-reads, and its arrival look is held.
                 if (CoveredHere)
-                    reread.Arrived(new RoomSide(estate, inside), DateTimeOffset.UtcNow);
+                    ArriveAt(new RoomSide(estate, inside));
                 return;
             }
             RereadIfDue(estate, inside);
@@ -152,8 +152,8 @@ internal static class CensusPump
         Plugin.Garden.Ledger.UpsertEstate(estate, DateTimeOffset.UtcNow);
         Plugin.Garden.Save();
         // The map can stand a stage behind on arrival and catch up by itself (rethink slice 25):
-        // read this side again a few times in the first minute.
-        reread.Arrived(new RoomSide(estate, inside), DateTimeOffset.UtcNow);
+        // read this side again a few times in the first minute, and hold the arrival look.
+        ArriveAt(new RoomSide(estate, inside));
 
         if (Plugin.Configuration.NudgeEnabled)
         {
@@ -169,6 +169,25 @@ internal static class CensusPump
     /// the side underfoot read again a few times after an arrival and a few seconds after an own-hand
     /// gardening line, never in an act's lag, only where it was armed.</summary>
     private static readonly RoomReread reread = new();
+
+    /// <summary>The look rule (rethink slice 27, spec ruling 24; engine-tested): the arrival look
+    /// never overrules a clock, the room re-read's first two arrival reads settle it. The Garden
+    /// tab and the line above the tabs ask it which containers are still held. Memory only.</summary>
+    internal static LookRule Looks => looks ??= new LookRule(Plugin.Tables);
+    private static LookRule? looks;
+
+    /// <summary>The containers the census keeps on one side of an estate: its pots inside, its beds out.</summary>
+    private static IEnumerable<ClaimedBed> OnSide(RoomSide side)
+        => Plugin.Garden.Ledger.Beds.Where(b => b.Estate == side.Estate && b.IsPot == side.Inside);
+
+    /// <summary>The arrival read at <paramref name="side"/> has answered: arm its re-reads and hold
+    /// its arrival look.</summary>
+    private static void ArriveAt(RoomSide side)
+    {
+        var now = DateTimeOffset.UtcNow;
+        reread.Arrived(side, now);
+        Looks.Arrived(side, OnSide(side), now);
+    }
 
     /// <summary>When the newest own-hand receipt landed (a chain's or a hand act's): the room
     /// re-read stays quiet for a while after it, because the map shows an act a beat late.</summary>
@@ -201,6 +220,10 @@ internal static class CensusPump
         var indoor = lastCensusIndoor;
         var outdoor = lastCensusOutdoor;
         SightNow(reconcileAbsent: false);
+        // The census stamps a read with the time it was taken; the look rule finds this read by it.
+        if (read.AnswersArrival && lastSightAt is { } at)
+            foreach (var warning in Looks.Looked(read.Side, OnSide(read.Side), at))
+                Plugin.Log.Warning($"[Census] {warning}");
         var changes = inside ? RoomReread.Changes(indoor, lastCensusIndoor) : RoomReread.Changes(outdoor, lastCensusOutdoor);
         var why = $"{(now - read.ArmedAt).TotalSeconds:0}s after "
                   + (read.Cause == RereadCause.Arrival ? "arriving" : "a garden line");
@@ -310,6 +333,9 @@ internal static class CensusPump
     private static IReadOnlyDictionary<int, PotReading> lastCensusIndoor = new Dictionary<int, PotReading>();
     private static IReadOnlyDictionary<int, IReadOnlyList<BedReading>> lastCensusOutdoor = new Dictionary<int, IReadOnlyList<BedReading>>();
 
+    /// <summary>When the newest census read was taken: every record it touched carries this time.</summary>
+    private static DateTimeOffset? lastSightAt;
+
     /// <param name="reconcileAbsent">False for a room re-read: it neither runs the vanished-pot
     /// verdict nor becomes the prior read that verdict corroborates against.</param>
     internal static void SightNow(bool reconcileAbsent = true)
@@ -328,6 +354,7 @@ internal static class CensusPump
         // The pump refreshes CoveredHere every tick for the estate underfoot, so a
         // non-null estate here can trust it as-is.
         var now = DateTimeOffset.UtcNow;
+        lastSightAt = now;
         var landed = 0;
         if (EstateSensor.IsInside())
         {

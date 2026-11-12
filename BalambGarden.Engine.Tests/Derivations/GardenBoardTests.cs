@@ -32,6 +32,9 @@ public class GardenBoardTests
         Estate = estate, MapKey = 100 + patch, PatchOrdinal = patch, BedSlot = slot,
     };
 
+    /// <summary>Watered an hour before <see cref="Now"/>: alive by the clock whatever its sowing.</summary>
+    private static ClaimedBed Watered(ClaimedBed bed) => Seed.Tend(bed, Now.AddHours(-1));
+
     private static IReadOnlyList<VisitCard> Board(
         IReadOnlyList<EstateRecord> estates, IReadOnlyList<ClaimedBed> beds, AccessRoster? roster = null)
         => GardenBoard.Cards(estates, beds, roster ?? Roster(estates.Select(e => e.Key).ToArray()), T, Now);
@@ -198,11 +201,12 @@ public class GardenBoardTests
         Seed.Sight(sightedMirror, Now.AddHours(-1), mirror, stage: 2);
         var beds = new List<ClaimedBed>
         {
-            Seed.Plant(Bed(Yard, 0, 0), Now.AddHours(-60), Krakka, stage: 2),    // ripe +12h, anchored
-            Seed.Plant(Bed(Yard, 0, 1), Now.AddHours(-58), Krakka, stage: 2),    // +14h: the same crop, its earliest wins
-            Seed.Plant(Bed(Yard, 0, 2), Now.AddHours(-106), Fig, stage: 3),      // +14h: within the group's span
-            sightedMirror,                                                       // +70h..+79h, bracketed
-            Seed.Plant(pot, Now.AddHours(-58), Krakka, stage: 2),                // +14h, but a pot
+            // Each watered an hour ago: unwatered this long, the clock would say dead (ruling 24).
+            Watered(Seed.Plant(Bed(Yard, 0, 0), Now.AddHours(-60), Krakka, stage: 2)),    // ripe +12h, anchored
+            Watered(Seed.Plant(Bed(Yard, 0, 1), Now.AddHours(-58), Krakka, stage: 2)),    // +14h: the same crop, its earliest wins
+            Watered(Seed.Plant(Bed(Yard, 0, 2), Now.AddHours(-106), Fig, stage: 3)),      // +14h: within the group's span
+            sightedMirror,                                                                // +70h..+79h, bracketed
+            Watered(Seed.Plant(pot, Now.AddHours(-58), Krakka, stage: 2)),                // +14h, but a pot
         };
 
         var groups = Assert.Single(Board([Estate(Yard, "Yard")], beds)).Ripe;
@@ -300,7 +304,7 @@ public class GardenBoardTests
     {
         var beds = new List<ClaimedBed>
         {
-            Seed.Plant(Pot(Cottage, 1), Now.AddHours(-60), Krakka, stage: 2),   // ripe +12h
+            Watered(Seed.Plant(Pot(Cottage, 1), Now.AddHours(-60), Krakka, stage: 2)),   // ripe +12h
             Seed.Plant(Pot(Cottage, 2), Now.AddHours(-10), Fig, stage: 1),      // ripe +110h
         };
 
@@ -446,10 +450,10 @@ public class GardenBoardTests
         Seed.Sight(bracketed, Now.AddHours(-1), mirror, stage: 2);
         var beds = new List<ClaimedBed>
         {
-            Seed.Plant(Bed(Yard, 0, 0), Now.AddHours(-60), Krakka, stage: 2),   // sown: anchored at +12h
+            Watered(Seed.Plant(Bed(Yard, 0, 0), Now.AddHours(-60), Krakka, stage: 2)),   // sown: anchored at +12h
             bracketed,                                                          // two stages seen: +70h..+79h
             Seed.Sight(Bed(Yard, 1, 1), Now.AddHours(-1), Fig, stage: 1),        // one stage seen: +79h..+119h
-            Seed.Plant(Pot(Yard, 3), Now.AddHours(-58), Krakka, stage: 2),       // a pot, sown: +14h
+            Watered(Seed.Plant(Pot(Yard, 3), Now.AddHours(-58), Krakka, stage: 2)),       // a pot, sown: +14h
         };
 
         var card = Assert.Single(Board([Estate(Yard, "Yard")], beds));
@@ -478,7 +482,7 @@ public class GardenBoardTests
             Seed.Ripe(Seed.Plant(Bed(Yard, 0, 0), Now.AddHours(-80), Krakka, stage: 3), Now.AddHours(-1), Krakka),
             Seed.Ripe(Seed.Plant(Bed(Yard, 0, 1), Now.AddHours(-80), Krakka, stage: 3), Now.AddHours(-1), Krakka),
             Seed.Ripe(Seed.Plant(Pot(Yard, 3), Now.AddHours(-130), Fig, stage: 3), Now.AddHours(-2), Fig),
-            Seed.Plant(Bed(Yard, 0, 2), Now.AddHours(-60), Krakka, stage: 2),   // still growing: its tick, not ripe now
+            Watered(Seed.Plant(Bed(Yard, 0, 2), Now.AddHours(-60), Krakka, stage: 2)),   // still growing: its tick, not ripe now
         };
 
         var marks = Assert.Single(Board([Estate(Yard, "Yard")], beds)).Lane.Marks;
@@ -499,7 +503,7 @@ public class GardenBoardTests
         const ushort mirror = 17;   // grow 120h
         var beds = new List<ClaimedBed>
         {
-            Seed.Plant(Bed(Yard, 0, 0), Now.AddHours(-82), Krakka, stage: 3),   // anchored at -10h, not yet seen ripe
+            Watered(Seed.Plant(Bed(Yard, 0, 0), Now.AddHours(-72.5), Krakka, stage: 3)),   // anchored at -30m: ripe shows in 30m
             Seed.Plant(Bed(Yard, 0, 1), Now.AddHours(-30), Fig, stage: 1),      // +90h
             Seed.Plant(Bed(Yard, 1, 0), Now.AddHours(30), mirror, stage: 0),    // a clock-skewed sowing: +150h, past the end
         };
@@ -508,7 +512,7 @@ public class GardenBoardTests
 
         Assert.Equal(3, card.Ripe.Count);   // the card says all three
         // A window that closed before the span is the likeliest harvest on the estate: it stays.
-        Assert.Equal([Now.AddHours(-10), Now.AddHours(90)], card.Lane.Marks.Select(m => m.From));
+        Assert.Equal([Now.AddMinutes(-30), Now.AddHours(90)], card.Lane.Marks.Select(m => m.From));
     }
 
     [Fact] // a day line sits at the reader's own midnight, each day with its own offset across a clock change

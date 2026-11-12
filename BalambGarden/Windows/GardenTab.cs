@@ -33,7 +33,7 @@ internal static class GardenTab
         var standing = here is { } at ? new Standing(at, EstateSensor.IsInside(), CensusPump.LastIndoor) : null;
         var cards = GardenBoard.Cards(
             Plugin.Garden.Ledger.Estates, Plugin.Garden.Census.LedgerBeds, RosterSensor.Current(),
-            Plugin.Tables, now, standing);
+            Plugin.Tables, now, standing, CensusPump.Looks.Holds);
 
         ImGui.Spacing();
         if (cards.Count == 0)
@@ -146,7 +146,7 @@ internal static class GardenTab
     /// <summary>The card's worst look and what wears it, for the headline and drop hovers, on a line
     /// of its own; empty while nothing here asks for water.</summary>
     private static string WorstLine(VisitCard card)
-        => WindowFormat.Worst(card.Worst, card.Thirst) is { } line ? $"\n{line}" : "";
+        => WindowFormat.Worst(card.Worst, card.Thirst, card.WorstByClock) is { } line ? $"\n{line}" : "";
 
     /// <summary>A ripe mark: a tick for an anchored window, a band as wide as its window (striped when
     /// estimated), a dot at the now line for what is seen ripe; its crops and glyph beside it.
@@ -168,6 +168,11 @@ internal static class GardenTab
                 (min, max) = (new Vector2(x0 - height / 2, y), new Vector2(x0 + height / 2, y + height));
                 draw.AddCircleFilled((min + max) / 2, height / 2, ripe);
                 break;
+            case LaneMarkKind.RipeByClock:
+                // Hollow: the clock's word alone, the game has not shown it (spec ruling 24).
+                (min, max) = (new Vector2(x0 - height / 2, y), new Vector2(x0 + height / 2, y + height));
+                draw.AddCircle((min + max) / 2, height / 2 - 1f, ripe, 0, 2f);
+                break;
             default:
                 (min, max) = (new Vector2(x0, y), new Vector2(MathF.Max(x1, x0 + 4f), y + height));
                 draw.AddRectFilled(min, max, ripe, height / 2);
@@ -178,7 +183,8 @@ internal static class GardenTab
 
         var crops = string.Join(" + ", mark.Crops.Select(c => Plugin.Tables.SpeciesName(c)));
         var who = mark.Row == LaneRow.Pots ? $"pots ({crops})" : crops;
-        var label = mark.Group is { } shown ? $"{who} {WindowFormat.Mark(shown.Window.Provenance)}" : $"{who} ripe now";
+        var label = mark.Group is { } shown ? $"{who} {WindowFormat.Mark(shown.Window.Provenance)}"
+            : mark.Kind == LaneMarkKind.RipeByClock ? $"{who} ripe by the clock" : $"{who} ripe now";
         // Beside the mark; before it when it would run off the lane's end and the row's previous
         // label leaves room; otherwise beside it, cut at the end (the hover has it whole).
         var labelWidth = ImGui.CalcTextSize(label).X;
@@ -196,6 +202,7 @@ internal static class GardenTab
         if (ImGui.IsItemHovered())
             ImGui.SetTooltip(mark.Group is { } group
                 ? string.Join("\n\n", group.Crops.Select(c => $"{Plugin.Tables.SpeciesName(c.Species)}: {WindowText.WindowTooltip(c.Window)}"))
+                : mark.Kind == LaneMarkKind.RipeByClock ? $"{crops}: ripe by the clock - harvest any time"
                 : $"{crops}: seen ripe - harvest any time");
         return labelEnd;
     }
@@ -297,11 +304,9 @@ internal static class GardenTab
         var span = $"{GardenBoard.ChipSpan.TotalHours:0}h";
         Chip("water", card.Water.Total, WindowFormat.WaterDue(card.Water, span));
         ImGui.SameLine();
-        Chip("harvest", card.Harvest, card.RipeNow > 0
-            ? $"{card.RipeNow} seen ripe; the rest may ripen within {span}"
-            : $"may ripen within {span}");
+        Chip("harvest", card.Harvest, WindowFormat.HarvestDue(card.RipeNow, card.RipeByClock, span));
         ImGui.SameLine();
-        Chip("replant", card.Replant, WindowFormat.ReplantDue(card.Replant, card.Dead));
+        Chip("replant", card.Replant, WindowFormat.ReplantDue(card.Replant, card.Dead, card.DeadByClock));
     }
 
     /// <summary>A count with its task word, framed, dimmed at zero so the chips that matter stand out.</summary>
@@ -397,13 +402,23 @@ internal static class GardenTab
         ImGui.InvisibleButton($"c{patch.Ordinal?.ToString() ?? "p"}-{cell.Position}", new Vector2(side, side));
         var min = ImGui.GetItemRectMin();
         var max = ImGui.GetItemRectMax();
-        draw.AddRectFilled(min, max, ImGui.ColorConvertFloat4ToU32(Fill(cell)), 3f);
-        if (cell.TendUnheard)
-            DashedRect(draw, min, max, ImGui.ColorConvertFloat4ToU32(Palette.Dashed));
+        if (cell.ByClock)
+        {
+            // Hollow: the state's colour as a ring, the clock's word alone (spec ruling 24, the
+            // plan picture's B). Filled is what the game showed.
+            draw.AddRectFilled(min, max, ImGui.ColorConvertFloat4ToU32(Palette.Unclaimed), 3f);
+            draw.AddRect(min + new Vector2(1.5f), max - new Vector2(1.5f), ImGui.ColorConvertFloat4ToU32(Fill(cell)), 3f, ImDrawFlags.None, 3f);
+        }
         else
-            draw.AddRect(min, max, ImGui.ColorConvertFloat4ToU32(cell.Look == ContainerLook.Ripe
-                ? Palette.RipeInk
-                : Palette.Outline), 3f);
+        {
+            draw.AddRectFilled(min, max, ImGui.ColorConvertFloat4ToU32(Fill(cell)), 3f);
+            if (cell.TendUnheard)
+                DashedRect(draw, min, max, ImGui.ColorConvertFloat4ToU32(Palette.Dashed));
+            else
+                draw.AddRect(min, max, ImGui.ColorConvertFloat4ToU32(cell.Look == ContainerLook.Ripe
+                    ? Palette.RipeInk
+                    : Palette.Outline), 3f);
+        }
 
         // A dead plant wears a cross over its fill: the shape says dead, the earth says sow here.
         if (cell.Look == ContainerLook.Dead)
@@ -470,13 +485,21 @@ internal static class GardenTab
                 return $"{name}: recorded, contents not read yet";
             case ContainerLook.Empty:
                 return $"{name}: empty - harvested or read empty, nothing sown since";
+            case ContainerLook.Dead when cell.ByClock && cell.ClockSince is { } died:
+                return WindowFormat.DeadByClockHover(name, Plugin.Tables.SpeciesName(cell.Species),
+                    died.ToLocalTime(), cell.Bed?.LastTended?.ToLocalTime());
             case ContainerLook.Dead:
                 return WindowFormat.DeadHover(name, Plugin.Tables.SpeciesName(cell.Species), cell.SeenDeadAt, now);
         }
 
         var lines = new List<string> { $"{name}: {Plugin.Tables.SpeciesName(cell.Species)}, stage {cell.Stage}" };
-        if (cell.Look == ContainerLook.Ripe)
-            lines.Add("ripe now");
+        if (cell.Look == ContainerLook.Ripe && cell.ByClock && cell.ClockSince is { } since
+            && cell.Bed is { PlantedAt: { } sown, Latest: { } read }
+            && Plugin.Tables.GrowHours(cell.Species) is { } grow)
+            lines.Add(WindowFormat.RipeByClock(since.ToLocalTime(), sown.ToLocalTime(), grow, read.Stage,
+                read.At.ToLocalTime(), now.ToLocalTime()));
+        else if (cell.Look == ContainerLook.Ripe)
+            lines.Add(cell.Bed?.Latest is { Stage: >= 4 } seen ? WindowFormat.SeenRipe(seen.At.ToLocalTime()) : "ripe now");
         else if (cell.Ripe is { } ripe)
             lines.Add($"ripe ~{WindowFormat.Range(ripe.Earliest.ToLocalTime(), ripe.Latest.ToLocalTime())} {WindowFormat.Mark(ripe.Provenance)}");
 
@@ -493,8 +516,10 @@ internal static class GardenTab
         }
         else
         {
-            if (WindowFormat.ThirstLine(cell.Look, cell.DiesAt?.ToLocalTime(), now.ToLocalTime()) is { } thirst)
+            if (WindowFormat.ThirstLine(cell.Look, cell.DiesAt?.ToLocalTime(), now.ToLocalTime(), cell.ByClock) is { } thirst)
                 lines.Add(thirst);
+            if (cell.ByClock && cell.Look == ContainerLook.Wilting && cell.ClockSince is { } wilted && cell.DiesAt is { } dies)
+                lines.Add(WindowFormat.DyingFrom((wilted + (dies - wilted) / 2).ToLocalTime(), now.ToLocalTime()));
             if (shown is not null)
                 lines.Add(shown);
         }
@@ -506,6 +531,8 @@ internal static class GardenTab
                 ? $"watered {WindowFormat.Ago(tended, now)}"
                 : "no watering recorded - counting from the sowing");
         }
+        else if (cell.OutlivedClock)
+            lines.Add(WindowFormat.OutlivedClock);
         else if (cell.NeverWilts)
             lines.Add("never wilts - no deadline");
         else if (cell.Look != ContainerLook.Ripe)

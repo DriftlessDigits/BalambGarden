@@ -26,14 +26,15 @@ public static class Verdicts
         DomainTables tables,
         IWiltSource wilt,
         DateTimeOffset now,
-        Func<EtaWindow, string>? formatWindow = null)
+        Func<EtaWindow, string>? formatWindow = null,
+        Func<ClaimedBed, bool>? held = null)
     {
         // The Engine has no business knowing where the player lives, so local-time shaping
         // is the caller's; the default keeps the string honest (UTC) for tests and logs.
         formatWindow ??= w => WindowFormat.Range(w.Earliest, w.Latest);
 
         var rows = estates
-            .Select(e => (Estate: e, Rollups: Rollups.ForEstate(e.Key, beds, tables, wilt, now)))
+            .Select(e => (Estate: e, Rollups: Rollups.ForEstate(e.Key, beds, tables, wilt, now, held)))
             .Where(r => r.Rollups.Count > 0)
             .ToList();
 
@@ -89,12 +90,13 @@ public static class Verdicts
     }
 
     /// <summary>Ripeness is an estate-level errand - you harvest a whole visit's worth at
-    /// once - so it counts by estate rather than by patch.</summary>
+    /// once - so it counts by estate rather than by patch. What the clock alone holds ripe
+    /// (spec ruling 24) is said in brackets: "27 beds ripe at FC Estate (12 by the clock)".</summary>
     private static GardenVerdict? Ripe(
         List<(EstateRecord Estate, IReadOnlyList<PatchRollup> Rollups)> rows)
     {
         var ripe = rows
-            .Select(r => (r.Estate.DisplayName, Count: r.Rollups.Sum(p => p.Ripe)))
+            .Select(r => (r.Estate.DisplayName, Count: r.Rollups.Sum(p => p.Ripe), ByClock: r.Rollups.Sum(p => p.RipeByClock)))
             .Where(r => r.Count > 0)
             .OrderByDescending(r => r.Count)
             .ToList();
@@ -102,10 +104,10 @@ public static class Verdicts
         if (ripe.Count == 0)
             return null;
 
-        var text = $"{Beds(ripe[0].Count)} ripe at {ripe[0].DisplayName}";
+        var text = $"{Beds(ripe[0].Count)} ripe at {ripe[0].DisplayName}{ByClock(ripe[0].ByClock)}";
         var elsewhere = ripe.Skip(1).Sum(r => r.Count);
         if (elsewhere > 0)
-            text += $" · {elsewhere} more ripe elsewhere";
+            text += $" · {elsewhere} more ripe elsewhere{ByClock(ripe.Skip(1).Sum(r => r.ByClock))}";
 
         return new GardenVerdict(text);
     }
@@ -115,4 +117,6 @@ public static class Verdicts
         => patch.IsPots ? $"Pots at {estate}" : $"Patch {patch.PatchOrdinal + 1} at {estate}";
 
     private static string Beds(int count) => count == 1 ? "1 bed" : $"{count} beds";
+
+    private static string ByClock(int count) => count > 0 ? $" ({count} by the clock)" : "";
 }

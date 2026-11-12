@@ -10,8 +10,10 @@ public sealed record RoomSide(EstateKey Estate, bool Inside);
 /// from the own hand at a bed or pot.</summary>
 public enum RereadCause { Arrival, GardenLine }
 
-/// <summary>A re-read that is due: what armed it, for which place, and when.</summary>
-public sealed record RereadDue(RereadCause Cause, RoomSide Side, DateTimeOffset ArmedAt);
+/// <summary>A re-read that is due: what armed it, for which place, and when.
+/// <see cref="AnswersArrival"/>: an arrival's read is among those it answers, so it is one of the
+/// arrival's looks (the look rule counts them), whatever cause came due first.</summary>
+public sealed record RereadDue(RereadCause Cause, RoomSide Side, DateTimeOffset ArmedAt, bool AnswersArrival = false);
 
 /// <summary>When the census reads the side underfoot AGAIN (rethink slice 25): the census's own
 /// read policy, beside the pump that runs it. The game's map can
@@ -104,7 +106,7 @@ public sealed class RoomReread
             return null;
         due.RemoveAll(d => d.At <= now);
         var first = ready.MinBy(d => d.At);
-        var result = new RereadDue(first.Cause, side!, first.ArmedAt);
+        var result = new RereadDue(first.Cause, side!, first.ArmedAt, ready.Any(d => d.Cause == RereadCause.Arrival));
         if (due.Count == 0)
             side = null;
         return result;
