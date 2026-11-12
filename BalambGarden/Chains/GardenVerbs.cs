@@ -90,14 +90,21 @@ internal sealed class GardenVerbs(Plugin plugin)
     /// (<see cref="CycleChain.HarvestOne"/>). Returns the refusal, or null when the run started.</summary>
     internal string? HarvestBed(PatchGroup patch, int slot)
     {
-        CensusPump.SightNow();
-        if (CycleChain.HarvestPreflightError(patch, slot) is { } refusal)
+        if (plugin.CycleChain.HarvestOne(patch, slot) is { } refusal)
             return refusal;
-
-        plugin.CycleChain.HarvestOne(patch, slot);
         plugin.Launched(plugin.CycleChain);
         return null;
     }
+
+    /// <summary>Whether the here card offers a patch's Replant ripe: the board shows something in
+    /// it ripe, seen or by the clock (the press reads the map first and the game has the last word).</summary>
+    internal static bool AnyRipeOnCard(VisitCard card, int patchOrdinal)
+        => card.Patches.Any(p => p.Ordinal == patchOrdinal && p.Cells.Any(c => c.Look == ContainerLook.Ripe));
+
+    /// <summary>Whether the here card offers the pots' Replant ripe: a pot the board shows ripe is in reach.</summary>
+    internal static bool AnyRipePotOnCardInReach(VisitCard card, List<PotObject> pots)
+        => card.Patches.Where(p => p.IsPots).SelectMany(p => p.Cells).Any(c => c.Look == ContainerLook.Ripe
+            && pots.FindIndex(p => p.MapKey == c.Position && p.InReach) >= 0);
 
     private string? Replant(EstateKey estate, PatchGroup patch, int? onlySlot)
     {

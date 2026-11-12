@@ -36,7 +36,7 @@ internal static class GardenTab
     /// <summary>What the game puts in front of the player at the here card, read once a frame:
     /// the patches outside, the pots inside, and whether Balamb acts here at all.</summary>
     private sealed record HereObjects(EstateRecord Estate, List<PatchGroup> Patches, List<PotObject> Pots,
-        bool Actionable);
+        bool Covered);
 
     /// <summary>A press's refusal, said on the here card for a few seconds (a refusal starts no run,
     /// so it has no run log line to live in).</summary>
@@ -51,7 +51,7 @@ internal static class GardenTab
 
         var cards = GardenBoard.Cards(
             Plugin.Garden.Ledger.Estates, Plugin.Garden.Census.LedgerBeds, RosterSensor.Current(),
-            Plugin.Tables, now, StandingAt(here), CensusPump.Looks.Holds);
+            Plugin.Tables, now, CensusPump.StandingAt(here), CensusPump.Looks.Holds);
 
         ImGui.Spacing();
         if (cards.Count == 0)
@@ -68,18 +68,6 @@ internal static class GardenTab
 
         DrawLanes(cards, now);
     }
-
-    /// <summary>Where the player stands, with the live map reads the board weighs there (null
-    /// nowhere): the indoor read, the outdoor read, whether the room's map has answered this visit
-    /// with its objects settled, and our own chain's sows the map has not shown yet.</summary>
-    internal static Standing? StandingAt(EstateKey? here) => here is { } at
-        ? new Standing(at, EstateSensor.IsInside(), CensusPump.LastIndoor)
-        {
-            LiveOutdoor = CensusPump.LastOutdoor,
-            MapAnswered = ObjectSensor.SawHousingObjects && CensusPump.MapAnsweredThisVisit,
-            AwaitingSow = bed => !bed.IsPot && CensusPump.AwaitingSow(bed.MapKey, bed.BedSlot),
-        }
-        : null;
 
     private static HereObjects ObjectsAt(EstateRecord estate)
     {
@@ -330,7 +318,7 @@ internal static class GardenTab
     /// estate tabs' buttons do, and greys while a run goes.</summary>
     private static void DrawHereButtons(Plugin plugin, VisitCard card, HereObjects here)
     {
-        using (ImRaii.Disabled(plugin.AnyChainBusy || !here.Actionable))
+        using (ImRaii.Disabled(plugin.AnyChainBusy || !here.Covered))
         {
             if (here.Patches.Count > 0)
                 DrawPatchButtons(plugin, card, here);
@@ -376,7 +364,7 @@ internal static class GardenTab
             drewOne = true;
         }
 
-        foreach (var patch in inReach.Where(p => AnyRipe(card, p.Ordinal)))
+        foreach (var patch in inReach.Where(p => GardenVerbs.AnyRipeOnCard(card, p.Ordinal)))
         {
             if (drewOne)
                 ImGui.SameLine();
@@ -391,8 +379,7 @@ internal static class GardenTab
     private static void DrawPotButtons(Plugin plugin, VisitCard card, HereObjects here)
     {
         var waterable = GardenVerbs.WaterablePots(here.Pots);
-        var ripeInReach = PotCells(card).Any(c => c.Look == ContainerLook.Ripe
-            && here.Pots.FindIndex(p => p.MapKey == c.Position && p.InReach) >= 0);
+        var ripeInReach = GardenVerbs.AnyRipePotOnCardInReach(card, here.Pots);
         if (waterable.Count > 0)
         {
             var word = waterable.Count > 1 ? "pots" : "pot";
@@ -421,7 +408,7 @@ internal static class GardenTab
         if (!ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
             return;
         ImGui.SetTooltip(plugin.AnyChainBusy ? "a run is going - one chain at a time"
-            : !here.Actionable ? "Balamb doesn't act here - not on your teleport list"
+            : !here.Covered ? "Balamb doesn't act here - not on your teleport list"
             : text);
     }
 
@@ -430,12 +417,6 @@ internal static class GardenTab
         notice = text;
         noticeUntil = DateTime.UtcNow.AddSeconds(6);
     }
-
-    private static bool AnyRipe(VisitCard card, int ordinal)
-        => card.Patches.Any(p => p.Ordinal == ordinal && p.Cells.Any(c => c.Look == ContainerLook.Ripe));
-
-    private static IEnumerable<ContainerCell> PotCells(VisitCard card)
-        => card.Patches.Where(p => p.IsPots).SelectMany(p => p.Cells);
 
     private static List<ClaimedBed> RecordsAt(HereObjects here)
         => Plugin.Garden.Census.LedgerBeds.Where(b => b.Estate == here.Estate.Key).ToList();
@@ -452,7 +433,7 @@ internal static class GardenTab
             return;
         }
 
-        using (ImRaii.Disabled(plugin.AnyChainBusy || !here.Actionable))
+        using (ImRaii.Disabled(plugin.AnyChainBusy || !here.Covered))
         {
             var sweep = GardenVerbs.SweepBeds(here.Estate.Key, patch);
             if (sweep.Count == 0)
@@ -463,7 +444,7 @@ internal static class GardenTab
                 ImGui.CloseCurrentPopup();
             }
 
-            if (AnyRipe(card, ordinal))
+            if (GardenVerbs.AnyRipeOnCard(card, ordinal))
             {
                 ImGui.SameLine();
                 if (ImGui.SmallButton("Replant ripe"))
@@ -485,14 +466,14 @@ internal static class GardenTab
         var verbs = GardenBoard.VerbsFor(cell);
         if (verbs.Count == 0)
         {
-            if (cell.Look == ContainerLook.Empty)
+            if (cell.Look is ContainerLook.Empty or ContainerLook.ReadsEmpty)
                 ImGui.TextDisabled(picture.IsPots
                     ? $"sow it with Plant... on the {here.Estate.DisplayName} tab"
                     : $"sow it with Cycle... on the {here.Estate.DisplayName} tab");
             return;
         }
 
-        using var disabled = ImRaii.Disabled(plugin.AnyChainBusy || !here.Actionable);
+        using var disabled = ImRaii.Disabled(plugin.AnyChainBusy || !here.Covered);
         if (picture.IsPots)
             DrawPotMenu(plugin, cell, verbs, here);
         else
@@ -511,31 +492,36 @@ internal static class GardenTab
             return;
         }
 
-        var first = true;
-        foreach (var verb in verbs)
+        VerbButtons(verbs, "Tend", verb => verb switch
         {
-            if (!first)
+            CellVerb.Tend => Started(() => plugin.Verbs.TendOne(target)),
+            CellVerb.Harvest => plugin.Verbs.HarvestBed(patch, cell.Position),
+            _ => plugin.Verbs.ReplantBed(here.Estate.Key, patch, cell.Position),
+        });
+    }
+
+    /// <summary>A menu's presses in one row; a press runs its verb, closes the menu, and shows the
+    /// verb's refusal on the card if it had one. <paramref name="tendWord"/> is a pot's "Water".</summary>
+    private static void VerbButtons(IReadOnlyList<CellVerb> verbs, string tendWord, Func<CellVerb, string?> press)
+    {
+        for (var i = 0; i < verbs.Count; i++)
+        {
+            if (i > 0)
                 ImGui.SameLine();
-            first = false;
-            string? refusal = null;
-            switch (verb)
-            {
-                case CellVerb.Tend when ImGui.SmallButton("Tend"):
-                    plugin.Verbs.TendOne(target);
-                    ImGui.CloseCurrentPopup();
-                    break;
-                case CellVerb.Harvest when ImGui.SmallButton("Harvest"):
-                    refusal = plugin.Verbs.HarvestBed(patch, cell.Position);
-                    ImGui.CloseCurrentPopup();
-                    break;
-                case CellVerb.Replant when ImGui.SmallButton("Replant"):
-                    refusal = plugin.Verbs.ReplantBed(here.Estate.Key, patch, cell.Position);
-                    ImGui.CloseCurrentPopup();
-                    break;
-            }
-            if (refusal is not null)
+            var word = verbs[i] switch { CellVerb.Tend => tendWord, CellVerb.Harvest => "Harvest", _ => "Replant" };
+            if (!ImGui.SmallButton(word))
+                continue;
+            if (press(verbs[i]) is { } refusal)
                 Notice(refusal);
+            ImGui.CloseCurrentPopup();
         }
+    }
+
+    /// <summary>A verb that always starts its run: no refusal to show.</summary>
+    private static string? Started(Action start)
+    {
+        start();
+        return null;
     }
 
     private static void DrawPotMenu(Plugin plugin, ContainerCell cell, IReadOnlyList<CellVerb> verbs, HereObjects here)
@@ -548,44 +534,27 @@ internal static class GardenTab
         }
 
         var pot = here.Pots[found];
-        var first = true;
-        foreach (var verb in verbs)
+        VerbButtons(verbs, "Water", verb => verb switch
         {
-            if (!first)
-                ImGui.SameLine();
-            first = false;
-            switch (verb)
-            {
-                case CellVerb.Tend when ImGui.SmallButton("Water"):
-                    plugin.Verbs.WaterPot(pot);
-                    ImGui.CloseCurrentPopup();
-                    break;
-                case CellVerb.Harvest when ImGui.SmallButton("Harvest"):
-                    plugin.Verbs.HarvestPot(pot);
-                    ImGui.CloseCurrentPopup();
-                    break;
-                case CellVerb.Replant when ImGui.SmallButton("Replant"):
-                    if (cell.Bed is { } record && plugin.Verbs.ReplantPot(record, pot) is { } refusal)
-                        Notice(refusal);
-                    ImGui.CloseCurrentPopup();
-                    break;
-            }
-        }
+            CellVerb.Tend => Started(() => plugin.Verbs.WaterPot(pot)),
+            CellVerb.Harvest => Started(() => plugin.Verbs.HarvestPot(pot)),
+            _ => cell.Bed is { } record ? plugin.Verbs.ReplantPot(record, pot) : null,
+        });
     }
 
     /// <summary>A menu's first line: the container and what it holds ("Bed 1 · Krakka Root, ripe").</summary>
     private static string MenuTitle(PatchPicture picture, ContainerCell cell)
     {
         var name = picture.IsPots ? $"Pot {cell.Position}" : $"Bed {cell.Position + 1}";
-        var crop = cell.Species != 0 ? Plugin.Tables.SpeciesName(cell.Species) : null;
+        var crop = cell.Species != 0 ? $"{Plugin.Tables.SpeciesName(cell.Species)}, " : "";
         return cell.Look switch
         {
             ContainerLook.Empty => $"{name} · empty",
             ContainerLook.ReadsEmpty => $"{name} · reads empty now",
             ContainerLook.Unread or ContainerLook.Unclaimed => name,
-            ContainerLook.Dead => $"{name} · {crop}, dead",
-            ContainerLook.Ripe => $"{name} · {crop}, ripe",
-            _ => $"{name} · {crop}, stage {cell.Stage}",
+            ContainerLook.Dead => $"{name} · {crop}dead",
+            ContainerLook.Ripe => $"{name} · {crop}ripe",
+            _ => $"{name} · {crop}stage {cell.Stage}",
         };
     }
 
@@ -740,7 +709,7 @@ internal static class GardenTab
                 {
                     // The empty middle of the ring is the patch itself.
                     ImGui.SetCursorScreenPos(origin + new Vector2(side + CellGap));
-                    if (ImGui.InvisibleButton("middle", new Vector2(side, side)))
+                    if (ImGui.InvisibleButton($"middle{patch.Ordinal}", new Vector2(side, side)))
                         ImGui.OpenPopup(menu);
                     using var popup = ImRaii.Popup(menu);
                     if (popup.Success)

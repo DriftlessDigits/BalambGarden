@@ -329,6 +329,18 @@ internal static class CensusPump
     /// landed - the recording side learned this on 08-23, the display side tonight).</summary>
     internal static bool MapAnsweredThisVisit => mapAnsweredThisVisit;
 
+    /// <summary>Where the player stands, with the live map reads the garden board weighs there
+    /// (null nowhere): the indoor read, the outdoor read, whether the room's map has answered this
+    /// visit with its objects settled, and our own chain's sows the map has not shown yet.</summary>
+    internal static Standing? StandingAt(EstateKey? here) => here is { } at
+        ? new Standing(at, EstateSensor.IsInside(), LastIndoor)
+        {
+            LiveOutdoor = LastOutdoor,
+            MapAnswered = ObjectSensor.SawHousingObjects && mapAnsweredThisVisit,
+            AwaitingSow = bed => !bed.IsPot && AwaitingSow(bed.MapKey, bed.BedSlot),
+        }
+        : null;
+
     /// <summary>The last census read of each side (never a display-only read): the room re-read's
     /// before picture.</summary>
     private static IReadOnlyDictionary<int, PotReading> lastCensusIndoor = new Dictionary<int, PotReading>();

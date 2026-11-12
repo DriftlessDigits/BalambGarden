@@ -148,10 +148,8 @@ internal sealed unsafe class CycleChain : ChainBase
             return $"walk closer to patch {patch.Ordinal + 1} ({patch.Distance:F1}y away)";
         if (plan.Seeds.Count == 0)
             return "nothing planned: no recorded species here to replant - stand by the patch a moment, or tend it once";
-        if (Plugin.Garden.Census.BoundKey(estate, patch.Ordinal) is not { } mapKey)
-            return $"patch {patch.Ordinal + 1} isn't bound yet - tend it once so the ledger knows which patch this is";
-        if (!CensusPump.LastOutdoor.TryGetValue(mapKey, out var readings))
-            return "no map read for this patch yet - stand still for a moment";
+        if (PatchRead(estate, patch, out var readings) is { } unread)
+            return unread;
 
         var toHarvest = 0;
         foreach (var (slot, _) in plan.Seeds.OrderBy(kv => kv.Key))
@@ -213,10 +211,8 @@ internal sealed unsafe class CycleChain : ChainBase
             return "not at an estate";
         if (!patch.InReach)
             return $"walk closer to patch {patch.Ordinal + 1} ({patch.Distance:F1}y away)";
-        if (Plugin.Garden.Census.BoundKey(estate, patch.Ordinal) is not { } mapKey)
-            return $"patch {patch.Ordinal + 1} isn't bound yet - tend it once so the ledger knows which patch this is";
-        if (!CensusPump.LastOutdoor.TryGetValue(mapKey, out var readings))
-            return "no map read for this patch yet - stand still for a moment";
+        if (PatchRead(estate, patch, out var readings) is { } unread)
+            return unread;
 
         var bedObject = patch.Beds.FirstOrDefault(b => b.Gimmick.BedIndex == slot);
         if (bedObject.Object is null || !bedObject.InReach)
@@ -233,36 +229,42 @@ internal sealed unsafe class CycleChain : ChainBase
         return free < 1 ? $"need 1 free bag slots for yields, have {free}" : null;
     }
 
+    /// <summary>The patch's binding and its live map read, which both pre-flights need: the refusal,
+    /// or null with <paramref name="readings"/> set.</summary>
+    private static string? PatchRead(EstateKey estate, PatchGroup patch, out IReadOnlyList<BedReading> readings)
+    {
+        readings = [];
+        if (Plugin.Garden.Census.BoundKey(estate, patch.Ordinal) is not { } mapKey)
+            return $"patch {patch.Ordinal + 1} isn't bound yet - tend it once so the ledger knows which patch this is";
+        if (!CensusPump.LastOutdoor.TryGetValue(mapKey, out var read))
+            return "no map read for this patch yet - stand still for a moment";
+        readings = read;
+        return null;
+    }
+
     /// <summary>Harvest one bed and sow nothing (rethink slice 5, the here card's bed menu): the
     /// cycle's own harvest steps for that bed - its gate, <see cref="Interact"/>,
     /// <see cref="AdvanceToMenu"/>, <see cref="SelectHarvest"/>, <see cref="AwaitHarvest"/> - and
     /// none of its sowing. No settle poll: the harvest receipt empties the record, and the gardening
     /// line's own re-read refreshes the map.</summary>
-    internal void HarvestOne(PatchGroup patch, int slot)
+    internal string? HarvestOne(PatchGroup patch, int slot)
     {
         CensusPump.SightNow();
 
         if (HarvestPreflightError(patch, slot) is { } refusal)
         {
             LastOutcome = $"refused: {refusal}";
-            return;
+            return refusal;
         }
 
         var bedObject = patch.Beds.First(b => b.Gimmick.BedIndex == slot);
         var label = $"bed {slot + 1}";
         if (!BeginRun(1, $"harvesting {label}..."))
-            return;
+            return LastOutcome;
 
         TaskManager.DelayNext(ApplyJitter(Plugin.Configuration.TendPaceMS));
-        TaskManager.Enqueue(() =>
-        {
-            _currentBed = bedObject.Gimmick;
-            return CheckStop(label);
-        }, $"gate {slot}");
-        TaskManager.Enqueue(() => Interact(bedObject.Object), $"interact-h {slot}");
-        TaskManager.Enqueue(AdvanceToMenu, $"advance-h {slot}");
-        TaskManager.Enqueue(() => SelectHarvest(label), $"harvest {slot}");
-        TaskManager.Enqueue(AwaitHarvest, HarvestWaitMS, $"yield {slot}");
+        EnqueueGate(bedObject, slot, label);
+        EnqueueHarvest(bedObject, slot, label);
         TaskManager.Enqueue(() =>
         {
             LastOutcome = $"done: {label} harvested";
@@ -270,6 +272,26 @@ internal sealed unsafe class CycleChain : ChainBase
                 Plugin.Log.Information($"[CycleChain] report: {line}");
             return true;
         }, "report");
+        return null;
+    }
+
+    /// <summary>A bed's gate: the one place a user stop may land, between beds, never between a
+    /// bed's harvest and its replant. The gimmick banks when the gate RUNS (the PotChain key
+    /// lesson): the acted object's own patch id rides the receipt paths.</summary>
+    private void EnqueueGate(BedObject bedObject, int slot, string label)
+        => TaskManager.Enqueue(() =>
+        {
+            _currentBed = bedObject.Gimmick;
+            return CheckStop(label);
+        }, $"gate {slot}");
+
+    /// <summary>A bed's harvest: open it, through the status Talk, select Harvest, wait for the yield line.</summary>
+    private void EnqueueHarvest(BedObject bedObject, int slot, string label)
+    {
+        TaskManager.Enqueue(() => Interact(bedObject.Object), $"interact-h {slot}");
+        TaskManager.Enqueue(AdvanceToMenu, $"advance-h {slot}");
+        TaskManager.Enqueue(() => SelectHarvest(label), $"harvest {slot}");
+        TaskManager.Enqueue(AwaitHarvest, HarvestWaitMS, $"yield {slot}");
     }
 
     // ---------------------------------------------------------------- the run
@@ -315,22 +337,9 @@ internal sealed unsafe class CycleChain : ChainBase
                 ? ApplyJitter(Plugin.Configuration.TendPaceMS)
                 : ApplyJitter(Plugin.Configuration.PostTendDelayMS, Plugin.Configuration.PostTendJitterMS));
 
-            // The one place a user stop may land: between beds, never between a bed's
-            // harvest and its replant. The gimmick banks when the gate RUNS (the PotChain
-            // key lesson): the acted object's own patch id rides the receipt paths.
-            TaskManager.Enqueue(() =>
-            {
-                _currentBed = bedObject.Gimmick;
-                return CheckStop(label);
-            }, $"gate {slot}");
-
+            EnqueueGate(bedObject, slot, label);
             if (ripe)
-            {
-                TaskManager.Enqueue(() => Interact(bedObject.Object), $"interact-h {slot}");
-                TaskManager.Enqueue(AdvanceToMenu, $"advance-h {slot}");
-                TaskManager.Enqueue(() => SelectHarvest(label), $"harvest {slot}");
-                TaskManager.Enqueue(AwaitHarvest, HarvestWaitMS, $"yield {slot}");
-            }
+                EnqueueHarvest(bedObject, slot, label);
 
             TaskManager.Enqueue(() => Interact(bedObject.Object), $"interact-p {slot}");
             TaskManager.Enqueue(AdvanceToMenu, $"advance-p {slot}");

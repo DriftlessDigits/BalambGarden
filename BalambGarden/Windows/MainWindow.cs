@@ -1411,7 +1411,7 @@ public class MainWindow : Window, IDisposable
     /// its guards there). Away from the estate there is no read at all, and "I cannot see it" is
     /// never evidence that something is gone.</summary>
     private static bool ReadsEmptyNow(ClaimedBed bed, bool isHere)
-        => isHere && GardenBoard.MapShowsEmpty(bed, GardenTab.StandingAt(bed.Estate));
+        => isHere && !CensusPump.Looks.Holds(bed) && GardenBoard.MapShowsEmpty(bed, CensusPump.StandingAt(bed.Estate));
 
     // ------------------------------------------------------------------ cycle
 
