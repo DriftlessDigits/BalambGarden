@@ -60,11 +60,11 @@ public sealed class LookRule(DomainTables tables)
     }
 
     /// <summary>A room re-read that answers the arrival schedule landed at <paramref name="side"/>
-    /// at <paramref name="at"/>: the first is the 5 s look, the second the 15 s look; later ones
-    /// change nothing. Returns the warning lines, one per container whose 5 s look disagreed.</summary>
+    /// at <paramref name="at"/>: the first is the 5 s look, the second the 15 s look; by then
+    /// nothing on the side is held, so later ones change nothing. Returns the warning lines, one per container whose 5 s look disagreed.</summary>
     public IReadOnlyList<string> Looked(RoomSide side, IEnumerable<ClaimedBed> onSide, DateTimeOffset at)
     {
-        if (this.side != side || looks >= 2)
+        if (this.side != side)
             return [];
         looks++;
 
