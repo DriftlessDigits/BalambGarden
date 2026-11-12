@@ -331,6 +331,14 @@ _Avoid_: bed grid (the expanded table underneath), heatmap, mini-map
 One trip to one estate, where the water, harvest, replant and pot care due there happen together; the unit the Garden tab is built around, one card per planted estate. Its deadline is the estate's water deadline.
 _Avoid_: trip, run (a chain's word), route, schedule
 
+**Here card**:
+The visit card of the estate the player stands at: first on the Garden tab, larger, and the one card that carries the verbs (Tend All and Replant ripe on it; a click on a patch or a container in its picture opens a small menu of what that state allows, closed by a press or a click elsewhere). Every other card carries Teleport.
+_Avoid_: active card, current card, home card
+
+**Reads empty now**:
+A container the record holds planted that the live map where the player stands shows empty: empty, not confirmed (earth, dashed). No water or harvest claim; counted toward replant. The game wins on a content mismatch, and the next census read empties the record.
+_Avoid_: missing, gone, harvested (unless a harvest was heard)
+
 **Timeline lane**:
 One visit's row in "the next six days" under the Garden tab's cards, in card order: the water bar from the deadline bed's watering (or sowing) to the drop at the water deadline, and the ripe times as marks (a tick when anchored, a band as wide as the window otherwise, striped when estimated, a dot at the now line for what is seen ripe), the pots on a row of their own.
 _Avoid_: gantt, schedule, calendar, timeline strip (the mock's smaller version, not built)

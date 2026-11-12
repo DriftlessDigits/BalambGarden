@@ -756,6 +756,8 @@ internal static class GardenTab
             return;
         if (!first)
             ImGui.SameLine(0f, PictureGap);
+        // Standing outside, the pots are in the house: dimmed like a patch out of reach.
+        var potsAlpha = here is not null && here.Pots.Count == 0 ? Palette.OutOfReachAlpha : 1f;
         using (ImRaii.Group())
         {
             ImGui.TextDisabled("pots");
@@ -763,7 +765,7 @@ internal static class GardenTab
             {
                 if (i > 0)
                     ImGui.SameLine(0f, CellGap);
-                DrawContainer(plugin, pots, pots.Cells[i], side, 1f, here, now);
+                DrawContainer(plugin, pots, pots.Cells[i], side, potsAlpha, here, now);
             }
         }
     }
