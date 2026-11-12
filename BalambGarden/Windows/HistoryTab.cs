@@ -49,35 +49,47 @@ internal static class HistoryTab
     private static int pageNames;
 
     /// <summary>The days open, by their midnight: the newest when the tab opens, then the player's.</summary>
-    private static HashSet<DateTimeOffset> open = [];
+    private static HashSet<DateTimeOffset> openDays = [];
 
-    /// <summary>The frame the tab last drew, so a draw after a gap is the tab being opened.</summary>
-    private static int lastFrame = -1;
+    /// <summary>Whether this tab was the one shown when the window last drew. A draw that finds it
+    /// unset is the tab being opened (from another tab, or the first time); a window closed, collapsed
+    /// or hidden draws nothing and leaves it set, so its open days stay.</summary>
+    private static bool tabShown;
 
     /// <summary>The page as the board folds it (<see cref="GardenBoard.HistoryLines"/>), the same as the
-    /// table draws it (<see cref="lines"/>: each line's words), and each column's width over every row
-    /// of the page, open or folded (measured once per page, so the columns hold still while the list
-    /// scrolls and while days open and fold).</summary>
+    /// table draws it (<see cref="lines"/>, built with it in <see cref="Refold"/>), and each column's
+    /// width over every row and heading of the page, open or folded (measured once per page, so the
+    /// columns hold still while the list scrolls and while days open and fold).</summary>
     private static IReadOnlyList<HistoryLine> boardLines = [];
     private static List<Line> lines = [];
     private static float[] widths = [];
 
-    /// <summary>Each row's line, built once per page, so opening a day builds nothing.</summary>
-    private static Dictionary<string, Line> rowLines = [];
+    /// <summary>Each row's cells, built once per page, so opening a day builds nothing. Keyed by the
+    /// board's own row (never an id a hand-edited file could repeat).</summary>
+    private static Dictionary<HistoryRowLine, Line> rowLines = new(ReferenceEqualityComparer.Instance);
 
-    /// <summary>The line at the top of the table's view last frame, and the scroll that holds it there
-    /// after the lines change (<see cref="Relines"/>), or back to the top when the tab opens; applied on
-    /// the next table draw.</summary>
-    private static int topIndex;
-    private static float scrollShift;
+    /// <summary>The held view: the line at the top of the table's view at its last draw, where it stood
+    /// and the scroll it stood at. After a refold the table finds that line again and scrolls by as many
+    /// rows as it moved, before its window begins, so the move lands in the same frame; a tab just
+    /// opened goes to the top instead.</summary>
+    private static HistoryLine? topLine;
+    private static int topLineIndex;
+    private static float topLineScroll;
+    private static bool refolded;
     private static bool scrollToTop;
 
     /// <summary>A day heading the player clicked this frame, opened or folded after the table is drawn.</summary>
     private static DateTimeOffset? toggled;
 
-    /// <summary>A day heading (<see cref="Day"/>, its words; <see cref="DayKey"/>, its midnight;
-    /// <see cref="Open"/>) or a row's cells.</summary>
-    private sealed record Line(string? Day, Cell[] Cells, DateTimeOffset DayKey = default, bool Open = false);
+    /// <summary>A line as the table draws it: a day heading or a row's cells.</summary>
+    private abstract record Line;
+
+    /// <summary>A day heading: its words (<see cref="WindowFormat.HistoryDay"/>), its midnight, and
+    /// whether it is open.</summary>
+    private sealed record DayLine(string Text, DateTimeOffset Day, bool Open) : Line;
+
+    /// <summary>A row: one cell per column.</summary>
+    private sealed record RowCells(Cell[] Cells) : Line;
 
     /// <summary>A cell's words and how they draw: dim, or in the onion mark's gold (an onion
     /// harvest's crop, and its yield when heard), else full.</summary>
@@ -87,21 +99,24 @@ internal static class HistoryTab
     {
         using var tab = ImRaii.TabItem("History###history");
         if (!tab.Success)
+        {
+            tabShown = false;
             return;
+        }
+        var arriving = !tabShown;
+        tabShown = true;
 
         var history = Plugin.Garden.History;
         var estates = Plugin.Garden.Ledger.Estates;
         var aliases = Plugin.Configuration.HandAliases;
         var names = NamesFingerprint(estates, aliases);
-        var frame = ImGui.GetFrameCount();
-        var arriving = frame != lastFrame + 1;
-        lastFrame = frame;
         if (page is null || pageFilter != filter || pageHand != hand || pageRows != history.Entries.Count || pageNames != names)
             Rebuild(history, estates, aliases, names);
         if (arriving)
         {
-            open = [.. GardenBoard.HistoryOpenOnArrival(page!)];
-            Relines(keepView: false);
+            openDays = [.. GardenBoard.HistoryOpenOnArrival(page!)];
+            Refold();
+            scrollToTop = true;
         }
 
         ImGui.Spacing();
@@ -127,9 +142,9 @@ internal static class HistoryTab
         if (toggled is { } day)
         {
             toggled = null;
-            if (!open.Remove(day))
-                open.Add(day);
-            Relines(keepView: true);
+            if (!openDays.Remove(day))
+                openDays.Add(day);
+            Refold();
         }
     }
 
@@ -160,37 +175,35 @@ internal static class HistoryTab
         pageRows = history.Entries.Count;
         pageNames = names;
 
-        rowLines = page.Days.SelectMany(d => d.Rows).ToDictionary(row => row.Entry.Id, row => RowLine(row, aliases));
-        widths = Columns.Select(c => ImGui.CalcTextSize(c).X).ToArray();
-        foreach (var day in page.Days)
-            widths[0] = MathF.Max(widths[0], ImGui.CalcTextSize(WindowFormat.HistoryDay(day.Day, day.Rows.Count)).X + ImGui.GetTreeNodeToLabelSpacing());
-        foreach (var line in rowLines.Values)
-            for (var c = 0; c < Columns.Length; c++)
-                widths[c] = MathF.Max(widths[c], ImGui.CalcTextSize(line.Cells[c].Text).X);
+        rowLines = new(ReferenceEqualityComparer.Instance);
+        foreach (var row in page.Days.SelectMany(d => d.Rows))
+            rowLines[row] = RowLine(row, aliases);
+        Refold();
 
-        Relines(keepView: true);
+        // Every day has its heading whether open or folded, so the headings in the fold are all of them.
+        widths = Columns.Select(c => ImGui.CalcTextSize(c).X).ToArray();
+        foreach (var heading in lines.OfType<DayLine>())
+            widths[0] = MathF.Max(widths[0], ImGui.CalcTextSize(heading.Text).X + ImGui.GetTreeNodeToLabelSpacing());
+        foreach (var row in rowLines.Values.Cast<RowCells>())
+            for (var c = 0; c < Columns.Length; c++)
+                widths[c] = MathF.Max(widths[c], ImGui.CalcTextSize(row.Cells[c].Text).X);
     }
 
-    /// <summary>Folds the page by the open days. With <paramref name="keepView"/>, the line that was at
-    /// the top of the view is found again and the scroll moved by as many lines as it moved, so a row
-    /// landing above it, a new day arriving or a filter change that keeps it moves nothing the reader
-    /// sees; a line gone (filtered away) leaves the scroll where it was.</summary>
-    private static void Relines(bool keepView)
+    /// <summary>Folds the page by the open days; the table then holds the reader's line still
+    /// (<see cref="topLine"/>): a row landing above it, a new day arriving, a day opened or folded above
+    /// it, or a filter change that keeps it moves nothing the reader sees; a line gone (filtered away)
+    /// leaves the scroll where it was.</summary>
+    private static void Refold()
     {
-        var before = boardLines;
-        boardLines = GardenBoard.HistoryLines(page!, open);
+        boardLines = GardenBoard.HistoryLines(page!, openDays);
         lines = boardLines.Select(ToLine).ToList();
-
-        scrollToTop = !keepView;
-        scrollShift = 0f;
-        if (keepView && topIndex < before.Count && GardenBoard.HistoryLineIndex(boardLines, before[topIndex]) is var now and >= 0)
-            scrollShift = (now - topIndex) * RowHeight();
+        refolded = true;
     }
 
     private static Line ToLine(HistoryLine line) => line switch
     {
-        HistoryDayLine day => new Line(WindowFormat.HistoryDay(day.Day, day.Count), [], day.Day, day.Open),
-        HistoryRowLine row => rowLines[row.Entry.Id],
+        HistoryDayLine day => new DayLine(WindowFormat.HistoryDay(day.Day, day.Count), day.Day, day.Open),
+        HistoryRowLine row => rowLines[row],
         _ => throw new ArgumentOutOfRangeException(nameof(line)),
     };
 
@@ -203,7 +216,7 @@ internal static class HistoryTab
         var onion = GardenBoard.IsGoalCropHarvest(entry);
         var (yield, yieldDim) = WindowFormat.HistoryYield(entry);
         var (cross, crossDim) = WindowFormat.HistoryCross(entry, WindowText.SeedName);
-        return new Line(null,
+        return new RowCells(
         [
             new Cell(WindowFormat.HistoryTime(row.LocalAt)),
             new Cell(WindowFormat.HistoryAct(entry.Kind)),
@@ -280,6 +293,20 @@ internal static class HistoryTab
     private static void Table()
     {
         using var pad = ImRaii.PushStyle(ImGuiStyleVar.CellPadding, CellPadding);
+
+        // Hold the view, set before the table's own window begins so it lands this frame, not the next:
+        // the tab just opened starts at the top; after a refold the reader's line is found again and the
+        // scroll moves by as many rows as it did.
+        float? hold = null;
+        if (scrollToTop)
+            hold = 0f;
+        else if (refolded && topLine is not null && GardenBoard.HistoryLineIndex(boardLines, topLine) is var now and >= 0 && now != topLineIndex)
+            hold = topLineScroll + (now - topLineIndex) * RowHeight();
+        if (hold is { } start)
+            ImGuiP.SetNextWindowScroll(new Vector2(-1f, start));
+        scrollToTop = false;
+        refolded = false;
+
         using var table = ImRaii.Table("##history-rows", Columns.Length, ImGuiTableFlags.SizingFixedFit | ImGuiTableFlags.ScrollY);
         if (!table.Success)
             return;
@@ -297,15 +324,13 @@ internal static class HistoryTab
             ImGui.TextColored(Palette.TextDim, Columns[c]);
         }
 
-        // Hold the view (Relines): the tab just opened starts at the top; otherwise the reader's line
-        // moved by scrollShift, so the scroll moves with it.
-        if (scrollToTop)
-            ImGui.SetScrollY(0f);
-        else if (scrollShift != 0f)
-            ImGui.SetScrollY(ImGui.GetScrollY() + scrollShift);
-        scrollToTop = false;
-        scrollShift = 0f;
-        topIndex = (int)(ImGui.GetScrollY() / RowHeight());
+        // The window's scroll is held to last frame's height, so a hold past it (rows landed while the
+        // reader sat at the very bottom) lands the rest on the next frame.
+        if (hold is { } wanted && ImGui.GetScrollY() + 0.5f < wanted)
+            ImGui.SetScrollY(wanted);
+        topLineScroll = ImGui.GetScrollY();
+        topLineIndex = (int)(topLineScroll / RowHeight());
+        topLine = topLineIndex < boardLines.Count ? boardLines[topLineIndex] : null;
 
         // Only the rows in view are drawn: the history grows forever. The clipper is native memory,
         // so it is released even if a row throws.
@@ -327,23 +352,26 @@ internal static class HistoryTab
     private static void Row(Line line)
     {
         ImGui.TableNextRow();
-        if (line.Day is { } day)
+        if (line is DayLine heading)
         {
             ImGui.TableNextColumn();
             using (ImRaii.PushColor(ImGuiCol.Text, Palette.TextDim))
             {
-                ImGui.SetNextItemOpen(line.Open, ImGuiCond.Always);
-                ImGui.TreeNodeEx($"{day}##{line.DayKey.UtcTicks}", ImGuiTreeNodeFlags.NoTreePushOnOpen);
+                // ### keeps the id to the day alone, so a count that changes mid-click keeps the click.
+                ImGui.SetNextItemOpen(heading.Open, ImGuiCond.Always);
+                ImGui.TreeNodeEx($"{heading.Text}###day-{heading.Day.UtcTicks}", ImGuiTreeNodeFlags.NoTreePushOnOpen);
             }
             if (ImGui.IsItemToggledOpen())
-                toggled = line.DayKey;
+                toggled = heading.Day;
             return;
         }
+
+        var cells = ((RowCells)line).Cells;
 
         for (var c = 0; c < Columns.Length; c++)
         {
             ImGui.TableNextColumn();
-            var cell = line.Cells[c];
+            var cell = cells[c];
             if (cell.Text.Length == 0)
                 continue;
             if (c == YieldColumn)

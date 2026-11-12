@@ -268,9 +268,10 @@ public class HistoryPageTests
         var oct31Mirror = Row("2026-10-31T16:00:00Z", HistoryKind.Harvest, Mirror);
         var oct31Krakka = Row("2026-10-31T17:00:00Z", HistoryKind.Harvest, Krakka);
         var nov4Krakka = Row("2026-11-04T23:00:00Z", HistoryKind.Harvest, Krakka);
+        var nov4AtMama = Row("2026-11-04T22:00:00Z", HistoryKind.Plant, Krakka, Mama);
         var nov7Mirror = Row("2026-11-07T16:00:00Z", HistoryKind.Plant, Mirror);
         var nov7Mirror2 = Row("2026-11-07T17:00:00Z", HistoryKind.Harvest, Mirror);
-        var history = History(oct31Mirror, oct31Krakka, nov4Krakka, nov7Mirror, nov7Mirror2);
+        var history = History(oct31Mirror, oct31Krakka, nov4AtMama, nov4Krakka, nov7Mirror, nov7Mirror2);
         var open = new HashSet<DateTimeOffset> { Midnight("2026-10-31") }; // opened under All crops
 
         var mirror = Page(history, new HistoryFilter(Species: Mirror));
@@ -284,6 +285,12 @@ public class HistoryPageTests
         var harvests = Page(history, new HistoryFilter(Kind: HistoryKind.Harvest));
         Assert.Equal(["2026-11-07 1 folded", "2026-11-04 1 folded", "2026-10-31 2 open", oct31Krakka.Id, oct31Mirror.Id],
             Drawn(GardenBoard.HistoryLines(harvests, open)));
+
+        var atMama = Page(history, new HistoryFilter(Estate: Mama));
+        Assert.Equal(["2026-11-04 1 open", nov4AtMama.Id],
+            Drawn(GardenBoard.HistoryLines(atMama, new HashSet<DateTimeOffset> { Midnight("2026-11-04") })));
+        Assert.Equal(["2026-11-04 2 folded"], Drawn(GardenBoard.HistoryLines(Page(history, new HistoryFilter(Species: Krakka, Kind: null, Estate: null)), open))
+            .Where(s => s.StartsWith("2026-11-04")).ToArray());
 
         // A filter that matches nothing lists no day at all: the tab says "No plants or harvests match these filters."
         var none = Page(history, new HistoryFilter(Species: Onion));
