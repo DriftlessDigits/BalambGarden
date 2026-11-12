@@ -191,15 +191,69 @@ public static class WindowFormat
     /// dying with when it withers (<paramref name="diesAt"/>; once that has passed, that it may
     /// already be lost). Null where the bed asks nothing. Caller converts both instants to local
     /// time.</summary>
-    public static string? ThirstLine(ContainerLook look, DateTimeOffset? diesAt, DateTimeOffset now) => look switch
+    public static string? ThirstLine(ContainerLook look, DateTimeOffset? diesAt, DateTimeOffset now, bool byClock = false)
     {
-        ContainerLook.WaterSoon => "water soon: past three quarters of its wilt hours",
-        ContainerLook.Wilting => "wilting: past its wilt hours",
-        ContainerLook.Dying => diesAt is { } dies && dies > now
-            ? $"dying: withers ~{Clock(dies, withDay: true)} unless watered"
-            : "dying: past its wither hours - it may already be lost",
-        _ => null,
-    };
+        var said = byClock ? " by the clock" : "";
+        return look switch
+        {
+            ContainerLook.WaterSoon => "water soon: past three quarters of its wilt hours",
+            ContainerLook.Wilting => $"wilting{said}: past its wilt hours",
+            ContainerLook.Dying => diesAt is { } dies && dies > now
+                ? $"dying{said}: withers ~{Clock(dies, withDay: true)} unless watered"
+                : $"dying{said}: past its wither hours - it may already be lost",
+            _ => null,
+        };
+    }
+
+    /// <summary>A plant wilting by the clock: when its red "dying" half begins ("dying from ~7:31 am
+    /// if not watered"). The day is said when it is not today. Caller converts both to local time.</summary>
+    public static string DyingFrom(DateTimeOffset at, DateTimeOffset now)
+        => $"dying from ~{Clock(at, withDay: at.Date != now.Date)} if not watered";
+
+    /// <summary>A cell the clock alone holds ripe (spec ruling 24): since when, from what, and the
+    /// newest read it outranks. "ripe by the clock since ~3:18 pm" / "sown Sat 2:18 pm, 120 h to
+    /// grow" / "last read stage 3, Wed 7:23 pm". Caller converts every instant to local time.</summary>
+    public static string RipeByClock(DateTimeOffset since, DateTimeOffset sown, int growHours, byte stage,
+        DateTimeOffset readAt, DateTimeOffset now)
+        => $"ripe by the clock since ~{Clock(since, withDay: since.Date != now.Date)}\n"
+           + $"sown {Clock(sown, withDay: true)}, {growHours} h to grow\n"
+           + $"last read stage {stage}, {Clock(readAt, withDay: true)}";
+
+    /// <summary>A ripe-now mark's label on the lane: "Krakka Root ripe now", "Mirror Apple ripe by the clock".</summary>
+    public static string LaneRipeLabel(string who, bool byClock) => $"{who} {(byClock ? "ripe by the clock" : "ripe now")}";
+
+    /// <summary>A ripe-now mark's hover on the lane: "Krakka Root: seen ripe - harvest any time",
+    /// "Mirror Apple: ripe by the clock - harvest any time".</summary>
+    public static string LaneRipeHover(string crops, bool byClock)
+        => $"{crops}: {(byClock ? "ripe by the clock" : "seen ripe")} - harvest any time";
+
+    /// <summary>A cell seen ripe: "ripe now (seen Wed 7:23 pm)". Caller converts to local time.</summary>
+    public static string SeenRipe(DateTimeOffset seenAt) => $"ripe now (seen {Clock(seenAt, withDay: true)})";
+
+    /// <summary>A plant the clock alone holds dead (spec ruling 24): "Pot 208: Thavnairian Onion" /
+    /// "dead by the clock since Fri 7:31 pm" / "last watered Wed 7:31 pm" (or "no watering recorded").
+    /// Caller converts every instant to local time.</summary>
+    public static string DeadByClockHover(string name, string crop, DateTimeOffset since, DateTimeOffset? lastTended)
+        => $"{name}: {crop}\ndead by the clock since {Clock(since, withDay: true)}\n"
+           + (lastTended is { } tended ? $"last watered {Clock(tended, withDay: true)}" : "no watering recorded");
+
+    /// <summary>A bed read alive after its clock's death time: a watering went unrecorded, so no
+    /// deadline until one is.</summary>
+    public const string OutlivedClock = "no watering recorded since it outlived its clock - no deadline";
+
+    /// <summary>The harvest chip's hover: what is ripe now, seen and by the clock, and the rest
+    /// ("15 seen ripe, 12 ripe by the clock; the rest may ripen within 24h"). <paramref name="ripeNow"/>
+    /// counts both.</summary>
+    public static string HarvestDue(int ripeNow, int byClock, string span)
+    {
+        var seen = ripeNow - byClock;
+        var parts = new[]
+        {
+            seen > 0 ? $"{seen} seen ripe" : null,
+            byClock > 0 ? $"{byClock} ripe by the clock" : null,
+        }.OfType<string>().ToList();
+        return parts.Count > 0 ? $"{string.Join(", ", parts)}; the rest may ripen within {span}" : $"may ripen within {span}";
+    }
 
     /// <summary>A card's pot-wilting note (spec ruling 4, rethink slice 19). On the live read in the
     /// room (<paramref name="seenAt"/> null) it says "water now"; away it says when the game last
@@ -224,8 +278,10 @@ public static class WindowFormat
 
     /// <summary>The card's worst look and what wears it: "worst: 4 pots, wilting". Null while
     /// nothing asks for water.</summary>
-    public static string? Worst(ContainerCount count, ContainerLook thirst)
-        => Thirst(thirst) is { } word && count.Total > 0 ? $"worst: {Containers(count)}, {word}" : null;
+    public static string? Worst(ContainerCount count, ContainerLook thirst, bool byClock = false)
+        => Thirst(thirst) is { } word && count.Total > 0
+            ? $"worst: {Containers(count)}, {word}{(byClock && thirst != ContainerLook.WaterSoon ? " by the clock" : "")}"
+            : null;
 
     /// <summary>The water bar's hover: whose clock it is and where it starts. "A pot: sown 1d ago, no
     /// watering recorded", "A bed in patch 1: watered 20h ago", and on the seen-fine floor "A pot:
@@ -302,12 +358,17 @@ public static class WindowFormat
     /// containers and the <paramref name="dead"/> ones together; it says the emptied ones, then the
     /// dead ones to clear first ("4 pots dead - clear and sow"), each line only when it has
     /// something to say.</summary>
-    public static string ReplantDue(int replant, ContainerCount dead)
-        => string.Join("\n", new[]
+    public static string ReplantDue(int replant, ContainerCount dead, ContainerCount? deadByClock = null)
+    {
+        var byClock = deadByClock ?? ContainerCount.None;
+        var seen = new ContainerCount(dead.Beds - byClock.Beds, dead.Pots - byClock.Pots, null);
+        return string.Join("\n", new[]
         {
             replant > dead.Total || dead.Total == 0 ? "emptied by a harvest or an empty read, nothing sown since" : null,
-            dead.Total > 0 ? $"{Capital(Containers(dead))} dead - clear and sow" : null,
+            seen.Total > 0 ? $"{Capital(Containers(seen.Total == dead.Total ? dead : seen))} dead - clear and sow" : null,
+            byClock.Total > 0 ? $"{Counts(byClock)} to clear and sow: dead by the clock" : null,
         }.OfType<string>());
+    }
 
     /// <summary>The headline's hover on a card with no water clock: why there is no deadline.</summary>
     public const string NoDeadline = "no deadline: ripe, flowers, dead, or nothing recorded";

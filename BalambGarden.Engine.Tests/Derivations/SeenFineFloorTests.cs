@@ -85,7 +85,10 @@ public class SeenFineFloorTests
     [Fact] // the floor says when it could first be dying: halfway from its wilt hours to withering
     public void APotOnTheFloorTurnsDyingAtTheFloorsDyingPoint()
     {
-        SownAndWateredLongAgo();
+        // Sown two days ago and never watered on the record, so it is still a day from ripe when
+        // the floor reaches its dying point (ripe by the clock would stand its water down, ruling 24).
+        Read(1, Now.AddDays(-2).AddMinutes(-1), stage: 0, wilt: 0);
+        Act(1, ReceiptVerb.Plant, Now.AddDays(-2), stage: 0);
         Read(1, Seen, stage: 2, wilt: 0);
 
         Assert.Equal(ContainerLook.WaterSoon, Cell(Card(Seen.AddHours(12).AddMinutes(-1)), 1).Look);

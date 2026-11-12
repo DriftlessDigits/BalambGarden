@@ -139,6 +139,10 @@ _Avoid_: fresh read, confirmed read, stable read
 The census reading the side underfoot again after a settled read, a bounded few times: in the first minute after an arrival or a door, and a few seconds after an own-hand gardening line. A settled read can still be a stage behind, and the map catches up by itself; a re-read is how the record catches up with it, without the player leaving or pressing a verb. Never in an act's lag, never anywhere but the place that armed it.
 _Avoid_: poll, refresh (the display-only read), rescan, recheck
 
+**Look rule**:
+When a map read may overrule a planting's clock. The arrival read never does: every planting on that side whose clock speaks is held, and the card believes the clock. The room re-read's first arrival read (the 5 s look) releases a planting whose look agrees with the clock; one that disagrees stays held until the second (the 15 s look), which is then the truth, logged at warning level with the clock's state and both looks. Every read after is the room's truth. Leaving before the 15 s look leaves the clock speaking until the next arrival there. A look agrees on growing, ripe or dead and, for a pot, its wilt flag; a bed's living read agrees with a clock's wilting. Held in memory only.
+_Avoid_: trusted read (the soul's word for what the rule produces), confirmed read, stale read
+
 **The game wins**:
 The reconcile law: when the ledger and a live read disagree on anything the game publishes (species, stage, emptiness), the read is right. The ledger keeps only what the game does not publish.
 _Avoid_: live wins, map authority, override
@@ -327,6 +331,14 @@ _Avoid_: bed grid (the expanded table underneath), heatmap, mini-map
 One trip to one estate, where the water, harvest, replant and pot care due there happen together; the unit the Garden tab is built around, one card per planted estate. Its deadline is the estate's water deadline.
 _Avoid_: trip, run (a chain's word), route, schedule
 
+**Here card**:
+The visit card of the estate the player stands at: first on the Garden tab, larger, and the one card that carries the verbs (Tend All and Replant ripe on it; a click on a patch or a container in its picture opens a small menu of what that state allows, closed by a press or a click elsewhere). Every other card carries Teleport.
+_Avoid_: active card, current card, home card
+
+**Reads empty now**:
+A container the record holds planted that the live map where the player stands shows empty: empty, not confirmed (earth, dashed). No water or harvest claim; counted toward replant. The game wins on a content mismatch, and the next census read empties the record.
+_Avoid_: missing, gone, harvested (unless a harvest was heard)
+
 **Timeline lane**:
 One visit's row in "the next six days" under the Garden tab's cards, in card order: the water bar from the deadline bed's watering (or sowing) to the drop at the water deadline, and the ripe times as marks (a tick when anchored, a band as wide as the window otherwise, striped when estimated, a dot at the now line for what is seen ripe), the pots on a row of their own.
 _Avoid_: gantt, schedule, calendar, timeline strip (the mock's smaller version, not built)
@@ -448,7 +460,7 @@ How far along a plant is, one to four as the map publishes it; four is ripe, and
 _Avoid_: growth phase, progress, level
 
 **Ripe**:
-Stage four: harvestable, the payoff signal, its own wire kind. A ripe plant cannot wilt or die; the game offers no tend verb at ripe, only harvest.
+Stage four: harvestable, the payoff signal, its own wire kind. A ripe plant cannot wilt or die; the game offers no tend verb at ripe, only harvest. A planting the plugin saw sown is also **ripe by the clock** an hour after its ripe time (the sowing plus its grow hours; the game updates plants about hourly) unless its clock said dead first, until a read shows it: drawn hollow, said "ripe by the clock", making no water claim. A read showing it still growing past that hour moves it to an hour after that read.
 _Avoid_: mature, done, ready, grown
 
 **Wilt**:
@@ -461,7 +473,12 @@ _Avoid_: die, dead, expire (for the withering)
 
 **Dead**:
 A plant past saving, as the game reads it: the map publishes stage five, and the game's inspect line says "This crop is beyond hope." (receipted on four onion pots, 2026-11-10; a dead bed's stage is unreceipted and read the same way). Never ripe and never growing, it claims no water and counts as a container to clear and sow. The hover says the game's words and when the read was taken: "beyond hope (seen 7m ago)". A later read showing a living plant or an empty container replaces it, and a living one, whatever its crop, is a new planting: the record resets, the dead plant's sowing and watering leave with it.
+A planting the plugin saw sown is **dead by the clock** once its death time (where its water clock starts plus the crop's wither hours) passes, when that time comes before its ripe time: drawn hollow, said "dead by the clock since ...". A watering the plugin never heard makes it say so of a plant that is fine; a bed read alive past that time drops its water claim until a watering is recorded.
 _Avoid_: withered (the event, see Wither), ripe (stage four only)
+
+**By the clock**:
+A state the plugin's clocks hold and no read has shown: ripe, wilting (a bed's wilting always, since beds publish no wilt), dying or dead. Drawn hollow (the state's colour as a ring, filled being what the game showed) and said "by the clock" in hovers, chips and the line above the tabs. One state at a time for a planting the plugin saw sown: growing, ripe (an hour after its ripe time, unless dead first), wilting (past its wilt time, not ripe, not dead), dead (its death time before its ripe time).
+_Avoid_: estimated (a ripe window's provenance word), guessed, predicted
 
 **Grow hours**:
 A crop's total time from sowing to ripe, from the frozen table; the number every ripe window is cut from.

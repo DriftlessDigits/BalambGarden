@@ -78,12 +78,45 @@ internal sealed class GardenVerbs(Plugin plugin)
     /// CycleChain's own pre-flight still guards the run, so a shortage refuses in the
     /// player's terms before the first click. Returns the refusal, or null when the run
     /// started.</summary>
-    internal string? ReplantPatch(EstateKey estate, PatchGroup patch)
+    internal string? ReplantPatch(EstateKey estate, PatchGroup patch) => Replant(estate, patch, onlySlot: null);
+
+    /// <summary>Replant one bed (rethink slice 5, the here card's bed menu): exactly the patch's
+    /// Replant ripe narrowed to that bed - the same plan off the ledger, the same "the bag is the
+    /// plan" soil rule, the cycle's own pre-flight, and <see cref="CycleChain.Run"/>'s harvest and
+    /// sow steps for that one bed. Returns the refusal, or null when the run started.</summary>
+    internal string? ReplantBed(EstateKey estate, PatchGroup patch, int slot) => Replant(estate, patch, slot);
+
+    /// <summary>Harvest one bed and sow nothing (rethink slice 5): the cycle's own harvest steps
+    /// (<see cref="CycleChain.HarvestOne"/>). Returns the refusal, or null when the run started.</summary>
+    internal string? HarvestBed(PatchGroup patch, int slot)
+    {
+        if (plugin.CycleChain.HarvestOne(patch, slot) is { } refusal)
+            return refusal;
+        plugin.Launched(plugin.CycleChain);
+        return null;
+    }
+
+    /// <summary>Whether the here card offers a patch's Replant ripe: the board shows something in
+    /// it ripe, seen or by the clock (the press reads the map first and the game has the last word).</summary>
+    internal static bool AnyRipeOnCard(VisitCard card, int patchOrdinal)
+        => card.Patches.Any(p => p.Ordinal == patchOrdinal && p.Cells.Any(c => c.Look == ContainerLook.Ripe));
+
+    /// <summary>Whether the here card offers the pots' Replant ripe: a pot the board shows ripe is in reach.</summary>
+    internal static bool AnyRipePotOnCardInReach(VisitCard card, List<PotObject> pots)
+        => card.Patches.Where(p => p.IsPots).SelectMany(p => p.Cells).Any(c => c.Look == ContainerLook.Ripe
+            && pots.FindIndex(p => p.MapKey == c.Position && p.InReach) >= 0);
+
+    private string? Replant(EstateKey estate, PatchGroup patch, int? onlySlot)
     {
         // The freshest possible read: ripeness decides which beds are in, same as pots.
         CensusPump.SightNow();
 
         var plan = ReplantPlan.DefaultFor(estate, patch.Ordinal);
+        if (onlySlot is { } only)
+        {
+            foreach (var slot in plan.Seeds.Keys.Where(s => s != only).ToList())
+                plan.Seeds.Remove(slot);
+        }
         if (Plugin.Garden.Census.BoundKey(estate, patch.Ordinal) is { } mapKey
             && CensusPump.LastOutdoor.TryGetValue(mapKey, out var readings))
         {

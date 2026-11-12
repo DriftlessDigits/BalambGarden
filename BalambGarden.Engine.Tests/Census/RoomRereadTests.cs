@@ -54,7 +54,27 @@ public class RoomRereadTests
 
         var due = reread.Take(House, At("19:25:04"), busy: false, lastOwnReceipt: null);
 
-        Assert.Equal(new RereadDue(RereadCause.Arrival, House, Arrival), due);
+        Assert.Equal(new RereadDue(RereadCause.Arrival, House, Arrival, AnswersArrival: true), due);
+    }
+
+    [Fact] // rethink slice 27: a garden line's read held into the 5 s arrival read still answers the arrival
+    public void AReadThatRunsAnArrivalReadWithALinesSaysItAnswersTheArrival()
+    {
+        var reread = new RoomReread();
+        reread.Arrived(House, Arrival);
+        reread.LineHeard(House, At("19:25:01"));    // its 2 s read comes due at 19:25:03, before the 5 s one
+
+        var line = reread.Take(House, At("19:25:03"), busy: false, lastOwnReceipt: null);
+        var held = reread.Take(House, At("19:25:08"), busy: false, lastOwnReceipt: null);   // the 5 s and the line's 6 s, as one
+
+        Assert.Equal((RereadCause.GardenLine, false), (line!.Cause, line.AnswersArrival));
+        Assert.Equal((RereadCause.Arrival, true), (held!.Cause, held.AnswersArrival));
+
+        var lineFirst = new RoomReread();
+        lineFirst.Arrived(House, Arrival);
+        lineFirst.LineHeard(House, At("19:25:00"));
+        var one = lineFirst.Take(House, At("19:25:09"), busy: false, lastOwnReceipt: null);   // the line's two and the 5 s, held as one
+        Assert.Equal((RereadCause.GardenLine, true), (one!.Cause, one.AnswersArrival));
     }
 
     [Fact]
@@ -158,7 +178,7 @@ public class RoomRereadTests
         Assert.Null(reread.Take(House, At("19:25:30"), busy: true, lastOwnReceipt: null));
         var held = reread.Take(House, At("19:25:40"), busy: false, lastOwnReceipt: null);
 
-        Assert.Equal(new RereadDue(RereadCause.GardenLine, House, line), held);
+        Assert.Equal(new RereadDue(RereadCause.GardenLine, House, line, AnswersArrival: true), held);
     }
 
     // ---- leaving (the player, 2026-11-11: "what if I leave after 45 seconds?"): a read never runs, and never
@@ -215,7 +235,7 @@ public class RoomRereadTests
 
         // The other estate's own four, and the FC Estate's 19:25:59 read never among them.
         Assert.Equal([At("19:25:45"), At("19:25:55"), At("19:26:10"), At("19:26:40")], times);
-        Assert.All(dues, d => Assert.Equal(new RereadDue(RereadCause.Arrival, otherYard, landed), d));
+        Assert.All(dues, d => Assert.Equal(new RereadDue(RereadCause.Arrival, otherYard, landed, AnswersArrival: true), d));
     }
 
     [Fact]
