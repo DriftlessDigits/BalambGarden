@@ -81,11 +81,6 @@ public class MainWindow : Window, IDisposable
     private string sweepNoticeOwner = "";
     private DateTime sweepNoticeUntil;
 
-    // Arrival selection. lastHere is where we were on the previous frame; when it changes,
-    // the new estate's tab takes the selection for exactly one frame. Selecting every
-    // frame would fight the player every time they clicked another tab.
-    private EstateKey? lastHere;
-    private EstateKey? selectOnce;
 
     public MainWindow(Plugin plugin)
         : base("Balamb Garden##BalambGardenMain")
@@ -128,12 +123,6 @@ public class MainWindow : Window, IDisposable
 
         armedTouchedThisFrame = false;
 
-        if (here != lastHere)
-        {
-            selectOnce = here;
-            lastHere = here;
-        }
-
         var estates = Plugin.Garden.Ledger.Estates.ToList();
 
         DrawVerdict(estates, now);
@@ -144,10 +133,10 @@ public class MainWindow : Window, IDisposable
         {
             if (bar.Success)
             {
-                // The Garden tab leads: the window opens on the visit cards. The verbs live on the
-                // estate tabs behind it, so arriving at an estate selects that estate's tab once
-                // (selectOnce).
-                GardenTab.Draw(here, now);
+                // The Garden tab leads: the window opens on the visit cards, and the card of the
+                // estate you stand at carries the verbs (the here card), so arriving at an estate
+                // changes no tab. The estate tabs behind it keep Plant and Cycle until they go.
+                GardenTab.Draw(plugin, here, now);
 
                 // A tab is an estate the GAME grants (spec 2026-08-15: the roster is the tab set),
                 // plus wherever we are standing - the one place that must explain itself even when
@@ -170,8 +159,6 @@ public class MainWindow : Window, IDisposable
 #endif
             }
         }
-
-        selectOnce = null;
 
         // Anything else the player clicked disarms the hot button.
         if (armedButton is not null && !armedTouchedThisFrame
@@ -274,14 +261,11 @@ public class MainWindow : Window, IDisposable
     private void DrawEstateTab(EstateRecord record, EstateKey? here, DateTimeOffset now)
     {
         var isHere = record.Key == here;
-        var flags = selectOnce is { } arrival && arrival == record.Key
-            ? ImGuiTabItemFlags.SetSelected
-            : ImGuiTabItemFlags.None;
 
         // Label is the nickname, identity is the key: renaming an estate must not read as
         // a different tab appearing.
         var label = $"{record.DisplayName}###{record.Key.BindingKey(0)}";
-        using var tab = ImRaii.TabItem(label, flags);
+        using var tab = ImRaii.TabItem(label);
         if (!tab.Success)
             return;
 
@@ -1422,33 +1406,12 @@ public class MainWindow : Window, IDisposable
         }
     }
 
-    /// <summary>True only when a fresh read of THIS estate's map shows the slot vacant.
-    /// Away from the estate there is no read at all, and "I cannot see it" is never
-    /// evidence that something is gone. Pots (08-16): the settled-object guard stands in
-    /// for the outdoor TryGetValue - an unsettled world answers false, never "empty" - AND
-    /// the map must have answered this visit (2026-08-28: objects can settle BEFORE the
-    /// DataMap on a cold zone-in, the unreceipted order that nearly cleared the FC records
-    /// on 08-23 - without this clause every pot flashes amber until the retry lands).</summary>
+    /// <summary>True only when a fresh read of THIS estate's map shows the slot vacant: the
+    /// board's one rule for a look where the player stands (<see cref="GardenBoard.MapShowsEmpty"/>,
+    /// its guards there). Away from the estate there is no read at all, and "I cannot see it" is
+    /// never evidence that something is gone.</summary>
     private static bool ReadsEmptyNow(ClaimedBed bed, bool isHere)
-    {
-        if (!isHere)
-            return false;
-        if (bed.IsPot)
-            return EstateSensor.IsInside()
-                && ObjectSensor.SawHousingObjects
-                && CensusPump.MapAnsweredThisVisit
-                // A zeroed entry is PRESENT and unoccupied - the map's own "this pot is
-                // empty" receipt (08-26: harvest zeroes in place), stronger evidence than
-                // the key being absent, and both mean the same thing here.
-                && !(CensusPump.LastIndoor.TryGetValue(bed.MapKey, out var live) && live.Occupied);
-        // Our own chain sow the map has not shown yet (2026-11-07): the read is a beat behind the
-        // seed, not a replant behind our back.
-        if (CensusPump.AwaitingSow(bed.MapKey, bed.BedSlot))
-            return false;
-        if (!CensusPump.LastOutdoor.TryGetValue(bed.MapKey, out var readings))
-            return false;
-        return readings.FirstOrDefault(r => r.Slot == bed.BedSlot) is { Occupied: false };
-    }
+        => isHere && GardenBoard.MapShowsEmpty(bed, GardenTab.StandingAt(bed.Estate));
 
     // ------------------------------------------------------------------ cycle
 

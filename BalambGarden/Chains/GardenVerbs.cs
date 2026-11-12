@@ -78,12 +78,38 @@ internal sealed class GardenVerbs(Plugin plugin)
     /// CycleChain's own pre-flight still guards the run, so a shortage refuses in the
     /// player's terms before the first click. Returns the refusal, or null when the run
     /// started.</summary>
-    internal string? ReplantPatch(EstateKey estate, PatchGroup patch)
+    internal string? ReplantPatch(EstateKey estate, PatchGroup patch) => Replant(estate, patch, onlySlot: null);
+
+    /// <summary>Replant one bed (rethink slice 5, the here card's bed menu): exactly the patch's
+    /// Replant ripe narrowed to that bed - the same plan off the ledger, the same "the bag is the
+    /// plan" soil rule, the cycle's own pre-flight, and <see cref="CycleChain.Run"/>'s harvest and
+    /// sow steps for that one bed. Returns the refusal, or null when the run started.</summary>
+    internal string? ReplantBed(EstateKey estate, PatchGroup patch, int slot) => Replant(estate, patch, slot);
+
+    /// <summary>Harvest one bed and sow nothing (rethink slice 5): the cycle's own harvest steps
+    /// (<see cref="CycleChain.HarvestOne"/>). Returns the refusal, or null when the run started.</summary>
+    internal string? HarvestBed(PatchGroup patch, int slot)
+    {
+        CensusPump.SightNow();
+        if (CycleChain.HarvestPreflightError(patch, slot) is { } refusal)
+            return refusal;
+
+        plugin.CycleChain.HarvestOne(patch, slot);
+        plugin.Launched(plugin.CycleChain);
+        return null;
+    }
+
+    private string? Replant(EstateKey estate, PatchGroup patch, int? onlySlot)
     {
         // The freshest possible read: ripeness decides which beds are in, same as pots.
         CensusPump.SightNow();
 
         var plan = ReplantPlan.DefaultFor(estate, patch.Ordinal);
+        if (onlySlot is { } only)
+        {
+            foreach (var slot in plan.Seeds.Keys.Where(s => s != only).ToList())
+                plan.Seeds.Remove(slot);
+        }
         if (Plugin.Garden.Census.BoundKey(estate, patch.Ordinal) is { } mapKey
             && CensusPump.LastOutdoor.TryGetValue(mapKey, out var readings))
         {

@@ -91,6 +91,17 @@ internal static class Palette
     /// <summary>A card's frame.</summary>
     public static readonly Vector4 Frame = new(0.35f, 0.35f, 0.35f, 1f);
 
+    /// <summary>The here card's frame (rethink slice 5): brighter, since brightness is importance -
+    /// the card you stand in.</summary>
+    public static readonly Vector4 HereFrame = new(0.60f, 0.60f, 0.60f, 1f);
+
+    /// <summary>The outline of the container or patch whose menu is open.</summary>
+    public static readonly Vector4 MenuOpen = Vector4.One;
+
+    /// <summary>How much a patch out of reach on the here card is dimmed: its picture drawn at this
+    /// alpha.</summary>
+    public const float OutOfReachAlpha = 0.55f;
+
     /// <summary>A container's outline.</summary>
     public static readonly Vector4 Outline = new(0.40f, 0.40f, 0.40f, 1f);
 

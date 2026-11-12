@@ -124,4 +124,39 @@ public static partial class GardenBoard
             _ => new Belief(state, ByClock: false, clock),
         };
     }
+
+    /// <summary>
+    /// Where the player stands, the live map shows empty a container the record holds planted: it
+    /// reads empty, not confirmed (rethink slice 5; the game wins on a content mismatch). Asked
+    /// before <see cref="Believe"/>, for any planting, seen sown or not. The record itself changes
+    /// only through the census: where the roster covers, a census read empties it at once, so this
+    /// speaks between a display-only read and the next census read, or for a pot whose map entry
+    /// vanished until two settled reads agree it is gone.
+    ///
+    /// <para>The guards: only at the estate in <paramref name="here"/>; a bed only while outside,
+    /// from the live outdoor read of its patch (no read for the patch or the slot is silence, never
+    /// evidence), and never a bed our own chain just sowed (<see cref="Standing.AwaitingSow"/>); a
+    /// pot only while inside and once the room's map has answered this visit
+    /// (<see cref="Standing.MapAnswered"/>), its entry absent or zeroed. A container the look rule
+    /// still holds (<paramref name="held"/>) keeps the clock's word: one rule for every look where
+    /// the player stands.</para>
+    /// </summary>
+    public static bool ReadsEmptyNow(ClaimedBed bed, Standing? here, bool held = false)
+        => !held && bed.Latest is not null && MapShowsEmpty(bed, here);
+
+    /// <summary>The live map where the player stands shows this container empty, under
+    /// <see cref="ReadsEmptyNow"/>'s guards, whatever the record holds: the estate tabs ask it for
+    /// an emptied record's row too.</summary>
+    public static bool MapShowsEmpty(ClaimedBed bed, Standing? here)
+    {
+        if (here is null || bed.Estate != here.Estate)
+            return false;
+        if (bed.IsPot)
+            return here.Inside && here.MapAnswered
+                && !(here.LiveIndoor.TryGetValue(bed.MapKey, out var pot) && pot.Occupied);
+        if (here.Inside || here.AwaitingSow?.Invoke(bed) == true)
+            return false;
+        return here.LiveOutdoor is { } outdoor && outdoor.TryGetValue(bed.MapKey, out var readings)
+            && readings.FirstOrDefault(r => r.Slot == bed.BedSlot) is { Occupied: false };
+    }
 }

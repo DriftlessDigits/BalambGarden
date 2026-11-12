@@ -14,8 +14,11 @@ namespace BalambGarden.Engine.Derivations;
 /// shows wilting - the live map where the player stands, the last sighting elsewhere;
 /// <see cref="Dying"/> past halfway from its wilt hours to withering (Danger). <see cref="Dead"/> is
 /// a plant the game reads as lost (stage 5, "beyond hope"): never ripe, never growing, no water
-/// claim, one more container to clear and sow (rethink slice 23).</summary>
-public enum ContainerLook { Unclaimed, Unread, Empty, Growing, WaterSoon, Wilting, Dying, Ripe, Dead }
+/// claim, one more container to clear and sow (rethink slice 23). <see cref="ReadsEmpty"/> is a
+/// container the record holds planted that the live map where the player stands shows empty
+/// (<see cref="GardenBoard.ReadsEmptyNow"/>): empty, not confirmed - no water or harvest claim, one
+/// more container to sow (rethink slice 5).</summary>
+public enum ContainerLook { Unclaimed, Unread, Empty, Growing, WaterSoon, Wilting, Dying, Ripe, Dead, ReadsEmpty }
 
 /// <summary>One container of the garden picture, with what its hover needs. <see cref="Position"/>
 /// is the bed's slot (0-7) in a patch, or the pot's map key among the pots. <see cref="WaterBy"/>
@@ -81,8 +84,19 @@ public sealed record ContainerCount(int Beds, int Pots, int? Patch)
 public sealed record RipeGroup(bool IsPots, EtaWindow Window, IReadOnlyList<CropRipe> Crops);
 
 /// <summary>Where the player stands: the estate, whether inside its house or room, and the live
-/// indoor map read. Only inside is that read about the pots in front of the player.</summary>
-public sealed record Standing(EstateKey Estate, bool Inside, IReadOnlyDictionary<int, PotReading> LiveIndoor);
+/// map reads. Only inside is <see cref="LiveIndoor"/> about the pots in front of the player, and
+/// only outside is <see cref="LiveOutdoor"/> about the beds. <see cref="MapAnswered"/>: the room's
+/// map has answered this visit and the housing objects have settled, without which an empty room
+/// is a map not talking yet (2026-08-28). <see cref="AwaitingSow"/>: a bed our own chain just sowed
+/// that the map has not shown yet (2026-11-07).</summary>
+public sealed record Standing(EstateKey Estate, bool Inside, IReadOnlyDictionary<int, PotReading> LiveIndoor)
+{
+    public IReadOnlyDictionary<int, IReadOnlyList<BedReading>>? LiveOutdoor { get; init; }
+
+    public bool MapAnswered { get; init; }
+
+    public Func<ClaimedBed, bool>? AwaitingSow { get; init; }
+}
 
 /// <summary>One planted estate's next visit: when it is needed by and what waits there.
 /// <see cref="WaterBy"/> is the estate's water deadline (its earliest bed's or pot's), null when
@@ -211,13 +225,16 @@ public static partial class GardenBoard
 
     private static readonly ClockWiltSource Clock = new();
 
-    /// <summary>The visit cards, most urgent first: by water deadline (the clock that can kill);
+    /// <summary>The visit cards, most urgent first: the card of the estate the player stands at
+    /// (the here card, ruling 18) leads; then by water deadline (the clock that can kill);
     /// then the estates with no water clock, those with a plant seen ripe first, then by next ripe
     /// window (ruling 4). One card per roster-covered estate holding a known planting (ruling 5).
     /// A pot's wilt comes from <paramref name="standing"/>'s live read in its room, else from the
-    /// sighting its record keeps. <paramref name="held"/> names the containers whose newest read
-    /// the look rule has not settled (the arrival look, <see cref="LookRule"/>): on those the clock
-    /// alone speaks, and a held pot's live read and kept sighting are not its word yet.</summary>
+    /// sighting its record keeps; where the player stands, a container the live map shows empty
+    /// reads empty, not confirmed (<see cref="ReadsEmptyNow"/>). <paramref name="held"/> names the
+    /// containers whose newest read the look rule has not settled (the arrival look,
+    /// <see cref="LookRule"/>): on those the clock alone speaks, and a held container's live read
+    /// and kept sighting are not its word yet.</summary>
     public static IReadOnlyList<VisitCard> Cards(
         IReadOnlyList<EstateRecord> estates, IReadOnlyList<ClaimedBed> beds, AccessRoster roster,
         DomainTables tables, DateTimeOffset now, Standing? standing = null, Func<ClaimedBed, bool>? held = null)
@@ -228,8 +245,9 @@ public static partial class GardenBoard
             .Select(e => (Estate: e, Beds: beds.Where(b => b.Estate == e.Key).ToList()))
             .Where(e => e.Beds.Any(Planted))
             .Select(e => Card(e.Estate, e.Beds, tables, now,
-                standing is { Inside: true } s && s.Estate == e.Estate.Key ? s.LiveIndoor : null, held))
-            .OrderBy(c => c.WaterBy is null)
+                standing is { } s && s.Estate == e.Estate.Key ? s : null, held))
+            .OrderBy(c => standing is null || c.Estate.Key != standing.Estate)
+            .ThenBy(c => c.WaterBy is null)
             .ThenBy(c => c.WaterBy is null && c.RipeNow == 0)
             .ThenBy(c => c.WaterBy ?? c.Ripe.FirstOrDefault()?.Window.Earliest ?? DateTimeOffset.MaxValue)
             .ThenBy(c => c.Estate.DisplayName, StringComparer.CurrentCulture)
@@ -242,15 +260,16 @@ public static partial class GardenBoard
 
     private static VisitCard Card(
         EstateRecord estate, List<ClaimedBed> beds, DomainTables tables, DateTimeOffset now,
-        IReadOnlyDictionary<int, PotReading>? liveIndoor, Func<ClaimedBed, bool> held)
+        Standing? here, Func<ClaimedBed, bool> held)
     {
+        var liveIndoor = here is { Inside: true } ? here.LiveIndoor : null;
         var patches = beds
             .Where(b => !b.IsPot)
             .GroupBy(b => b.PatchOrdinal)
             .OrderBy(g => g.Key)
             .Select(g => new PatchPicture(g.Key, Enumerable.Range(0, PatchSlots)
                 .Select(slot => g.FirstOrDefault(b => b.BedSlot == slot) is { } bed
-                    ? Cell(slot, bed, tables, now, held(bed))
+                    ? Cell(slot, bed, tables, now, here, held(bed))
                     : ContainerCell.Unclaimed(slot))
                 .ToList()))
             .ToList();
@@ -258,7 +277,7 @@ public static partial class GardenBoard
         var pots = beds.Where(b => b.IsPot).OrderBy(b => b.MapKey).ToList();
         if (pots.Count > 0)
             patches.Add(new PatchPicture(null, pots
-                .Select(p => held(p) ? Cell(p.MapKey, p, tables, now, held: true) : PotCell(p, Cell(p.MapKey, p, tables, now), liveIndoor))
+                .Select(p => held(p) ? Cell(p.MapKey, p, tables, now, here, held: true) : PotCell(p, Cell(p.MapKey, p, tables, now, here), liveIndoor))
                 .ToList()));
 
         // Beds and pots alike carry the clock (ruling 23): the deadline is the earliest of them all.
@@ -303,7 +322,7 @@ public static partial class GardenBoard
             Worst: thirst == ContainerLook.Growing ? ContainerCount.None : ContainerCount.Of(cells.Where(c => c.Look == thirst)),
             TendUnheard: ContainerCount.Of(cells.Where(c => c.TendUnheard)),
             Water: ContainerCount.Of(water), harvest, ripeNow,
-            Replant: cells.Count(c => c.Look is ContainerLook.Empty or ContainerLook.Dead),
+            Replant: cells.Count(c => c.Look is ContainerLook.Empty or ContainerLook.Dead or ContainerLook.ReadsEmpty),
             Dead: ContainerCount.Of(cells.Where(c => c.Look == ContainerLook.Dead)),
             PotsWilting: potsWilting.Count,
             PotsWiltingSeenAt: potsWilting.Select(c => c.WiltSeenAt).Max(),
@@ -418,8 +437,14 @@ public static partial class GardenBoard
     }
 
     private static ContainerCell Cell(int position, ClaimedBed bed, DomainTables tables, DateTimeOffset now,
-        bool held = false)
+        Standing? here, bool held = false)
     {
+        // Where the player stands, the live map showing it empty wins over the record (rethink
+        // slice 5); a held container keeps the clock's word (the look rule).
+        if (ReadsEmptyNow(bed, here, held))
+            return new ContainerCell(position, ContainerLook.ReadsEmpty, Species: 0, Stage: 0, TendUnheard: false,
+                WaterBy: null, Ripe: null, bed);
+
         if (bed.Latest is not { } latest)
         {
             // Known empty only when something emptied it (a fence); a record that exists only

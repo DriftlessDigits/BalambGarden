@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using BalambGarden.Engine.Census;
+using BalambGarden.Engine.Ledger;
 using BalambGarden.Engine.Sensing;
 using BalambGarden.Game;
 using Dalamud.Game.ClientState.Objects.Types;
@@ -201,6 +202,74 @@ internal sealed unsafe class CycleChain : ChainBase
         }
 
         return null;
+    }
+
+    /// <summary>The one-bed harvest's pre-flight (rethink slice 5): the cycle's own checks for a
+    /// harvest, and a harvest only - the bed in reach, the map read naming it ripe, a free bag
+    /// slot for the yield. Fail-closed: null means go.</summary>
+    internal static string? HarvestPreflightError(PatchGroup patch, int slot)
+    {
+        if (EstateSensor.Current() is not { } estate)
+            return "not at an estate";
+        if (!patch.InReach)
+            return $"walk closer to patch {patch.Ordinal + 1} ({patch.Distance:F1}y away)";
+        if (Plugin.Garden.Census.BoundKey(estate, patch.Ordinal) is not { } mapKey)
+            return $"patch {patch.Ordinal + 1} isn't bound yet - tend it once so the ledger knows which patch this is";
+        if (!CensusPump.LastOutdoor.TryGetValue(mapKey, out var readings))
+            return "no map read for this patch yet - stand still for a moment";
+
+        var bedObject = patch.Beds.FirstOrDefault(b => b.Gimmick.BedIndex == slot);
+        if (bedObject.Object is null || !bedObject.InReach)
+            return $"bed {slot + 1} isn't in reach";
+        if (readings.FirstOrDefault(r => r.Slot == slot) is not { } reading)
+            return $"bed {slot + 1} isn't in the map read - stand still for a moment";
+        if (!reading.Occupied || reading.Stage != GardenStage.Ripe)
+            return $"bed {slot + 1} isn't ripe on the map (stage {reading.Stage})";
+
+        var inventory = InventoryManager.Instance();
+        if (inventory == null)
+            return "inventory unavailable";
+        var free = inventory->GetEmptySlotsInBag();
+        return free < 1 ? $"need 1 free bag slots for yields, have {free}" : null;
+    }
+
+    /// <summary>Harvest one bed and sow nothing (rethink slice 5, the here card's bed menu): the
+    /// cycle's own harvest steps for that bed - its gate, <see cref="Interact"/>,
+    /// <see cref="AdvanceToMenu"/>, <see cref="SelectHarvest"/>, <see cref="AwaitHarvest"/> - and
+    /// none of its sowing. No settle poll: the harvest receipt empties the record, and the gardening
+    /// line's own re-read refreshes the map.</summary>
+    internal void HarvestOne(PatchGroup patch, int slot)
+    {
+        CensusPump.SightNow();
+
+        if (HarvestPreflightError(patch, slot) is { } refusal)
+        {
+            LastOutcome = $"refused: {refusal}";
+            return;
+        }
+
+        var bedObject = patch.Beds.First(b => b.Gimmick.BedIndex == slot);
+        var label = $"bed {slot + 1}";
+        if (!BeginRun(1, $"harvesting {label}..."))
+            return;
+
+        TaskManager.DelayNext(ApplyJitter(Plugin.Configuration.TendPaceMS));
+        TaskManager.Enqueue(() =>
+        {
+            _currentBed = bedObject.Gimmick;
+            return CheckStop(label);
+        }, $"gate {slot}");
+        TaskManager.Enqueue(() => Interact(bedObject.Object), $"interact-h {slot}");
+        TaskManager.Enqueue(AdvanceToMenu, $"advance-h {slot}");
+        TaskManager.Enqueue(() => SelectHarvest(label), $"harvest {slot}");
+        TaskManager.Enqueue(AwaitHarvest, HarvestWaitMS, $"yield {slot}");
+        TaskManager.Enqueue(() =>
+        {
+            LastOutcome = $"done: {label} harvested";
+            foreach (var line in Report)
+                Plugin.Log.Information($"[CycleChain] report: {line}");
+            return true;
+        }, "report");
     }
 
     // ---------------------------------------------------------------- the run
