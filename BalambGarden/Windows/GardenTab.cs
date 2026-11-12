@@ -157,6 +157,10 @@ internal static class GardenTab
         var ripe = ImGui.ColorConvertFloat4ToU32(Palette.Ripe);
         var x0 = x(mark.From);
         var x1 = x(mark.To);
+        // What is ripe now, seen and by the clock, both sit at the now line: the second dot goes
+        // after the first one's label rather than under it.
+        if (mark.Kind == LaneMarkKind.RipeByClock)
+            x0 = MathF.Max(x0, leftFree + 6f + height / 2);
         Vector2 min, max;
         switch (mark.Kind)
         {
