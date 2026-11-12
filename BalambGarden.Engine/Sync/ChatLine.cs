@@ -70,6 +70,20 @@ public static class ChatLine
     /// <see cref="SyncKind.PotWater"/>, which is the kind the schema ratified for it.</summary>
     public const string PotWaterText = "The crops appear to be healthy.";
 
+    /// <summary>The pot clear line, verbatim (capture 2026-11-10, four hand disposals of dead onion pots:
+    /// SystemMessage/57, src=LocalPlayer, the pot on previous-target). Deliberately NOT in the catalogue:
+    /// a disposal makes no receipt. It is one of the lines the room re-read hears by shape
+    /// (<see cref="IsOwnSuccessShape"/>); the read after it empties the pot. The bed's line is unrecorded.</summary>
+    public const string PotDisposeText = "You dispose of the crops growing in the flowerpot.";
+
+    /// <summary>The success SHAPE alone, any words (rethink slice 25): a system or loot line the game
+    /// attributes to the player's own character. With a bed or pot on previous-target it is a gardening
+    /// line for the room re-read, whether or not the catalogue knows its words - so a disposal, a bed's
+    /// clear line nobody has recorded, and a hand flower harvest (which never receipts) all count.
+    /// Refusals ride the error channel and are not acts.</summary>
+    public static bool IsOwnSuccessShape(int logKind, bool fromLocalPlayer)
+        => fromLocalPlayer && (logKind == SystemMessageKind || logKind == LootNoticeKind);
+
     /// <summary>The bed sow line's shape (capture 2026-10-18, three hand sows: "You plant seeds
     /// in the 1st bed, 1st patch." / "2nd bed" / "3rd bed", SystemMessage/57 from the local
     /// player, plain text). The one garden success line that names its own container: bed and

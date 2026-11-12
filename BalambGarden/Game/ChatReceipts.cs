@@ -85,6 +85,11 @@ internal static unsafe class ChatReceipts
             if (verdict == ChatVerdict.None)
                 verdict = ChatLine.ClassifyObtain(logKind, fromLocalPlayer, text);
 
+            // Whatever the words, a success-shaped line from our own hands at a bed or pot means the
+            // room may have changed: it is read again a few seconds on (rethink slice 25).
+            if (ChatLine.IsOwnSuccessShape(logKind, fromLocalPlayer))
+                NoteGardenLine(verdict, text);
+
             if (verdict == ChatVerdict.None)
             {
                 RememberCropName(logKind, message.SourceKind, text);
@@ -165,6 +170,33 @@ internal static unsafe class ChatReceipts
             // A chat handler that throws breaks everyone's chat - never ours to risk.
             Plugin.Log.Warning($"[ChatReceipts] chat read failed: {ex.Message}");
         }
+    }
+
+    /// <summary>The room re-read's ear (rethink slice 25): a success-shaped line from our own hands
+    /// while the previous-target is a bed or a pot is a gardening line, so the room is read again a
+    /// few seconds on. By shape, not words: the pot dispose line (never a receipt), a bed's clear line
+    /// nobody has recorded, a hand flower harvest (refused as a receipt) and every catalogue line all
+    /// count. A line the catalogue does not know is logged at INF with its words: the bed's clear line
+    /// records itself the first time it is heard. Never while a chain drives: its acts read for
+    /// themselves, and the line is the chain's.</summary>
+    private static void NoteGardenLine(ChatVerdict verdict, string text)
+    {
+        if (Plugin.AnyChainDriving)
+            return;
+        var previous = Svc.Targets.PreviousTarget;
+        var at = BedOf(previous) is { } bed ? $"patch {bed.PatchOrdinal + 1} bed {bed.BedIndex + 1}"
+            : PotKeyOf(previous) is { } key ? $"pot (key {key})"
+            : null;
+        if (at is null)
+            return;
+
+        CensusPump.NoteGardenLine();
+        if (verdict != ChatVerdict.None)
+            Plugin.Log.Debug($"[ChatReceipts] {verdict} line at {at} - the room is read again");
+        else if (text == ChatLine.PotDisposeText)
+            Plugin.Log.Information($"[ChatReceipts] dispose line at {at} - the room is read again");
+        else
+            Plugin.Log.Information($"[ChatReceipts] unrecognised line at {at} - the room is read again: '{text}'");
     }
 
     /// <summary>Banks the crop-name line a bed interaction prints. Resolution runs through
