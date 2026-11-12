@@ -136,6 +136,17 @@ public class HereCardTests
         Assert.Equal(0, card.Replant);
     }
 
+    [Fact] // the estate tabs ask the rule directly, with wherever the player stands
+    public void TheRuleAskedDirectlyAnswersOnlyForTheEstateYouStandAt()
+    {
+        var bed = Growing(Bed(Yard, 0, 2));
+        var live = Outdoor(100, emptySlots: 2);
+
+        Assert.True(GardenBoard.MapShowsEmpty(bed, Outside(Yard, live)));
+        Assert.False(GardenBoard.MapShowsEmpty(bed, Outside(Cottage, live)));
+        Assert.False(GardenBoard.ReadsEmptyNow(bed, Outside(Cottage, live)));
+    }
+
     [Fact]
     public void StandingNowhereTheBedReadsAsTheRecordSays()
         => Assert.Equal(ContainerLook.Growing, CardOf([Growing(Bed(Yard, 0, 2))], Yard, standing: null).Patches[0].Cells[2].Look);
