@@ -5,7 +5,8 @@ using BalambGarden.Engine.Ledger;
 namespace BalambGarden.Engine.Derivations;
 
 /// <summary>The History tab's whole content (rethink slice 9, spec ruling 13): the rows the filter
-/// lets through, newest first, under a heading for each of the reader's days; how many there are
+/// lets through, newest first, grouped by the reader's days (<see cref="Days"/>, newest first, a day
+/// only while it holds a row the filter lets through); how many there are
 /// of the whole record (<see cref="Shown"/> of <see cref="Total"/>, <see cref="Filtered"/> when any
 /// filter is set), and when the record begins (<see cref="Since"/>, null = nothing on record yet);
 /// and the estate, species and hand lists the filters offer, taken from the whole record whatever the
@@ -16,7 +17,7 @@ public sealed record HistoryPage(
     int Total,
     int Shown,
     bool Filtered,
-    IReadOnlyList<HistoryLine> Lines,
+    IReadOnlyList<HistoryDay> Days,
     IReadOnlyList<HistoryEstate> Estates,
     IReadOnlyList<ushort> Species,
     IReadOnlyList<HandPick> Hands,
@@ -25,11 +26,18 @@ public sealed record HistoryPage(
 /// <summary>An estate as the History tab names it: its nickname, else its label.</summary>
 public sealed record HistoryEstate(EstateKey Key, string Name);
 
-/// <summary>One line of the History tab: a day heading or a row.</summary>
+/// <summary>One of the reader's days on the History tab: its midnight in the reader's zone and its
+/// rows the filter lets through, newest first (never none).</summary>
+public sealed record HistoryDay(DateTimeOffset Day, IReadOnlyList<HistoryRowLine> Rows);
+
+/// <summary>One line of the History tab as drawn (<see cref="GardenBoard.HistoryLines"/>): a day
+/// heading or a row.</summary>
 public abstract record HistoryLine;
 
-/// <summary>The heading over a day's rows: that day's midnight in the reader's zone.</summary>
-public sealed record HistoryDayLine(DateTimeOffset Day) : HistoryLine;
+/// <summary>The heading over a day (rethink slice 24, ruling 13 amended: folding days): that day's
+/// midnight in the reader's zone, how many of its rows the filter lets through, and whether it is
+/// open (its rows drawn under it) or folded.</summary>
+public sealed record HistoryDayLine(DateTimeOffset Day, int Count, bool Open) : HistoryLine;
 
 /// <summary>One plant or harvest: the row, the name of the estate it happened at, and its instant in
 /// the reader's zone.</summary>
@@ -67,7 +75,7 @@ public static partial class GardenBoard
     /// <summary>The History tab: the rows of <paramref name="history"/> that
     /// <paramref name="filter"/> lets through (<see cref="HistoryQuery.Find"/>, newest first) and, when
     /// one is picked and still listed, whose <paramref name="hand"/> line they fall under by
-    /// <paramref name="aliases"/>; a day heading wherever the date in <paramref name="zone"/> changes,
+    /// <paramref name="aliases"/>; grouped into days wherever the date in <paramref name="zone"/> changes,
     /// each row's estate named from <paramref name="estates"/> (an estate the ledger does not name
     /// reads its label). The history is the only store: nothing here is kept between calls.</summary>
     public static HistoryPage History(GardenHistory history, HistoryFilter filter, HandPick? hand,
@@ -81,7 +89,8 @@ public static partial class GardenBoard
         var rows = HistoryQuery.Find(history, filter)
             .Where(row => hand is null || HandPick.Of(new Hand(row.By), aliases) == hand)
             .ToList();
-        var lines = new List<HistoryLine>(rows.Count + 8);
+        var days = new List<HistoryDay>();
+        List<HistoryRowLine>? dayRows = null;
         DateTime? day = null;
         foreach (var row in rows)
         {
@@ -89,9 +98,10 @@ public static partial class GardenBoard
             if (local.Date != day)
             {
                 day = local.Date;
-                lines.Add(new HistoryDayLine(TimelineSpan.AtMidnight(local.Date, zone)));
+                dayRows = [];
+                days.Add(new HistoryDay(TimelineSpan.AtMidnight(local.Date, zone), dayRows));
             }
-            lines.Add(new HistoryRowLine(row, estateName(row.Estate), local));
+            dayRows!.Add(new HistoryRowLine(row, estateName(row.Estate), local));
         }
 
         return new HistoryPage(
@@ -99,7 +109,7 @@ public static partial class GardenBoard
             Total: history.Entries.Count,
             Shown: rows.Count,
             Filtered: filter != new HistoryFilter() || hand is not null,
-            Lines: lines,
+            Days: days,
             Estates: history.Entries.Select(e => e.Estate).Distinct()
                 .Select(key => new HistoryEstate(key, estateName(key)))
                 .OrderBy(e => e.Name, StringComparer.CurrentCulture)
@@ -109,6 +119,48 @@ public static partial class GardenBoard
                 .ToList(),
             Hands: hands,
             Hand: hand);
+    }
+
+    /// <summary>The History tab's lines as drawn (rethink slice 24, ruling 13 amended: folding days):
+    /// a heading for each day of <paramref name="page"/> with its count, and under each day in
+    /// <paramref name="open"/> (by its midnight) its rows; every other day folded to its heading. The
+    /// open days are the reader's, kept across a filter change and a landing row; a day the filter
+    /// empties is not listed, so no heading ever stands over nothing.</summary>
+    public static IReadOnlyList<HistoryLine> HistoryLines(HistoryPage page, IReadOnlySet<DateTimeOffset> open)
+    {
+        var lines = new List<HistoryLine>();
+        foreach (var day in page.Days)
+        {
+            var isOpen = open.Contains(day.Day);
+            lines.Add(new HistoryDayLine(day.Day, day.Rows.Count, isOpen));
+            if (isOpen)
+                lines.AddRange(day.Rows);
+        }
+        return lines;
+    }
+
+    /// <summary>The days open when the History tab is opened: the newest day only (ruled 2026-11-11,
+    /// "newest day open"); none when nothing is listed. A day that lands later arrives folded.</summary>
+    public static IReadOnlySet<DateTimeOffset> HistoryOpenOnArrival(HistoryPage page)
+        => page.Days.Count == 0 ? new HashSet<DateTimeOffset>() : new HashSet<DateTimeOffset> { page.Days[0].Day };
+
+    /// <summary>Where <paramref name="line"/> now stands in <paramref name="lines"/>: a heading by its
+    /// day, a row by its entry; -1 when it is not there (filtered away, or its day folded). The window
+    /// keeps the line it was reading at the top of its view with it, so a landing row moves nothing.</summary>
+    public static int HistoryLineIndex(IReadOnlyList<HistoryLine> lines, HistoryLine line)
+    {
+        for (var i = 0; i < lines.Count; i++)
+        {
+            var same = (lines[i], line) switch
+            {
+                (HistoryDayLine a, HistoryDayLine b) => a.Day == b.Day,
+                (HistoryRowLine a, HistoryRowLine b) => a.Entry.Id == b.Entry.Id,
+                _ => false,
+            };
+            if (same)
+                return i;
+        }
+        return -1;
     }
 
     /// <summary>The hand filter's lines past "All hands": "You" always, then each alias on record by
