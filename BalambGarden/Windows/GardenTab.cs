@@ -410,7 +410,8 @@ internal static class GardenTab
             // Hollow: the state's colour as a ring, the clock's word alone (spec ruling 24, the
             // plan picture's B). Filled is what the game showed.
             draw.AddRectFilled(min, max, ImGui.ColorConvertFloat4ToU32(Palette.Hollow), 3f);
-            draw.AddRect(min + new Vector2(1.5f), max - new Vector2(1.5f), ImGui.ColorConvertFloat4ToU32(Fill(cell)), 3f, ImDrawFlags.None, 3f);
+            var ring = cell.Look == ContainerLook.Dead ? Palette.DeadRing : Fill(cell);
+            draw.AddRect(min + new Vector2(1.5f), max - new Vector2(1.5f), ImGui.ColorConvertFloat4ToU32(ring), 3f, ImDrawFlags.None, 3f);
             // No watering recorded keeps its dashed outline, outside the ring.
             if (cell.TendUnheard)
                 DashedRect(draw, min, max, ImGui.ColorConvertFloat4ToU32(Palette.Dashed));

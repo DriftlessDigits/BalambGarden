@@ -73,6 +73,10 @@ internal static class Palette
     /// colour drawn as a ring around this. The window's own dark, so the ring carries the state.</summary>
     public static readonly Vector4 Hollow = new(0.12f, 0.12f, 0.12f, 1f);
 
+    /// <summary>The ring of a plant dead by the clock: the earth of <see cref="Dead"/> lifted, so the
+    /// ring reads on <see cref="Hollow"/> (the earth itself is too dark to see as a ring there).</summary>
+    public static readonly Vector4 DeadRing = new(0.52f, 0.41f, 0.27f, 1f);
+
     // ------------------------------------------------------------------ text
 
     /// <summary>Plain text drawn by hand, full brightness: what matters now (ImGui's own text
