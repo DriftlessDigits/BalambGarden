@@ -132,7 +132,7 @@ One reading of the housing data the game publishes for a zone: species and stage
 _Avoid_: DataMap dump (the instrument), poll, snapshot
 
 **Settled read**:
-A map read taken after the data has caught up with the zone line. The map populates a beat late; a read that races it stands stale for the whole visit, so arrival and the front-door flip both retry until the map answers, and a chain sow waits for the read that shows its seed before its empty bed counts as news.
+A map read taken once the map has answered after a zone line; it can still lag a stage, which the room re-read catches up. The map populates a beat late; a read that races it stands stale for the whole visit, so arrival and the front-door flip both retry until the map answers, and a chain sow waits for the read that shows its seed before its empty bed counts as news.
 _Avoid_: fresh read, confirmed read, stable read
 
 **Room re-read**:
