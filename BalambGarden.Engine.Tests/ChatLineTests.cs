@@ -9,6 +9,28 @@ public class ChatLineTests
     private const int ErrorMessage = 60;
     private const int LootNotice = 62;
 
+    // ---- The room re-read's line shape (rethink slice 25): structure, never words ----
+
+    [Theory]
+    [InlineData(SystemMessage)]   // "You dispose of the crops growing in the flowerpot." (capture 2026-11-10), any catalogue line, a bed's unrecorded clear line
+    [InlineData(LootNotice)]      // "You obtain a bouquet of red sunflowers.": a hand flower harvest, never a receipt
+    public void A_system_or_loot_line_from_our_own_hands_has_the_garden_line_shape(int kind)
+        => Assert.True(ChatLine.IsOwnSuccessShape(kind, fromLocalPlayer: true));
+
+    [Fact]
+    public void Somebody_elses_line_a_refusal_and_another_channel_do_not()
+    {
+        Assert.False(ChatLine.IsOwnSuccessShape(SystemMessage, fromLocalPlayer: false));
+        Assert.False(ChatLine.IsOwnSuccessShape(LootNotice, fromLocalPlayer: false));
+        Assert.False(ChatLine.IsOwnSuccessShape(ErrorMessage, fromLocalPlayer: true));   // "Additional pomace is not necessary..."
+        Assert.False(ChatLine.IsOwnSuccessShape(10, fromLocalPlayer: true));             // say
+    }
+
+    [Fact]
+    public void The_dispose_line_makes_no_receipt()
+        // A disposal is read, not receipted: the re-read's empty read resets the pot (ReadsEmpty).
+        => Assert.Equal(ChatVerdict.None, ChatLine.Classify(SystemMessage, true, ChatLine.PotDisposeText));
+
     // ---- The obtain lane (capture 2026-08-26: harvest closes on LootNotice/62, not 57) ----
 
     [Theory]

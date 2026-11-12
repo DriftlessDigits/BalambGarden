@@ -135,6 +135,10 @@ _Avoid_: DataMap dump (the instrument), poll, snapshot
 A map read taken after the data has caught up with the zone line. The map populates a beat late; a read that races it stands stale for the whole visit, so arrival and the front-door flip both retry until the map answers, and a chain sow waits for the read that shows its seed before its empty bed counts as news.
 _Avoid_: fresh read, confirmed read, stable read
 
+**Room re-read**:
+The census reading the side underfoot again after a settled read, a bounded few times: in the first minute after an arrival or a door, and a few seconds after an own-hand gardening line. A settled read can still be a stage behind, and the map catches up by itself; a re-read is how the record catches up with it, without the player leaving or pressing a verb. Never in an act's lag, never anywhere but the place that armed it.
+_Avoid_: poll, refresh (the display-only read), rescan, recheck
+
 **The game wins**:
 The reconcile law: when the ledger and a live read disagree on anything the game publishes (species, stage, emptiness), the read is right. The ledger keeps only what the game does not publish.
 _Avoid_: live wins, map authority, override

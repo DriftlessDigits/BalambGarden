@@ -83,6 +83,8 @@ internal static class CensusPump
             // write path below, so it never holds an answer about somewhere we have left.
             announcedEstate = null;
             CoveredHere = false;
+            // Loading, logout: nowhere underfoot, so nothing armed elsewhere may run (rethink slice 25).
+            reread.Clear();
             return;
         }
 
@@ -100,6 +102,8 @@ internal static class CensusPump
         {
             if (announcedInside != inside)
             {
+                // The side he left keeps no reads, even while this side has not answered yet.
+                reread.Clear();
                 SightNow();
                 // The front door has the same settle trap as arrival (below): the DataMap
                 // can populate a beat after the flip, and a one-shot read that raced it
@@ -111,11 +115,18 @@ internal static class CensusPump
                     && Plugin.Garden.Ledger.Beds.Any(b => b.Estate == estate && b.IsPot == inside))
                     return;
                 announcedInside = inside;
+                // The side now underfoot gets its own re-reads.
+                if (CoveredHere)
+                    reread.Arrived(new RoomSide(estate, inside), DateTimeOffset.UtcNow);
+                return;
             }
+            RereadIfDue(estate, inside);
             return;
         }
 
-        // First tick at a new estate: visit + sight + (maybe) the one chat line.
+        // First tick at a new estate: visit + sight + (maybe) the one chat line. Whatever the
+        // last estate armed is dropped before anything reads here.
+        reread.Clear();
         SightNow();
         // The map can populate a beat after zone-in; an empty read means try
         // again next tick rather than announcing a garden we haven't seen. Only the
@@ -140,6 +151,9 @@ internal static class CensusPump
 
         Plugin.Garden.Ledger.UpsertEstate(estate, DateTimeOffset.UtcNow);
         Plugin.Garden.Save();
+        // The map can stand a stage behind on arrival and catch up by itself (rethink slice 25):
+        // read this side again a few times in the first minute.
+        reread.Arrived(new RoomSide(estate, inside), DateTimeOffset.UtcNow);
 
         if (Plugin.Configuration.NudgeEnabled)
         {
@@ -149,6 +163,51 @@ internal static class CensusPump
             if (Rollups.ArrivalNudge(estate, rollups, Plugin.Configuration.NudgeLabel) is { } line)
                 Svc.Chat.Print(line);
         }
+    }
+
+    /// <summary>The room re-read (rethink slice 25; the rule is <see cref="RoomReread"/>, engine-tested):
+    /// the side underfoot read again a few times after an arrival and a few seconds after an own-hand
+    /// gardening line, never in an act's lag, only where it was armed.</summary>
+    private static readonly RoomReread reread = new();
+
+    /// <summary>When the newest own-hand receipt landed (a chain's or a hand act's): the room
+    /// re-read stays quiet for a while after it, because the map shows an act a beat late.</summary>
+    private static DateTimeOffset? lastOwnReceiptAt;
+
+    /// <summary>An own-hand gardening line at a bed or pot (<see cref="ChatReceipts"/> decides that, by
+    /// the line's shape and the previous-target): read the side underfoot again a few seconds on. Not
+    /// while a chain drives (its acts read for themselves), not where nothing is tracked. True when armed.</summary>
+    internal static bool NoteGardenLine()
+    {
+        if (Plugin.AnyChainDriving || !CoveredHere || EstateSensor.Current() is not { } estate)
+            return false;
+        reread.LineHeard(new RoomSide(estate, EstateSensor.IsInside()), DateTimeOffset.UtcNow);
+        return true;
+    }
+
+    /// <summary>One census read of the side underfoot when the schedule says one is due here, logged
+    /// with what it found changed against the last CENSUS read of that side (display-only reads do
+    /// not count): the change line is how late the map runs, measured. A re-read leaves the
+    /// vanished-pot verdict to the reads that always made it (the 08-23 corroboration bet was placed
+    /// on an act's or a door's read, never on a read seconds after arrival with nothing touched).</summary>
+    private static void RereadIfDue(EstateKey estate, bool inside)
+    {
+        var now = DateTimeOffset.UtcNow;
+        var busy = Plugin.AnyChainDriving || parkedSows.Count > 0 || sowSettle.Any;
+        if (reread.Take(new RoomSide(estate, inside), now, busy, lastOwnReceiptAt) is not { } read)
+            return;
+
+        // Reads are replaced, never changed in place, so these are the before picture.
+        var indoor = lastCensusIndoor;
+        var outdoor = lastCensusOutdoor;
+        SightNow(reconcileAbsent: false);
+        var changes = inside ? RoomReread.Changes(indoor, lastCensusIndoor) : RoomReread.Changes(outdoor, lastCensusOutdoor);
+        var why = $"{(now - read.ArmedAt).TotalSeconds:0}s after "
+                  + (read.Cause == RereadCause.Arrival ? "arriving" : "a garden line");
+        if (changes.Count > 0)
+            Plugin.Log.Information($"[Census] room re-read {why} at {estate.DisplayLabel()}: {string.Join("; ", changes)}");
+        else
+            Plugin.Log.Debug($"[Census] room re-read {why} at {estate.DisplayLabel()}: no change");
     }
 
     private static DateTime nextMintUtc = DateTime.MinValue;
@@ -246,7 +305,14 @@ internal static class CensusPump
     /// landed - the recording side learned this on 08-23, the display side tonight).</summary>
     internal static bool MapAnsweredThisVisit => mapAnsweredThisVisit;
 
-    internal static void SightNow()
+    /// <summary>The last census read of each side (never a display-only read): the room re-read's
+    /// before picture.</summary>
+    private static IReadOnlyDictionary<int, PotReading> lastCensusIndoor = new Dictionary<int, PotReading>();
+    private static IReadOnlyDictionary<int, IReadOnlyList<BedReading>> lastCensusOutdoor = new Dictionary<int, IReadOnlyList<BedReading>>();
+
+    /// <param name="reconcileAbsent">False for a room re-read: it neither runs the vanished-pot
+    /// verdict nor becomes the prior read that verdict corroborates against.</param>
+    internal static void SightNow(bool reconcileAbsent = true)
     {
         var estate = EstateSensor.Current();
         if (estate is null)
@@ -266,6 +332,7 @@ internal static class CensusPump
         if (EstateSensor.IsInside())
         {
             LastIndoor = MapSensor.ReadIndoor();
+            lastCensusIndoor = LastIndoor;
 
             // Option A (08-16 ruling): rows the pot-gate has disowned die here, not by
             // seven right-clicks. Only keys SEEN this read and turned away are pruned - a
@@ -308,7 +375,7 @@ internal static class CensusPump
                 mapAnsweredThisVisit = true;
             // priorPotKeys non-null = a settled read already happened this visit; the
             // first answering read has nothing to corroborate against and clears nothing.
-            if (CoveredHere && ObjectSensor.SawHousingObjects && mapAnsweredThisVisit
+            if (reconcileAbsent && CoveredHere && ObjectSensor.SawHousingObjects && mapAnsweredThisVisit
                 && priorPotKeys is not null)
             {
                 var present = LastIndoor.Keys.Union(priorPotKeys).ToList();
@@ -318,7 +385,7 @@ internal static class CensusPump
                         $"[Census] {emptied} pot(s) read absent (harvested?) - contents cleared at {estate.DisplayLabel()}");
                 landed += emptied;
             }
-            if (ObjectSensor.SawHousingObjects)
+            if (reconcileAbsent && ObjectSensor.SawHousingObjects)
                 priorPotKeys = LastIndoor.Keys.ToHashSet();
 
             if (CoveredHere && (landed > 0 || pruned > 0))
@@ -328,6 +395,7 @@ internal static class CensusPump
         else
         {
             LastOutdoor = MapSensor.ReadOutdoor();
+            lastCensusOutdoor = LastOutdoor;
             var changes = new List<SightingChange>();
             var rebases = new List<RebaseEvent>();
             foreach (var (key, beds) in LastOutdoor)
@@ -730,6 +798,7 @@ internal static class CensusPump
         // PLANT a new planting at this instant (own hands are never fenced).
         var rebases = new List<RebaseEvent>();
         var bed = Plugin.Garden.Census.OnReceipt(receipt, rebases);
+        lastOwnReceiptAt = DateTimeOffset.UtcNow;
         Plugin.Garden.Save();
         ReportRebases(rebases);
 
@@ -1389,6 +1458,7 @@ internal static class CensusPump
 
         var rebases = new List<RebaseEvent>();
         var bed = Plugin.Garden.Census.OnReceipt(receipt, rebases);
+        lastOwnReceiptAt = DateTimeOffset.UtcNow;
         Plugin.Garden.Save();
         ReportRebases(rebases);
         return bed is null
