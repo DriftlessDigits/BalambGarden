@@ -385,7 +385,7 @@ public class MainWindow : Window, IDisposable
         DateTimeOffset now)
     {
         var rollups = Rollups.ForEstate(
-            record.Key, Plugin.Garden.Census.LedgerBeds, Plugin.Tables, Plugin.Garden.Wilt, now);
+            record.Key, Plugin.Garden.Census.LedgerBeds, Plugin.Tables, Plugin.Garden.Wilt, now, CensusPump.Looks.Holds);
         var outdoorRollups = rollups.Where(r => !r.IsPots).ToList();
         var potRollups = rollups.Where(r => r.IsPots).ToList();
 

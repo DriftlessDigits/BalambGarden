@@ -157,9 +157,10 @@ internal static class CensusPump
 
         if (Plugin.Configuration.NudgeEnabled)
         {
+            // The arrival look is held: the nudge believes the clocks, as the window does.
             var rollups = Rollups.ForEstate(
                 estate, Plugin.Garden.Census.LedgerBeds, Plugin.Tables,
-                Plugin.Garden.Wilt, DateTimeOffset.UtcNow);
+                Plugin.Garden.Wilt, DateTimeOffset.UtcNow, Looks.Holds);
             if (Rollups.ArrivalNudge(estate, rollups, Plugin.Configuration.NudgeLabel) is { } line)
                 Svc.Chat.Print(line);
         }
@@ -340,6 +341,7 @@ internal static class CensusPump
     /// verdict nor becomes the prior read that verdict corroborates against.</param>
     internal static void SightNow(bool reconcileAbsent = true)
     {
+        lastSightAt = null;
         var estate = EstateSensor.Current();
         if (estate is null)
             return;

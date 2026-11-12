@@ -150,6 +150,32 @@ public class LookRuleTests
         Assert.False(rule.Holds(bed));
     }
 
+    [Fact] // scope call: a read an act makes before the 5 s look is no better than the arrival look
+    public void AnActsReadBeforeTheFiveSecondLookIsHeldToo()
+    {
+        var pot = Pot131();
+        var rule = new LookRule(T);
+        rule.Arrived(Inside, [pot], Arrival);
+
+        Look(pot, Cst("2026-11-11T19:25:02"), stage: 3);    // the census read a receipt lands with
+
+        Assert.True(rule.Holds(pot));
+        Assert.Equal(ContainerLook.Ripe, Shows(pot, rule, Cst("2026-11-11T19:25:03")));
+    }
+
+    [Fact] // an empty read empties the record itself; nothing is left to hold
+    public void AnEmptiedRecordIsNoLongerHeld()
+    {
+        var pot = Pot131();
+        var rule = new LookRule(T);
+        rule.Arrived(Inside, [pot], Arrival);
+
+        pot.Rebase(RebaseReason.ReadsEmpty, cut: Five);
+        rule.Looked(Inside, [pot], Five);
+
+        Assert.False(rule.Holds(pot));
+    }
+
     [Fact] // a planting the plugin did not see has no clock: nothing to hold
     public void AnUnseenPlantingIsNeverHeld()
     {

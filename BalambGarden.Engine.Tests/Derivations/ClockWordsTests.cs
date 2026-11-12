@@ -45,6 +45,15 @@ public class ClockWordsTests
                 Cst("2026-11-11T19:23:00"), Cst("2026-11-12T20:00:00")));
 
     [Fact]
+    public void TheLaneSaysSeenAndByTheClockApart()
+    {
+        Assert.Equal("Krakka Root ripe now", WindowFormat.LaneRipeLabel("Krakka Root", byClock: false));
+        Assert.Equal("Mirror Apple ripe by the clock", WindowFormat.LaneRipeLabel("Mirror Apple", byClock: true));
+        Assert.Equal("Krakka Root: seen ripe - harvest any time", WindowFormat.LaneRipeHover("Krakka Root", byClock: false));
+        Assert.Equal("Mirror Apple: ripe by the clock - harvest any time", WindowFormat.LaneRipeHover("Mirror Apple", byClock: true));
+    }
+
+    [Fact]
     public void ACellSeenRipeSaysWhenItWasSeen()
         => Assert.Equal("ripe now (seen Wed 19:23)", WindowFormat.SeenRipe(Cst("2026-11-11T19:23:00")));
 

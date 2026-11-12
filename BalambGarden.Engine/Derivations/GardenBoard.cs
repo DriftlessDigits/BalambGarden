@@ -32,13 +32,16 @@ public enum ContainerLook { Unclaimed, Unread, Empty, Growing, WaterSoon, Wiltin
 /// <see cref="ByClock"/> marks a ripe, wilting, dying or dead look the clock alone holds (spec ruling
 /// 24): the game never showed it, and the window draws it hollow; <see cref="ClockSince"/> is when
 /// that state began by the clock. <see cref="OutlivedClock"/>: a bed read alive after its clock's
-/// death time, so no water claim until a watering is recorded.</summary>
+/// death time, so no water claim until a watering is recorded. <see cref="Clock"/> is the planting's
+/// clock where one speaks (its sowing, grow hours and dying point, for the hover);
+/// <see cref="SeenRipeAt"/> when the read that showed it ripe was taken.</summary>
 public sealed record ContainerCell(
     int Position, ContainerLook Look, ushort Species, byte Stage, bool TendUnheard,
     DateTimeOffset? WaterBy, EtaWindow? Ripe, ClaimedBed? Bed, DateTimeOffset? DiesAt = null,
     DateTimeOffset? WiltSeenAt = null, bool WiltShown = false, bool NeverWilts = false,
     DateTimeOffset? SeenDeadAt = null, DateTimeOffset? SeenFineAt = null,
-    bool ByClock = false, DateTimeOffset? ClockSince = null, bool OutlivedClock = false)
+    bool ByClock = false, DateTimeOffset? ClockSince = null, bool OutlivedClock = false,
+    PlantClock? Clock = null, DateTimeOffset? SeenRipeAt = null)
 {
     public static ContainerCell Unclaimed(int slot) => new(slot, ContainerLook.Unclaimed,
         Species: 0, Stage: 0, TendUnheard: false, WaterBy: null, Ripe: null, Bed: null);
@@ -438,6 +441,7 @@ public static partial class GardenBoard
 
         var crop = tables.CropBySpeciesIndex(latest.SpeciesIndex);
         var ripe = latest.Stage >= GardenStage.Ripe;
+        var seenRipeAt = ripe ? latest.At : (DateTimeOffset?)null;
         var water = crop is null ? WaterState.Unknown : Clock.StateFor(bed, crop, now);
         // A pot whose clock rests on the seen-fine floor alone was fine at the look, so past its
         // floor's wilt hours it may wilt any time, not "is wilting" (ruled 2026-11-10 at slice 21's
@@ -463,7 +467,7 @@ public static partial class GardenBoard
             window, bed,
             DiesAt: crop is null ? null : ClockWiltSource.DiesAt(bed, crop),
             NeverWilts: crop is null && tables.GrowHours(latest.SpeciesIndex) is not null,
-            SeenFineAt: onSeenFineFloor ? bed.SeenFineAt : null);
+            SeenFineAt: onSeenFineFloor ? bed.SeenFineAt : null, SeenRipeAt: seenRipeAt);
     }
 
     /// <summary>A planting's cell from what the card believes (spec ruling 24). Ripe and dead by
@@ -480,19 +484,21 @@ public static partial class GardenBoard
                 return new ContainerCell(position, ContainerLook.Dead, latest.SpeciesIndex, latest.Stage,
                     TendUnheard: false, WaterBy: null, Ripe: null, bed,
                     SeenDeadAt: belief.ByClock ? null : latest.At,
-                    ByClock: belief.ByClock, ClockSince: belief.Since);
+                    ByClock: belief.ByClock, ClockSince: belief.Since, Clock: clock);
             case PlantState.Ripe:
                 return new ContainerCell(position, ContainerLook.Ripe, latest.SpeciesIndex, latest.Stage,
                     TendUnheard: false, WaterBy: null, Ripe: null, bed,
-                    ByClock: belief.ByClock, ClockSince: belief.Since);
+                    ByClock: belief.ByClock, ClockSince: belief.Since, Clock: clock,
+                    SeenRipeAt: belief.ByClock ? null : latest.At);
         }
 
         var window = StageModel.RipeWindow(bed, clock.Crop.GrowHours)?.Window;
         if (belief.OutlivedClock)
             return new ContainerCell(position, ContainerLook.Growing, latest.SpeciesIndex, latest.Stage,
-                TendUnheard: true, WaterBy: null, window, bed, OutlivedClock: true);
+                TendUnheard: true, WaterBy: null, window, bed, OutlivedClock: true, Clock: clock);
 
-        var onSeenFineFloor = ClockWiltSource.RestsOnSeenFineFloor(bed, clock.Crop) && clock.Start > (bed.LastTended ?? bed.PlantedAt);
+        // A pot whose clock start is its seen-fine floor, later than anything recorded (slice 21).
+        var onSeenFineFloor = clock.Start > (bed.LastTended ?? clock.SownAt);
         var look = belief.State == PlantState.Wilting
             ? now >= clock.DyingAt ? ContainerLook.Dying
               : onSeenFineFloor ? ContainerLook.WaterSoon
@@ -504,6 +510,6 @@ public static partial class GardenBoard
             DiesAt: clock.DeathAt,
             SeenFineAt: onSeenFineFloor ? bed.SeenFineAt : null,
             ByClock: belief.ByClock && look is ContainerLook.Wilting or ContainerLook.Dying,
-            ClockSince: belief.Since);
+            ClockSince: belief.Since, Clock: clock);
     }
 }

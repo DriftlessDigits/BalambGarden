@@ -188,7 +188,7 @@ internal static class GardenTab
         var crops = string.Join(" + ", mark.Crops.Select(c => Plugin.Tables.SpeciesName(c)));
         var who = mark.Row == LaneRow.Pots ? $"pots ({crops})" : crops;
         var label = mark.Group is { } shown ? $"{who} {WindowFormat.Mark(shown.Window.Provenance)}"
-            : mark.Kind == LaneMarkKind.RipeByClock ? $"{who} ripe by the clock" : $"{who} ripe now";
+            : WindowFormat.LaneRipeLabel(who, mark.Kind == LaneMarkKind.RipeByClock);
         // Beside the mark; before it when it would run off the lane's end and the row's previous
         // label leaves room; otherwise beside it, cut at the end (the hover has it whole).
         var labelWidth = ImGui.CalcTextSize(label).X;
@@ -206,8 +206,7 @@ internal static class GardenTab
         if (ImGui.IsItemHovered())
             ImGui.SetTooltip(mark.Group is { } group
                 ? string.Join("\n\n", group.Crops.Select(c => $"{Plugin.Tables.SpeciesName(c.Species)}: {WindowText.WindowTooltip(c.Window)}"))
-                : mark.Kind == LaneMarkKind.RipeByClock ? $"{crops}: ripe by the clock - harvest any time"
-                : $"{crops}: seen ripe - harvest any time");
+                : WindowFormat.LaneRipeHover(crops, mark.Kind == LaneMarkKind.RipeByClock));
         return labelEnd;
     }
 
@@ -410,8 +409,11 @@ internal static class GardenTab
         {
             // Hollow: the state's colour as a ring, the clock's word alone (spec ruling 24, the
             // plan picture's B). Filled is what the game showed.
-            draw.AddRectFilled(min, max, ImGui.ColorConvertFloat4ToU32(Palette.Unclaimed), 3f);
+            draw.AddRectFilled(min, max, ImGui.ColorConvertFloat4ToU32(Palette.Hollow), 3f);
             draw.AddRect(min + new Vector2(1.5f), max - new Vector2(1.5f), ImGui.ColorConvertFloat4ToU32(Fill(cell)), 3f, ImDrawFlags.None, 3f);
+            // No watering recorded keeps its dashed outline, outside the ring.
+            if (cell.TendUnheard)
+                DashedRect(draw, min, max, ImGui.ColorConvertFloat4ToU32(Palette.Dashed));
         }
         else
         {
@@ -497,13 +499,11 @@ internal static class GardenTab
         }
 
         var lines = new List<string> { $"{name}: {Plugin.Tables.SpeciesName(cell.Species)}, stage {cell.Stage}" };
-        if (cell.Look == ContainerLook.Ripe && cell.ByClock && cell.ClockSince is { } since
-            && cell.Bed is { PlantedAt: { } sown, Latest: { } read }
-            && Plugin.Tables.GrowHours(cell.Species) is { } grow)
-            lines.Add(WindowFormat.RipeByClock(since.ToLocalTime(), sown.ToLocalTime(), grow, read.Stage,
-                read.At.ToLocalTime(), now.ToLocalTime()));
+        if (cell.Look == ContainerLook.Ripe && cell.ByClock && cell is { ClockSince: { } since, Clock: { } clock, Bed.Latest: { } read })
+            lines.Add(WindowFormat.RipeByClock(since.ToLocalTime(), clock.SownAt.ToLocalTime(), clock.Crop.GrowHours,
+                cell.Stage, read.At.ToLocalTime(), now.ToLocalTime()));
         else if (cell.Look == ContainerLook.Ripe)
-            lines.Add(cell.Bed?.Latest is { Stage: >= 4 } seen ? WindowFormat.SeenRipe(seen.At.ToLocalTime()) : "ripe now");
+            lines.Add(cell.SeenRipeAt is { } seen ? WindowFormat.SeenRipe(seen.ToLocalTime()) : "ripe now");
         else if (cell.Ripe is { } ripe)
             lines.Add($"ripe ~{WindowFormat.Range(ripe.Earliest.ToLocalTime(), ripe.Latest.ToLocalTime())} {WindowFormat.Mark(ripe.Provenance)}");
 
@@ -522,8 +522,8 @@ internal static class GardenTab
         {
             if (WindowFormat.ThirstLine(cell.Look, cell.DiesAt?.ToLocalTime(), now.ToLocalTime(), cell.ByClock) is { } thirst)
                 lines.Add(thirst);
-            if (cell.ByClock && cell.Look == ContainerLook.Wilting && cell.ClockSince is { } wilted && cell.DiesAt is { } dies)
-                lines.Add(WindowFormat.DyingFrom((wilted + (dies - wilted) / 2).ToLocalTime(), now.ToLocalTime()));
+            if (cell is { ByClock: true, Look: ContainerLook.Wilting, Clock: { } wiltClock })
+                lines.Add(WindowFormat.DyingFrom(wiltClock.DyingAt.ToLocalTime(), now.ToLocalTime()));
             if (shown is not null)
                 lines.Add(shown);
         }

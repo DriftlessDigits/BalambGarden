@@ -52,6 +52,7 @@ public class AwayStatesTests
     {
         Assert.Equal((ContainerLook.WaterSoon, false), Read(KrakkaSownMonday(), Cst("2026-11-10T17:59:00")));
         Assert.Equal((ContainerLook.Wilting, true), Read(KrakkaSownMonday(), Cst("2026-11-10T18:01:00")));
+        Assert.Equal(Cst("2026-11-11T06:00:00"), Only(Card([KrakkaSownMonday()], Cst("2026-11-10T18:01:00"))).Clock!.DyingAt);   // "dying from ~6:00 am"
     }
 
     [Fact] // the death time Wed 6:00 pm comes before the ripe time Thu 6:00 pm: it never reads ripe
@@ -75,6 +76,8 @@ public class AwayStatesTests
         var ripe = Only(Card([Watered()], Cst("2026-11-12T19:01:00")));
         Assert.Equal((ContainerLook.Ripe, true), (ripe.Look, ripe.ByClock));
         Assert.Equal(Cst("2026-11-12T19:00:00"), ripe.ClockSince);
+        Assert.Equal((Cst("2026-11-09T18:00:00"), 72), (ripe.Clock!.SownAt, ripe.Clock.Crop.GrowHours));   // the hover's "sown ..., 72 h to grow"
+        Assert.Null(ripe.SeenRipeAt);
     }
 
     [Fact] // the ticket's onion: last watered Sat 6:00 pm, ripe Sun 8:00 pm - wilting, then ripe, never dead
@@ -243,6 +246,7 @@ public class AwayStatesTests
     {
         var ripe = Seed.Ripe(KrakkaSownMonday(), Cst("2026-11-10T08:00:00"), Krakka);
         Assert.Equal((ContainerLook.Ripe, false), Read(ripe, Cst("2026-11-10T09:00:00")));
+        Assert.Equal(Cst("2026-11-10T08:00:00"), Only(Card([ripe], Cst("2026-11-10T09:00:00"))).SeenRipeAt);
         var dead = Seed.Sight(KrakkaSownMonday(), Cst("2026-11-10T08:00:00"), Krakka, stage: 5);
         Assert.Equal((ContainerLook.Dead, false), Read(dead, Cst("2026-11-10T09:00:00")));
     }

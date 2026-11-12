@@ -69,6 +69,10 @@ internal static class Palette
     public static readonly Vector4 Unread = new(0.30f, 0.30f, 0.30f, 1f);
     public static readonly Vector4 ClockFine = new(0.42f, 0.42f, 0.45f, 1f);
 
+    /// <summary>The inside of a hollow cell: a state the clock alone holds (spec ruling 24), its
+    /// colour drawn as a ring around this. The window's own dark, so the ring carries the state.</summary>
+    public static readonly Vector4 Hollow = new(0.12f, 0.12f, 0.12f, 1f);
+
     // ------------------------------------------------------------------ text
 
     /// <summary>Plain text drawn by hand, full brightness: what matters now (ImGui's own text

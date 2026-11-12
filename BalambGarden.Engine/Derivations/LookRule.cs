@@ -31,14 +31,14 @@ namespace BalambGarden.Engine.Derivations;
 /// </summary>
 public sealed class LookRule(DomainTables tables)
 {
-    /// <summary>What a read or the clock says, in the words of the warning line.</summary>
-    public enum Said { Growing, Ripe, Wilting, Dead }
-
-    private sealed record Hold(RoomSide Side, Said? Clock = null, Said? Five = null, DateTimeOffset? FiveAt = null);
+    /// <summary>A container held at <see cref="Side"/>; once its 5 s look disagreed, what the clock
+    /// said then, and that look and its time, for the warning line.</summary>
+    private sealed record Hold(RoomSide Side, PlantState? Clock = null, PlantState? FirstLook = null,
+        DateTimeOffset? FirstLookAt = null);
 
     private readonly Dictionary<(EstateKey Estate, bool IsPot, int Key, int Patch, int Slot), Hold> holds = [];
     private RoomSide? side;
-    private int looks;
+    private int rereads;
 
     private static (EstateKey, bool, int, int, int) Id(ClaimedBed bed)
         => bed.IsPot ? (bed.Estate, true, bed.MapKey, 0, 0) : (bed.Estate, false, 0, bed.PatchOrdinal, bed.BedSlot);
@@ -51,7 +51,7 @@ public sealed class LookRule(DomainTables tables)
     public void Arrived(RoomSide side, IEnumerable<ClaimedBed> onSide, DateTimeOffset at)
     {
         this.side = side;
-        looks = 0;
+        rereads = 0;
         foreach (var key in holds.Where(h => h.Value.Side == side).Select(h => h.Key).ToList())
             holds.Remove(key);
         foreach (var bed in onSide)
@@ -66,7 +66,7 @@ public sealed class LookRule(DomainTables tables)
     {
         if (this.side != side)
             return [];
-        looks++;
+        rereads++;
 
         var warnings = new List<string>();
         foreach (var bed in onSide)
@@ -74,9 +74,9 @@ public sealed class LookRule(DomainTables tables)
             if (!holds.TryGetValue(Id(bed), out var hold) || hold.Side != side)
                 continue;
             var look = Read(bed, at);
-            if (looks == 1)
+            if (rereads == 1)
             {
-                var clock = GardenBoard.ClockState(bed, tables, at) is { } state ? Say(state) : (Said?)null;
+                var clock = GardenBoard.ClockState(bed, tables, at);
                 if (clock is null)
                 {
                     // The record changed under the hold (emptied, replanted unseen): nothing to hold.
@@ -88,50 +88,42 @@ public sealed class LookRule(DomainTables tables)
                 if (Agrees(look.Value, clock.Value, bed.IsPot))
                     holds.Remove(Id(bed));
                 else
-                    holds[Id(bed)] = hold with { Clock = clock, Five = look, FiveAt = at };
+                    holds[Id(bed)] = hold with { Clock = clock, FirstLook = look, FirstLookAt = at };
                 continue;
             }
 
             holds.Remove(Id(bed));
-            if (hold.Five is { } five && look is { } fifteen)
-                warnings.Add(Warning(bed, hold.Clock!.Value, five, hold.FiveAt!.Value, fifteen, at));
+            if (hold.FirstLook is { } five && look is { } fifteen)
+                warnings.Add(Warning(bed, hold.Clock!.Value, five, hold.FirstLookAt!.Value, fifteen, at));
         }
         return warnings;
     }
 
     /// <summary>The warning line, for the plugin log only.</summary>
-    public static string Warning(ClaimedBed bed, Said clock, Said five, DateTimeOffset fiveAt, Said fifteen,
-        DateTimeOffset fifteenAt)
+    public static string Warning(ClaimedBed bed, PlantState clock, PlantState five, DateTimeOffset fiveAt,
+        PlantState fifteen, DateTimeOffset fifteenAt)
     {
         var where = bed.IsPot ? $"pot (key {bed.MapKey})" : $"patch {bed.PatchOrdinal + 1} bed {bed.BedSlot + 1}";
         return $"a look disagreed with the clock at {bed.Estate.DisplayLabel()}, {where}: the clock said {Word(clock)};"
                + $" the 5s look at {fiveAt:u} said {Word(five)}; the 15s look at {fifteenAt:u} said {Word(fifteen)} and stands";
     }
 
-    private static string Word(Said said) => said.ToString().ToLowerInvariant();
-
-    private static Said Say(PlantState state) => state switch
-    {
-        PlantState.Ripe => Said.Ripe,
-        PlantState.Wilting => Said.Wilting,
-        PlantState.Dead => Said.Dead,
-        _ => Said.Growing,
-    };
+    private static string Word(PlantState state) => state.ToString().ToLowerInvariant();
 
     /// <summary>What the read taken at <paramref name="at"/> says; null when this read did not
     /// reach the container (its newest read is older).</summary>
-    private static Said? Read(ClaimedBed bed, DateTimeOffset at)
+    private static PlantState? Read(ClaimedBed bed, DateTimeOffset at)
     {
         if (bed.Latest is not { } latest || latest.At != at)
             return null;
         return latest.Stage switch
         {
-            >= GardenStage.Dead => Said.Dead,
-            >= GardenStage.Ripe => Said.Ripe,
-            _ => bed.IsPot && bed.WiltSeenAt == at ? Said.Wilting : Said.Growing,
+            >= GardenStage.Dead => PlantState.Dead,
+            >= GardenStage.Ripe => PlantState.Ripe,
+            _ => bed.IsPot && bed.WiltSeenAt == at ? PlantState.Wilting : PlantState.Growing,
         };
     }
 
-    private static bool Agrees(Said look, Said clock, bool isPot)
-        => look == clock || (!isPot && look == Said.Growing && clock == Said.Wilting);
+    private static bool Agrees(PlantState look, PlantState clock, bool isPot)
+        => look == clock || (!isPot && look == PlantState.Growing && clock == PlantState.Wilting);
 }

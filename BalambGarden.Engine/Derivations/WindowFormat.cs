@@ -219,6 +219,14 @@ public static class WindowFormat
            + $"sown {Clock(sown, withDay: true)}, {growHours} h to grow\n"
            + $"last read stage {stage}, {Clock(readAt, withDay: true)}";
 
+    /// <summary>A ripe-now mark's label on the lane: "Krakka Root ripe now", "Mirror Apple ripe by the clock".</summary>
+    public static string LaneRipeLabel(string who, bool byClock) => $"{who} {(byClock ? "ripe by the clock" : "ripe now")}";
+
+    /// <summary>A ripe-now mark's hover on the lane: "Krakka Root: seen ripe - harvest any time",
+    /// "Mirror Apple: ripe by the clock - harvest any time".</summary>
+    public static string LaneRipeHover(string crops, bool byClock)
+        => $"{crops}: {(byClock ? "ripe by the clock" : "seen ripe")} - harvest any time";
+
     /// <summary>A cell seen ripe: "ripe now (seen Wed 7:23 pm)". Caller converts to local time.</summary>
     public static string SeenRipe(DateTimeOffset seenAt) => $"ripe now (seen {Clock(seenAt, withDay: true)})";
 

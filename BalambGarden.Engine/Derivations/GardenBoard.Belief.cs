@@ -14,6 +14,9 @@ public enum PlantState { Growing, Ripe, Wilting, Dead }
 /// wilt time + 24 h for every crop in the table). <see cref="Start"/> is that clock start.</summary>
 public sealed record PlantClock(Crop Crop, DateTimeOffset RipeAt, DateTimeOffset Start)
 {
+    /// <summary>The sowing the ripe time counts from.</summary>
+    public DateTimeOffset SownAt => RipeAt.AddHours(-Crop.GrowHours);
+
     /// <summary>Ripe shows this long after the ripe time: the game updates plants on a cycle of
     /// about an hour (ruled 2026-11-11: "for ripe, go with an hour after").</summary>
     public static readonly TimeSpan RipeShows = TimeSpan.FromHours(1);
@@ -63,7 +66,9 @@ public static partial class GardenBoard
         var species = bed.PlantedSpecies != 0 ? bed.PlantedSpecies : latest.SpeciesIndex;
         if (tables.CropBySpeciesIndex(species) is not { } crop)
             return null;
-        var start = bed.LastTended is { } tended && tended > sown ? tended : sown;
+        // The wilt clock's own start rule (ClockWiltSource.RecordedStart, ClockStart), here for any
+        // stage: the last watering recorded, else the sowing, raised for a pot by its seen-fine floor.
+        var start = bed.LastTended ?? sown;
         if (withFloor && bed.IsPot && bed.SeenFineAt is { } fine && fine.AddHours(-crop.WiltHours) > start)
             start = fine.AddHours(-crop.WiltHours);
         return new PlantClock(crop, sown.AddHours(crop.GrowHours), start);
